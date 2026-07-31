@@ -6,7 +6,8 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-# npm ci cài đúng theo lockfile, tái lập được giữa các lần build.
+COPY prisma ./prisma
+COPY prisma.config.ts ./
 RUN npm ci
 
 # ---------- Giai đoạn 2: build ----------
