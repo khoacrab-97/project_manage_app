@@ -22,8 +22,9 @@ const CAN_TAI_CHINH_DUYET = "Máy đề xuất theo tên hạng mục — cần 
 const BANG: Record<string, MapDef> = {
   // ----- DOANH THU: đổi CHIỀU phân loại, không phải đổi tên -----
   TDA: {
-    maMoi: "TDA2",
-    ghiChu: "Nhóm doanh thu tổng. Hệ cũ phân theo LOẠI KHÁCH HÀNG, hệ mới phân theo GIAI ĐOẠN THANH TOÁN.",
+    maMoi: null,
+    ghiChu:
+      "Nhóm doanh thu tổng. Hệ cũ phân theo LOẠI KHÁCH HÀNG, hệ mới phân theo GIAI ĐOẠN THANH TOÁN. Không map vào TDA2 vì TDA2 hệ mới đã bị loại khỏi danh mục hạch toán.",
   },
   TDA1: {
     maMoi: "Bill",

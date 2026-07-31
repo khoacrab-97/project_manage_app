@@ -146,6 +146,14 @@ describe("Kế hoạch và ánh xạ hệ mã", () => {
     expect(db.anhXaMa.every((a) => a.daDuyet === false)).toBe(true);
   });
 
+  it("mọi mã mới trong bảng ánh xạ đều tồn tại trong danh mục", () => {
+    const hopLe = new Set(db.danhMucMa.map((c) => c.ma));
+    const viPham = db.anhXaMa
+      .filter((a) => a.maMoi && !hopLe.has(a.maMoi))
+      .map((a) => ({ maCu: a.maCu, maMoi: a.maMoi }));
+    expect(viPham).toEqual([]);
+  });
+
   it("TDA2 hệ cũ KHÔNG được map về TDA2 hệ mới (trùng ký hiệu khác nghĩa)", () => {
     const tda2 = db.anhXaMa.find((a) => a.maCu === "TDA2");
     expect(tda2?.maMoi).not.toBe("TDA2");
