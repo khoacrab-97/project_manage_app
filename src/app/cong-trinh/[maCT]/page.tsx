@@ -40,7 +40,7 @@ import { loaiCua, traMa } from "@/lib/data/repository";
 import { nguoiDungHienTai } from "@/lib/auth/phien";
 import { coQuyen } from "@/lib/auth/quyen";
 import { NGAY_HIEN_TAI } from "@/lib/thresholds";
-import { BoxNhapBOQ, NutThemBill, NutXacNhan } from "@/components/nhap-boq";
+import { BoxNhapBOQ, LuoiNhapBOQ, NutThemBill, NutXacNhan } from "@/components/nhap-boq";
 import { NutThemCot, NutThemDong, ONhapCot, TieuDeCot } from "@/components/cot-boq";
 
 /**
@@ -397,10 +397,15 @@ async function BOQTab({
     return (
       <The>
         <TheDau tieuDe="Bảng khối lượng hợp đồng (BOQ)" />
-        <Rong>
-          Công trình chưa có BOQ. Cần nhập bảng khối lượng hợp đồng thì mới tính được giá trị Bill
-          theo tháng.
-        </Rong>
+        <div className="p-4">
+          <p className="mb-3 text-sm text-chunhat">
+            Công trình chưa có BOQ. Nhập bảng khối lượng hợp đồng thì mới tính được giá trị Bill theo
+            tháng.
+          </p>
+          {duocNhap ? (
+            <LuoiNhapBOQ maCongTrinh={maCongTrinh} nhan="Tạo BOQ — nhập bảng khối lượng" noiBat />
+          ) : null}
+        </div>
       </The>
     );
   }
@@ -469,6 +474,7 @@ async function BOQTab({
             maCongTrinh={maCongTrinh}
             dongs={dongs.map((d) => ({ id: d.id, stt: d.stt, noiDung: d.noiDung }))}
           />
+          <LuoiNhapBOQ maCongTrinh={maCongTrinh} />
           <NutThemCot maCongTrinh={maCongTrinh} />
         </div>
       ) : null}

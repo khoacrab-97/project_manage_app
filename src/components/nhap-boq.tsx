@@ -5,6 +5,7 @@ import { Check, Pencil, Plus, ShieldCheck, X } from "lucide-react";
 import {
   luuKhoiLuong,
   themBillThang,
+  themNhieuDongBOQ,
   xacNhanBill,
   type KetQuaBOQ,
 } from "@/app/cong-trinh/boq-actions";
@@ -287,6 +288,153 @@ export function BoxNhapBOQ({
           <div className="px-4 pb-3">
             <ThongBao kq={kq} />
           </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Lưới nhập NHIỀU dòng BOQ một lượt — để tạo bảng khối lượng ban đầu hoặc bổ
+ * sung công tác. Mở dạng hộp nổi; các ô uncontrolled, gửi theo mảng cùng tên.
+ * `nhan` cho phép đổi nhãn nút (mạnh hơn ở trạng thái chưa có BOQ).
+ */
+export function LuoiNhapBOQ({
+  maCongTrinh,
+  nhan = "Nhập nhiều dòng",
+  noiBat = false,
+}: {
+  maCongTrinh: string;
+  nhan?: string;
+  noiBat?: boolean;
+}) {
+  const [mo, setMo] = useState(false);
+  const [soDong, setSoDong] = useState(8);
+  const [kq, setKq] = useState<KetQuaBOQ | null>(null);
+  const [dangChay, batDau] = useTransition();
+
+  useEffect(() => {
+    if (!mo) return;
+    const f = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMo(false);
+    };
+    window.addEventListener("keydown", f);
+    return () => window.removeEventListener("keydown", f);
+  }, [mo]);
+
+  if (!mo) {
+    return (
+      <button
+        type="button"
+        onClick={() => setMo(true)}
+        className={
+          noiBat
+            ? "inline-flex items-center gap-1.5 rounded-lg bg-nhan px-3 py-1.5 text-xs font-medium text-white"
+            : "inline-flex items-center gap-1 rounded-md border border-vien px-2.5 py-1 text-xs font-medium hover:bg-nen"
+        }
+      >
+        <Plus className="size-3.5" /> {nhan}
+      </button>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
+      <div className="my-6 w-full max-w-4xl rounded-xl border border-vien bg-the shadow-xl">
+        <div className="flex items-center justify-between border-b border-vien px-4 py-3">
+          <div>
+            <h2 className="text-sm font-semibold">Nhập bảng khối lượng (BOQ)</h2>
+            <p className="mt-0.5 text-xs text-chunhat">
+              Mỗi dòng một công tác. Thành tiền = Khối lượng × Đơn giá (tự tính khi lưu). Dòng để
+              trống STT và nội dung sẽ bỏ qua.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMo(false)}
+            className="rounded-md border border-vien p-1.5"
+            title="Đóng (Esc)"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const fd = new FormData(e.currentTarget);
+            batDau(async () => {
+              const r = await themNhieuDongBOQ(fd);
+              setKq(r);
+              if (r.ok && !r.thongDiep.includes("Bỏ qua")) setTimeout(() => setMo(false), 900);
+            });
+          }}
+          className="p-4"
+        >
+          <input type="hidden" name="maCongTrinh" value={maCongTrinh} />
+          <div className="max-h-[60vh] overflow-y-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead className="sticky top-0 bg-the">
+                <tr>
+                  <th className="border-b border-vien px-2 py-1.5 text-left text-xs font-semibold text-chunhat">
+                    STT *
+                  </th>
+                  <th className="border-b border-vien px-2 py-1.5 text-left text-xs font-semibold text-chunhat">
+                    Nội dung công việc *
+                  </th>
+                  <th className="border-b border-vien px-2 py-1.5 text-left text-xs font-semibold text-chunhat">
+                    ĐVT
+                  </th>
+                  <th className="border-b border-vien px-2 py-1.5 text-right text-xs font-semibold text-chunhat">
+                    Khối lượng
+                  </th>
+                  <th className="border-b border-vien px-2 py-1.5 text-right text-xs font-semibold text-chunhat">
+                    Đơn giá
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: soDong }).map((_, i) => (
+                  <tr key={i}>
+                    <td className="border-b border-vien px-1 py-1">
+                      <input name="stt" className={`${O} w-16 font-mono`} placeholder="1" />
+                    </td>
+                    <td className="border-b border-vien px-1 py-1">
+                      <input name="noiDung" className={`${O} w-full min-w-[220px]`} />
+                    </td>
+                    <td className="border-b border-vien px-1 py-1">
+                      <input name="dvt" className={`${O} w-20`} placeholder="m³" />
+                    </td>
+                    <td className="border-b border-vien px-1 py-1">
+                      <input name="khoiLuong" inputMode="decimal" className={`${O} w-24 text-right`} placeholder="0" />
+                    </td>
+                    <td className="border-b border-vien px-1 py-1">
+                      <input name="donGia" inputMode="decimal" className={`${O} w-28 text-right`} placeholder="0" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSoDong((n) => n + 5)}
+              className="inline-flex items-center gap-1 rounded-md border border-vien px-2.5 py-1 text-xs"
+            >
+              <Plus className="size-3" /> Thêm dòng
+            </button>
+            <button
+              type="submit"
+              disabled={dangChay}
+              className="inline-flex items-center gap-1 rounded-md bg-nhan px-2.5 py-1 text-xs font-medium text-white disabled:opacity-60"
+            >
+              <Check className="size-3" /> {dangChay ? "Đang lưu…" : "Lưu tất cả"}
+            </button>
+            <span className="text-[11px] text-chunhat">Dòng trống STT và nội dung sẽ bỏ qua.</span>
+          </div>
+          <ThongBao kq={kq} />
         </form>
       </div>
     </div>

@@ -323,6 +323,70 @@ export async function themDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
   return { ok: true, thongDiep: `Đã thêm công tác "${stt} — ${noiDung}".` };
 }
 
+/**
+ * Thêm NHIỀU dòng BOQ một lượt (tạo BOQ ban đầu / bổ sung hàng loạt). Mỗi trường
+ * gửi dạng mảng cùng tên căn theo chỉ số dòng. Dòng trống cả STT lẫn nội dung thì
+ * bỏ qua; dòng lỗi chỉ báo lại chứ không chặn cả lô. Thêm nối vào CUỐI danh sách.
+ */
+export async function themNhieuDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
+  batBuocQuyen(await nguoiDungHienTai(), "nhap_boq");
+
+  const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
+  const kq = await congTrinhChoGhi(maCongTrinh);
+  if ("loi" in kq) return { ok: false, thongDiep: kq.loi };
+  const ct = kq.ct;
+
+  const stts = formData.getAll("stt").map((v) => String(v).trim());
+  const noiDungs = formData.getAll("noiDung").map((v) => String(v).trim());
+  const dvts = formData.getAll("dvt").map((v) => String(v).trim());
+  const kls = formData.getAll("khoiLuong").map((v) => String(v));
+  const dgs = formData.getAll("donGia").map((v) => String(v));
+
+  const so = (t: string) => Number(String(t).replace(/\s/g, "").replace(/\./g, "").replace(",", "."));
+
+  const max = await db.bOQLine.aggregate({ where: { projectId: ct.id }, _max: { thuTu: true } });
+  let thuTu = (max._max.thuTu ?? -1) + 1;
+
+  const loi: string[] = [];
+  let them = 0;
+  for (let i = 0; i < stts.length; i++) {
+    const stt = stts[i];
+    const noiDung = noiDungs[i] ?? "";
+    if (!stt && !noiDung) continue; // dòng trống hoàn toàn
+    if (!stt) {
+      loi.push(`Dòng ${i + 1}: thiếu STT`);
+      continue;
+    }
+    if (!noiDung) {
+      loi.push(`${stt}: thiếu nội dung`);
+      continue;
+    }
+    const khoiLuong = kls[i] ? so(kls[i]) : 0;
+    const donGia = dgs[i] ? so(dgs[i]) : 0;
+    if (!Number.isFinite(khoiLuong) || khoiLuong < 0) {
+      loi.push(`${stt}: khối lượng phải là số không âm`);
+      continue;
+    }
+    if (!Number.isFinite(donGia) || donGia < 0) {
+      loi.push(`${stt}: đơn giá phải là số không âm`);
+      continue;
+    }
+    await db.bOQLine.create({
+      data: { projectId: ct.id, stt, noiDung, dvt: dvts[i] || null, khoiLuong, donGia, thuTu: thuTu++ },
+    });
+    them++;
+  }
+
+  if (!them && !loi.length) return { ok: false, thongDiep: "Chưa nhập dòng BOQ nào." };
+  revalidatePath(`/cong-trinh/${maCongTrinh}`);
+  return {
+    ok: them > 0,
+    thongDiep: loi.length
+      ? `Đã thêm ${them} dòng BOQ. Bỏ qua: ${loi.join("; ")}.`
+      : `Đã thêm ${them} dòng BOQ.`,
+  };
+}
+
 export async function xacNhanBill(formData: FormData): Promise<KetQuaBOQ> {
   const u = await nguoiDungHienTai();
   batBuocQuyen(u, "xac_nhan_bill");
