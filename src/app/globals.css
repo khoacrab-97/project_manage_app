@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+/*
+ * Hệ màu ứng dụng quản trị.
+ * Một màu nhấn duy nhất (xanh dương) cho hành động và điều hướng.
+ * Xanh lá / Vàng / Đỏ CHỈ dành cho trạng thái sức khỏe và biến động — không
+ * dùng làm màu trang trí, để tín hiệu cảnh báo không bị nhiễu.
+ */
+:root {
+  --nen: #f5f6f8;
+  --the: #ffffff;
+  --vien: #e2e5ea;
+  --chu: #14171c;
+  --chu-nhat: #5b6472;
+  --nhan: #1d4ed8;
+  --nhan-nhat: #eef3ff;
+  --sidebar: #131820;
+  --sidebar-chu: #a3acbb;
+  --sidebar-sang: #ffffff;
+  --sidebar-hover: #1e2734;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --nen: #0c0f14;
+    --the: #141922;
+    --vien: #252d39;
+    --chu: #e9ebef;
+    --chu-nhat: #9aa3b1;
+    --nhan: #7aa2ff;
+    --nhan-nhat: #16203a;
+    --sidebar: #090c11;
+    --sidebar-chu: #939cab;
+    --sidebar-sang: #ffffff;
+    --sidebar-hover: #19212c;
+  }
+}
+
+@theme inline {
+  --color-nen: var(--nen);
+  --color-the: var(--the);
+  --color-vien: var(--vien);
+  --color-chu: var(--chu);
+  --color-chunhat: var(--chu-nhat);
+  --color-nhan: var(--nhan);
+  --color-nhannhat: var(--nhan-nhat);
+  --color-sidebar: var(--sidebar);
+  --color-sidebarchu: var(--sidebar-chu);
+  --color-sidebarsang: var(--sidebar-sang);
+  --color-sidebarhover: var(--sidebar-hover);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--nen);
+  color: var(--chu);
+  font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Cột số dùng chữ số đều bề ngang để các hàng thẳng cột khi so sánh. */
+.so {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Bảng rộng cuộn trong khung riêng — trang không bao giờ tự cuộn ngang. */
+.cuon-ngang {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.cuon-ngang::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+.cuon-ngang::-webkit-scrollbar-thumb {
+  background: var(--vien);
+  border-radius: 6px;
+}
+.cuon-ngang::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media print {
+  .khong-in {
+    display: none !important;
+  }
+}

@@ -1,0 +1,9 @@
+node_modules
+.next
+.git
+.claude
+npm-debug.log*
+*.tsbuildinfo
+README.md
+AGENTS.md
+HUONG_DAN_TRIEN_KHAI.md

@@ -1,0 +1,1285 @@
+{
+  "ghiChu": "Trích tự động từ 3 file Excel nguồn. Không sửa tay.",
+  "danhMucMa": [
+    {
+      "ma": "TDA2",
+      "ten": "DOANH THU",
+      "loai": "Doanh thu",
+      "maCha": null,
+      "choPhepNhapTrucTiep": false
+    },
+    {
+      "ma": "TDATU",
+      "ten": "Tạm ứng theo HĐ",
+      "loai": "Doanh thu",
+      "maCha": null,
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "TDATT1",
+      "ten": "Thanh toán đợt 1",
+      "loai": "Doanh thu",
+      "maCha": null,
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "TDAQT",
+      "ten": "Quyết toán",
+      "loai": "Doanh thu",
+      "maCha": null,
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "Bill",
+      "ten": "Bill nội bộ tháng",
+      "loai": "Doanh thu",
+      "maCha": null,
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-001",
+      "ten": "CHI PHÍ CHĂM SÓC KH",
+      "loai": "Chi phí",
+      "maCha": null,
+      "choPhepNhapTrucTiep": false
+    },
+    {
+      "ma": "CP-001-1",
+      "ten": "Chi phí CSKH",
+      "loai": "Chi phí",
+      "maCha": "CP-001",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-001-2",
+      "ten": "Chi phí CSKH",
+      "loai": "Chi phí",
+      "maCha": "CP-001",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-002",
+      "ten": "CHI PHÍ TIẾP KHÁCH",
+      "loai": "Chi phí",
+      "maCha": null,
+      "choPhepNhapTrucTiep": false
+    },
+    {
+      "ma": "CP-002-1",
+      "ten": "CP ngoại giao/tiếp khách",
+      "loai": "Chi phí",
+      "maCha": "CP-002",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-002-2",
+      "ten": "CP ngoại giao/tiếp khách - ngoài ngân sách",
+      "loai": "Chi phí",
+      "maCha": "CP-002",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-003",
+      "ten": "CHI PHÍ LƯƠNG",
+      "loai": "Chi phí",
+      "maCha": null,
+      "choPhepNhapTrucTiep": false
+    },
+    {
+      "ma": "CP-003-1",
+      "ten": "Lương BCH",
+      "loai": "Chi phí",
+      "maCha": "CP-003",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-003-3",
+      "ten": "Lương BCH tăng ca",
+      "loai": "Chi phí",
+      "maCha": "CP-003",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-003-2",
+      "ten": "Chi phí lương công nhân",
+      "loai": "Chi phí",
+      "maCha": "CP-003",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-003-4",
+      "ten": "Chi phí lương công nhân - Tăng Ca",
+      "loai": "Chi phí",
+      "maCha": "CP-003",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-004",
+      "ten": "Chi phí lương tháng 13",
+      "loai": "Chi phí",
+      "maCha": null,
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-005",
+      "ten": "Chi phí BHXH",
+      "loai": "Chi phí",
+      "maCha": null,
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-008",
+      "ten": "CP thường lễ/tết",
+      "loai": "Chi phí",
+      "maCha": null,
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-018",
+      "ten": "Chi phí thí nghiệm (1%)",
+      "loai": "Chi phí",
+      "maCha": null,
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-020",
+      "ten": "CHI PHÍ KHÁC",
+      "loai": "Chi phí",
+      "maCha": null,
+      "choPhepNhapTrucTiep": false
+    },
+    {
+      "ma": "CP-020-1",
+      "ten": "Chi phí Giám sát (1%)",
+      "loai": "Chi phí",
+      "maCha": "CP-020",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-020-2",
+      "ten": "Chi phí theo sổ công trình (0,5%)",
+      "loai": "Chi phí",
+      "maCha": "CP-020",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-020-3",
+      "ten": "CP khác (0,5%)",
+      "loai": "Chi phí",
+      "maCha": "CP-020",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-021",
+      "ten": "TIỀN VẬN CHUYỂN RÁC",
+      "loai": "Chi phí",
+      "maCha": null,
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-022",
+      "ten": "CP Marketing/Truyền thông",
+      "loai": "Chi phí",
+      "maCha": null,
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-023",
+      "ten": "CP chưa phân bổ",
+      "loai": "Chi phí",
+      "maCha": null,
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-041",
+      "ten": "VẬT TƯ",
+      "loai": "Chi phí",
+      "maCha": null,
+      "choPhepNhapTrucTiep": false
+    },
+    {
+      "ma": "041-1",
+      "ten": "Vật tư cây xanh, hoa kiểng",
+      "loai": "Chi phí",
+      "maCha": "CP-041",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "041-2",
+      "ten": "Vật tư CX khác (cây chóng, con bọ, đai, ống dẻo,…)",
+      "loai": "Chi phí",
+      "maCha": "CP-041",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "041-3",
+      "ten": "Vật tư Đất trồng cây",
+      "loai": "Chi phí",
+      "maCha": "CP-041",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "041-4",
+      "ten": "Vật tư Xây dựng",
+      "loai": "Chi phí",
+      "maCha": "CP-041",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "041-5",
+      "ten": "Vật tư thiết bị trò chơi/thiết bị thế dục",
+      "loai": "Chi phí",
+      "maCha": "CP-041",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "041-6",
+      "ten": "Vật tư Hệ thống tưới",
+      "loai": "Chi phí",
+      "maCha": "CP-041",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "041-7",
+      "ten": "Vật tư thiết bị Chiếu sáng",
+      "loai": "Chi phí",
+      "maCha": "CP-041",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "041-8",
+      "ten": "Vật tư công cụ dụng cụ thi công",
+      "loai": "Chi phí",
+      "maCha": "CP-041",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "041-9",
+      "ten": "Vật tư phân thuốc",
+      "loai": "Chi phí",
+      "maCha": "CP-041",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "041-10",
+      "ten": "Vật tư thuốc BVTV",
+      "loai": "Chi phí",
+      "maCha": "CP-041",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "041-11",
+      "ten": "Vật tư khác",
+      "loai": "Chi phí",
+      "maCha": "CP-041",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-042",
+      "ten": "CP thầu",
+      "loai": "Chi phí",
+      "maCha": null,
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-043",
+      "ten": "KHOÁN THI CÔNG",
+      "loai": "Chi phí",
+      "maCha": null,
+      "choPhepNhapTrucTiep": false
+    },
+    {
+      "ma": "043-1",
+      "ten": "Thầu phụ khoán Hệ thống tưới",
+      "loai": "Chi phí",
+      "maCha": "CP-043",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "043-2",
+      "ten": "Thầu phụ khoán Cây xanh, kiểng cỏ",
+      "loai": "Chi phí",
+      "maCha": "CP-043",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "043-3",
+      "ten": "Thầu phụ khoán Xây dựng",
+      "loai": "Chi phí",
+      "maCha": "CP-043",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "043-4",
+      "ten": "Thầu phụ khoán Chiếu sáng",
+      "loai": "Chi phí",
+      "maCha": "CP-043",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "043-5",
+      "ten": "Thầu phụ khoán khác",
+      "loai": "Chi phí",
+      "maCha": "CP-043",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-044",
+      "ten": "CHI PHÍ LÁN TRẠI ĐIỆN NƯỚC",
+      "loai": "Chi phí",
+      "maCha": null,
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-045",
+      "ten": "CHI PHÍ MÁY MÓC THIẾT BỊ",
+      "loai": "Chi phí",
+      "maCha": null,
+      "choPhepNhapTrucTiep": false
+    },
+    {
+      "ma": "045-1",
+      "ten": "Chi phí thuê xe, cơ giới",
+      "loai": "Chi phí",
+      "maCha": "CP-045",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "045-2",
+      "ten": "Chi phí phân bổ xe cơ giới nội bộ",
+      "loai": "Chi phí",
+      "maCha": "CP-045",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "045-3",
+      "ten": "Chi phí Xăng - Dầu xe cuốc...",
+      "loai": "Chi phí",
+      "maCha": "CP-045",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "045-4",
+      "ten": "Chi phí lương phân bổ cơ giới",
+      "loai": "Chi phí",
+      "maCha": "CP-045",
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-046",
+      "ten": "CP AN NINH, GIAO THÔNG",
+      "loai": "Chi phí",
+      "maCha": null,
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-047",
+      "ten": "CP BẢO HIỂM, BẢO LÃNH CT",
+      "loai": "Chi phí",
+      "maCha": null,
+      "choPhepNhapTrucTiep": true
+    },
+    {
+      "ma": "CP-054",
+      "ten": "CP xăng/dầu - cơ giới phân bổ",
+      "loai": "Chi phí",
+      "maCha": null,
+      "choPhepNhapTrucTiep": true
+    }
+  ],
+  "congTrinh": [
+    "BGT-CXHTTQL50",
+    "HL-00227",
+    "HL-00240",
+    "BHT-TLBC-XL1",
+    "BHT-TLBC-XL2",
+    "TSLA-CX1.2",
+    "TSLA-HTK",
+    "TSLA-SUKIEN",
+    "TSLA-PSBD1.1",
+    "TTTL-CXCC-HH18",
+    "HL-00096",
+    "HL-00105",
+    "HL-00108",
+    "HL-00109",
+    "HL-00182",
+    "HL-00209",
+    "HL-00228",
+    "HL-00220",
+    "HL-00074",
+    "KHL-TC",
+    "HL-VHCT",
+    "BGĐ",
+    "BGT - TQH",
+    "DA-UBNDXCA-TCX",
+    "SWIC-XDCQ",
+    "NPN-CX-HTT",
+    "BDS-MTXL1",
+    "BDS-MTXL3",
+    "CII-NGT2",
+    "BGT - TKTQ",
+    "BGT - DQH"
+  ],
+  "maTranNam": [
+    {
+      "maCode": "Bill",
+      "tenCode": "Bill nộI bộ tháng 01.2026",
+      "byProject": {
+        "BGT-CXHTTQL50": 4067728979.681818,
+        "HL-00240": 4280602200,
+        "BHT-TLBC-XL1": 687013374.11,
+        "BHT-TLBC-XL2": 486064854.5454545,
+        "TSLA-CX1.2": 38520000,
+        "TSLA-HTK": 1476937500,
+        "TSLA-SUKIEN": 2267390200.2720003,
+        "TSLA-PSBD1.1": 1237446600,
+        "TTTL-CXCC-HH18": 242128884,
+        "HL-00105": 1686160495.3703701,
+        "HL-00108": 117394630,
+        "HL-00109": 1105010334.994,
+        "HL-00182": 6318664971,
+        "HL-00209": 145766997,
+        "HL-00220": 1115018901,
+        "HL-00074": 642157000,
+        "KHL-TC": 110734814,
+        "DA-UBNDXCA-TCX": 997483333,
+        "SWIC-XDCQ": 203051888
+      }
+    },
+    {
+      "maCode": "CP-001-1",
+      "tenCode": "Chi phí CSKH",
+      "byProject": {
+        "BGT-CXHTTQL50": 15000000,
+        "TSLA-CX1.2": 41000000,
+        "TSLA-HTK": 39100000,
+        "TSLA-SUKIEN": 23000000,
+        "TTTL-CXCC-HH18": 10000000,
+        "HL-00105": 11240770,
+        "HL-00108": 31900000,
+        "HL-00182": 8159000,
+        "HL-VHCT": 7936000,
+        "BGĐ": 8639000,
+        "BGT - TQH": 500000,
+        "SWIC-XDCQ": 23000000,
+        "BDS-MTXL1": 31171000,
+        "CII-NGT2": 5660841
+      }
+    },
+    {
+      "maCode": "CP-001-2",
+      "tenCode": "Chi phí CSKH",
+      "byProject": {
+        "HL-VHCT": 70000000,
+        "BGĐ": 2007700,
+        "BDS-MTXL3": 60000000
+      }
+    },
+    {
+      "maCode": "CP-002-1",
+      "tenCode": "CP ngoại giao/tiếp khách",
+      "byProject": {
+        "BGT-CXHTTQL50": 7901000,
+        "HL-00227": 22381000,
+        "BHT-TLBC-XL1": 4570370,
+        "TSLA-CX1.2": 195000000,
+        "TSLA-HTK": 17295926,
+        "TSLA-SUKIEN": 87042000,
+        "TSLA-PSBD1.1": 12999000,
+        "TTTL-CXCC-HH18": 29607407,
+        "HL-00105": 38733482,
+        "HL-00108": 24680465,
+        "HL-00109": 4957000,
+        "HL-00182": 25569976,
+        "HL-00228": 26115922,
+        "HL-VHCT": 53847139,
+        "BGT - TQH": 7473000,
+        "DA-UBNDXCA-TCX": 112152672,
+        "SWIC-XDCQ": 2380630,
+        "BDS-MTXL3": 21879040,
+        "BGT - TKTQ": 9000000,
+        "BGT - DQH": 21000000
+      }
+    },
+    {
+      "maCode": "CP-003-1",
+      "tenCode": "Lương BCH",
+      "byProject": {
+        "BGT-CXHTTQL50": 226199337,
+        "HL-00240": 40794269,
+        "BHT-TLBC-XL1": 98156000,
+        "TSLA-CX1.2": 111439038,
+        "TSLA-HTK": 18986769,
+        "TSLA-SUKIEN": 21087308,
+        "TSLA-PSBD1.1": 108586348,
+        "TTTL-CXCC-HH18": 65373154,
+        "HL-00105": 111126154,
+        "HL-00108": 86457191,
+        "HL-00109": 69725586,
+        "HL-00182": 129657214,
+        "HL-VHCT": 1763818260,
+        "SWIC-XDCQ": 1224000,
+        "BDS-MTXL3": 42462692
+      }
+    },
+    {
+      "maCode": "CP-003-3",
+      "tenCode": "Lương BCH tăng ca",
+      "byProject": {
+        "BGT-CXHTTQL50": 12471951,
+        "HL-00240": 16445169,
+        "BHT-TLBC-XL1": 5727859,
+        "TSLA-CX1.2": 3485578,
+        "TSLA-PSBD1.1": 5985578,
+        "HL-00105": 2574519,
+        "HL-00108": 9512502,
+        "HL-00109": 2630913,
+        "HL-00182": 6373076,
+        "HL-VHCT": 53625964
+      }
+    },
+    {
+      "maCode": "CP-003-2",
+      "tenCode": "Chi phí lương công nhân",
+      "byProject": {
+        "BGT-CXHTTQL50": 246500802,
+        "HL-00240": 38251255,
+        "BHT-TLBC-XL1": 96161515,
+        "BHT-TLBC-XL2": 32729375,
+        "TSLA-CX1.2": 114968722,
+        "TSLA-HTK": 115319516,
+        "TSLA-SUKIEN": 357063706,
+        "TSLA-PSBD1.1": 888871684,
+        "TTTL-CXCC-HH18": 50647464,
+        "HL-00105": 19603696,
+        "HL-00108": 66278667,
+        "HL-00109": 58794945,
+        "HL-00182": 176985003,
+        "KHL-TC": 9375331,
+        "HL-VHCT": 298309857,
+        "BGĐ": 8416415,
+        "BGT - TQH": 158103342,
+        "DA-UBNDXCA-TCX": 15000000,
+        "SWIC-XDCQ": 40266744,
+        "BDS-MTXL1": 1906809,
+        "BDS-MTXL3": 47297108,
+        "CII-NGT2": 67322800,
+        "BGT - TKTQ": 10622655
+      }
+    },
+    {
+      "maCode": "CP-003-4",
+      "tenCode": "Chi phí lương công nhân - Tăng Ca",
+      "byProject": {
+        "BGT-CXHTTQL50": 46813726,
+        "HL-00240": 28717986,
+        "BHT-TLBC-XL1": 26151104,
+        "BHT-TLBC-XL2": 8856443,
+        "TSLA-CX1.2": 9344367,
+        "TSLA-HTK": 17160633,
+        "TSLA-SUKIEN": 27553908,
+        "TSLA-PSBD1.1": 52055569,
+        "TTTL-CXCC-HH18": 1695836,
+        "HL-00105": 2901466,
+        "HL-00108": 24132870,
+        "HL-00109": 20534482,
+        "HL-00182": 47184802,
+        "KHL-TC": 1980640,
+        "HL-VHCT": 21712580,
+        "BGĐ": 1787092,
+        "BGT - TQH": 9918201,
+        "SWIC-XDCQ": 1396666,
+        "BDS-MTXL1": 611322,
+        "CII-NGT2": 2503501
+      }
+    },
+    {
+      "maCode": "CP-005",
+      "tenCode": "Chi phí BHXH",
+      "byProject": {
+        "BGT-CXHTTQL50": 30614518,
+        "BHT-TLBC-XL1": 12436461,
+        "BHT-TLBC-XL2": 1125654,
+        "TSLA-CX1.2": 27539329,
+        "TSLA-HTK": 12237032,
+        "TSLA-SUKIEN": 22402914,
+        "TSLA-PSBD1.1": 43290122,
+        "TTTL-CXCC-HH18": 9769386,
+        "HL-00105": 5746032.048,
+        "HL-00108": 14378150,
+        "HL-00109": 4568718,
+        "HL-00182": 2830411,
+        "KHL-TC": 65296,
+        "HL-VHCT": 106405324,
+        "BGĐ": 713005,
+        "BGT - TQH": 9708455,
+        "SWIC-XDCQ": 1048362,
+        "BDS-MTXL1": 68091
+      }
+    },
+    {
+      "maCode": "CP-008",
+      "tenCode": "CP thường lễ/tết",
+      "byProject": {
+        "HL-VHCT": 18100000,
+        "BGT - TQH": 400000
+      }
+    },
+    {
+      "maCode": "CP-018",
+      "tenCode": "Chi phí thí nghiệm",
+      "byProject": {
+        "HL-00105": 30500000,
+        "HL-00182": 37350000,
+        "SWIC-XDCQ": 21670000
+      }
+    },
+    {
+      "maCode": "CP-020-1",
+      "tenCode": "Chi phí Giám sát (1%)",
+      "byProject": {
+        "BGT-CXHTTQL50": 35000000,
+        "BHT-TLBC-XL1": 11000000,
+        "TSLA-CX1.2": 69000000,
+        "TSLA-HTK": 26000000,
+        "TSLA-SUKIEN": 15000000,
+        "TSLA-PSBD1.1": 2500000,
+        "TTTL-CXCC-HH18": 1000000,
+        "HL-00105": 1000000,
+        "HL-00108": 5000000,
+        "HL-00109": 7000000,
+        "HL-00182": 34000000,
+        "HL-00209": 500000,
+        "HL-00228": 1000000,
+        "BGT - TQH": 2000000,
+        "SWIC-XDCQ": 24500000,
+        "BGT - DQH": 7500000
+      }
+    },
+    {
+      "maCode": "CP-020-2",
+      "tenCode": "Chi phí theo sổ công trình (0,5%)",
+      "byProject": {
+        "BGT-CXHTTQL50": 36371651.88888889,
+        "HL-00227": 3844444,
+        "BHT-TLBC-XL1": 5816000,
+        "TSLA-HTK": 18563000,
+        "TSLA-PSBD1.1": 19557111,
+        "TTTL-CXCC-HH18": 18024000,
+        "HL-00105": 6403000,
+        "HL-00108": 3810000,
+        "HL-00109": 9682728,
+        "HL-00182": 19796310,
+        "HL-00209": 555556,
+        "KHL-TC": 4326562.5,
+        "HL-VHCT": 350000,
+        "BGT - TQH": 14721846,
+        "DA-UBNDXCA-TCX": 37092316,
+        "SWIC-XDCQ": 3137014
+      }
+    },
+    {
+      "maCode": "CP-020-3",
+      "tenCode": "CP khác (0,5%)",
+      "byProject": {
+        "BGT-CXHTTQL50": 3980000,
+        "TSLA-HTK": 9600000,
+        "HL-VHCT": 6218048
+      }
+    },
+    {
+      "maCode": "CP-021",
+      "tenCode": "CP vật tư khác (vận chuyển rác/kho container…)",
+      "byProject": {
+        "TSLA-CX1.2": 2633160,
+        "TSLA-PSBD1.1": 3000000
+      }
+    },
+    {
+      "maCode": "CP-022",
+      "tenCode": "CP Marketing/Truyền thông",
+      "byProject": {
+        "TSLA-HTK": 157000000
+      }
+    },
+    {
+      "maCode": "CP-023",
+      "tenCode": "CP chưa phân bổ",
+      "byProject": {
+        "TSLA-CX1.2": 12000000,
+        "TSLA-SUKIEN": 2500000,
+        "HL-00105": 5000000,
+        "HL-00109": 3000000,
+        "HL-00182": 5000000
+      }
+    },
+    {
+      "maCode": "041-1",
+      "tenCode": "Vật tư cây xanh, hoa kiểng",
+      "byProject": {
+        "BGT-CXHTTQL50": 188953780,
+        "HL-00240": 176815136,
+        "BHT-TLBC-XL1": 589653000,
+        "BHT-TLBC-XL2": 344398990,
+        "TSLA-CX1.2": 30300000,
+        "TSLA-HTK": 971270000,
+        "TSLA-SUKIEN": 154721900,
+        "TSLA-PSBD1.1": 135741000,
+        "TTTL-CXCC-HH18": 1200000,
+        "HL-00108": 528919800,
+        "HL-00182": 403275460,
+        "BGĐ": 800000,
+        "BGT - TQH": 10810741,
+        "DA-UBNDXCA-TCX": 262796267,
+        "BGT - TKTQ": 11110394,
+        "BGT - DQH": 865145
+      }
+    },
+    {
+      "maCode": "041-2",
+      "tenCode": "Vật tư CX khác (cây chóng, con bọ, đai, ống dẻo,…)",
+      "byProject": {
+        "BGT-CXHTTQL50": 24265418.599999998,
+        "BHT-TLBC-XL1": 10464000,
+        "BHT-TLBC-XL2": 10504000,
+        "TSLA-HTK": 25125000,
+        "TSLA-PSBD1.1": 693166,
+        "TTTL-CXCC-HH18": 40359600,
+        "HL-00105": 27901100,
+        "HL-00182": 7366592.32,
+        "BGT - TQH": 6636749,
+        "BGT - DQH": 333300
+      }
+    },
+    {
+      "maCode": "041-3",
+      "tenCode": "Vật tư Đất trồng cây",
+      "byProject": {
+        "BGT-CXHTTQL50": 125950000,
+        "HL-00240": 55550000,
+        "BHT-TLBC-XL1": 73348000,
+        "BHT-TLBC-XL2": 10900000,
+        "TSLA-HTK": 32280000,
+        "TSLA-PSBD1.1": 13275000,
+        "TTTL-CXCC-HH18": 70750000,
+        "HL-00105": 14878200,
+        "HL-00108": 26781000,
+        "HL-00182": 170811450,
+        "BGT - TQH": 46200000,
+        "BGT - DQH": 44000
+      }
+    },
+    {
+      "maCode": "041-4",
+      "tenCode": "Vật tư Xây dựng",
+      "byProject": {
+        "BHT-TLBC-XL1": 70992000,
+        "TTTL-CXCC-HH18": 38180000,
+        "HL-00108": 2860364,
+        "SWIC-XDCQ": 1405100,
+        "BGT - TKTQ": 1793628,
+        "BGT - DQH": 1494939
+      }
+    },
+    {
+      "maCode": "041-6",
+      "tenCode": "Vật tư Hệ thống tưới",
+      "byProject": {
+        "BGT-CXHTTQL50": 1129146339,
+        "TSLA-SUKIEN": 6526238,
+        "HL-00096": 104750000,
+        "HL-00105": 229847364,
+        "HL-00108": 38666377,
+        "HL-00109": 549890749,
+        "HL-00182": 409357293,
+        "HL-00209": 1860000,
+        "BGT - TQH": 147174964,
+        "BDS-MTXL1": 2999382,
+        "CII-NGT2": 9720000
+      }
+    },
+    {
+      "maCode": "041-7",
+      "tenCode": "Vật tư thiết bị Chiếu sáng",
+      "byProject": {
+        "TSLA-CX1.2": 5400000,
+        "HL-00182": 813766126
+      }
+    },
+    {
+      "maCode": "041-8",
+      "tenCode": "Vật tư công cụ dụng cụ thi công",
+      "byProject": {
+        "BGT-CXHTTQL50": 20270000,
+        "HL-00240": 19982000,
+        "BHT-TLBC-XL1": 4308600,
+        "TSLA-SUKIEN": 53346370,
+        "TSLA-PSBD1.1": 1853058,
+        "HL-00108": 404233,
+        "HL-00182": 9123926
+      }
+    },
+    {
+      "maCode": "041-9",
+      "tenCode": "Vật tư phân thuốc, bảo vệ thực vật",
+      "byProject": {
+        "BGT-CXHTTQL50": 8630000,
+        "BHT-TLBC-XL1": 15288532,
+        "TSLA-SUKIEN": 30507502,
+        "TSLA-PSBD1.1": 15964047,
+        "HL-00108": 3350000,
+        "DA-UBNDXCA-TCX": 6300000
+      }
+    },
+    {
+      "maCode": "041-10",
+      "tenCode": "Vật tư thuốc BVTV",
+      "byProject": {
+        "HL-00240": 7425000,
+        "TSLA-SUKIEN": 18162727,
+        "TSLA-PSBD1.1": 15586655,
+        "DA-UBNDXCA-TCX": 10500000,
+        "CII-NGT2": 3733310
+      }
+    },
+    {
+      "maCode": "041-11",
+      "tenCode": "Vật tư khác",
+      "byProject": {
+        "HL-00240": 5827500,
+        "HL-00108": 45201000,
+        "HL-00182": 18810000
+      }
+    },
+    {
+      "maCode": "CP-042",
+      "tenCode": "CP thầu",
+      "byProject": {
+        "HL-00108": 10000000,
+        "HL-00228": 54000000,
+        "HL-VHCT": 167443299
+      }
+    },
+    {
+      "maCode": "043-1",
+      "tenCode": "Thầu phụ khoán Hệ thống tưới",
+      "byProject": {
+        "BGT-CXHTTQL50": 111813048,
+        "BGT - TQH": 19500000
+      }
+    },
+    {
+      "maCode": "043-2",
+      "tenCode": "Thầu phụ khoán Cây xanh, kiểng cỏ",
+      "byProject": {
+        "HL-00074": 457536000,
+        "HL-VHCT": 4000000,
+        "DA-UBNDXCA-TCX": 115304000
+      }
+    },
+    {
+      "maCode": "043-3",
+      "tenCode": "Thầu phụ khoán Xây dựng",
+      "byProject": {
+        "BGT-CXHTTQL50": 616744449,
+        "TSLA-CX1.2": 112628000,
+        "HL-00105": 759650380,
+        "HL-00182": 1754488249,
+        "HL-00220": 472487000,
+        "KHL-TC": 28700000,
+        "SWIC-XDCQ": 880858452
+      }
+    },
+    {
+      "maCode": "043-4",
+      "tenCode": "Thầu phụ khoán Chiếu sáng",
+      "byProject": {
+        "HL-00182": 221201541
+      }
+    },
+    {
+      "maCode": "043-5",
+      "tenCode": "Thầu phụ khoán khác",
+      "byProject": {
+        "TSLA-HTK": 364743000
+      }
+    },
+    {
+      "maCode": "CP-044",
+      "tenCode": "Chi phí lán trại, container, điện nước công trình",
+      "byProject": {
+        "BGT-CXHTTQL50": 177896156,
+        "HL-00105": 81053938,
+        "BGT - TQH": 28528968,
+        "BDS-MTXL1": -992988.7037037037
+      }
+    },
+    {
+      "maCode": "045-1",
+      "tenCode": "Chi phí thuê xe, cơ giới",
+      "byProject": {
+        "BGT-CXHTTQL50": 22359259,
+        "TTTL-CXCC-HH18": 25740000,
+        "HL-00105": 2600000,
+        "HL-00182": 21650000,
+        "DA-UBNDXCA-TCX": 14351851.85185185,
+        "BGT - DQH": 162545
+      }
+    },
+    {
+      "maCode": "045-2",
+      "tenCode": "Chi phí phân bổ xe cơ giới nội bộ",
+      "byProject": {
+        "BGT-CXHTTQL50": 13379854,
+        "HL-00240": 3187485,
+        "BHT-TLBC-XL1": 35894598,
+        "TSLA-CX1.2": 250186310,
+        "HL-00105": 4510352,
+        "HL-00109": 358778,
+        "HL-00182": 9650149,
+        "KHL-TC": 152831,
+        "HL-VHCT": 585887,
+        "BGT - TQH": 489057,
+        "BGT - TKTQ": 2334815,
+        "BGT - DQH": 162057
+      }
+    },
+    {
+      "maCode": "045-3",
+      "tenCode": "Chi phí Xăng - Dầu xe cuốc...",
+      "byProject": {
+        "TSLA-PSBD1.1": 133620785.25925925,
+        "HL-00105": 925925.9259259258,
+        "HL-00182": 33192230,
+        "DA-UBNDXCA-TCX": 18664482.62962963
+      }
+    },
+    {
+      "maCode": "CP-047",
+      "tenCode": "CP bảo hiểm, bảo lãnh CT (1%)",
+      "byProject": {
+        "BGT-CXHTTQL50": 11696209,
+        "HL-00227": 30887618,
+        "BHT-TLBC-XL2": 7827591,
+        "TSLA-HTK": 30488000,
+        "TSLA-PSBD1.1": 14554000,
+        "HL-00096": 9638856,
+        "HL-00182": 15099978,
+        "HL-00228": 34659124,
+        "HL-VHCT": 550000,
+        "SWIC-XDCQ": 2814943,
+        "BDS-MTXL1": 2901320,
+        "BDS-MTXL3": 2828957,
+        "BGT - TKTQ": 1400000
+      }
+    },
+    {
+      "maCode": "CP-054",
+      "tenCode": "CP xăng/dầu",
+      "byProject": {
+        "BGT-CXHTTQL50": 6738793,
+        "BHT-TLBC-XL1": 8007177
+      }
+    }
+  ],
+  "tongKiemChung": {
+    "TDA": 8574945074.489899,
+    "TDATU": 0,
+    "TDATT1": 0,
+    "TDAQT": 0,
+    "Bill": 8574945074.489899,
+    "CP": 6211781694.32,
+    "CP-001": 1986481,
+    "CP-001-1": 1986481,
+    "CP-001-2": 0,
+    "CP-002": 42029775,
+    "CP-002-1": 42029775,
+    "CP-002-2": 0,
+    "CP-003": 1227691026,
+    "CP-003-1": 562314804,
+    "CP-003-3": 61083490,
+    "CP-003-2": 525230181,
+    "CP-003-4": 79062551,
+    "CP-004": 0,
+    "CP-005": 0,
+    "CP-008": 0,
+    "CP-018": 34850000,
+    "CP-020": 88033664,
+    "CP-020-1": 48000000,
+    "CP-020-2": 38833664,
+    "CP-020-3": 1200000,
+    "CP-021": 3000000,
+    "CP-022": 0,
+    "CP-023": 13000000,
+    "CP-041": 1069437767.3199999,
+    "041-1": 585180560,
+    "041-2": 4255792.32,
+    "041-3": 180760000,
+    "041-4": 0,
+    "041-5": 0,
+    "041-6": 58146415,
+    "041-7": 198228000,
+    "041-8": 17722000,
+    "041-9": 0,
+    "041-10": 3165000,
+    "041-11": 21980000,
+    "CP-042": 24504185,
+    "CP-043": 3436595170,
+    "043-1": 0,
+    "043-2": 228768000,
+    "043-3": 2986625629,
+    "043-4": 221201541,
+    "043-5": 0,
+    "CP-044": 106031048,
+    "CP-045": 91266677,
+    "045-1": 15750000,
+    "045-2": 55529777,
+    "045-3": 19986900,
+    "045-4": 0,
+    "CP-046": 0,
+    "CP-047": 73355901,
+    "CP-054": 0
+  },
+  "keHoachHeMaCu": [
+    {
+      "maCu": "TDA",
+      "ten": "DOANH THU",
+      "keHoachTong": 14064475826
+    },
+    {
+      "maCu": "TDA1",
+      "ten": "Doanh thu từ các DA nhà nước",
+      "keHoachTong": 14064475826
+    },
+    {
+      "maCu": "TDA2",
+      "ten": "Doanh thu từ các DA tư nhân",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "TDA3",
+      "ten": "Khác",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA0",
+      "ten": "Chi phí CSKH",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA1",
+      "ten": "CHI PHÍ LƯƠNG D.A",
+      "keHoachTong": 180000000
+    },
+    {
+      "maCu": "DA2",
+      "ten": "VẬT TƯ",
+      "keHoachTong": 5829400072
+    },
+    {
+      "maCu": "DA2XD",
+      "ten": "Vật tư Xây dựng",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA2TBTD",
+      "ten": "Vật tư thiết bị trò chơi/thiết bị thế dục",
+      "keHoachTong": 2756064690
+    },
+    {
+      "maCu": "DA2HTT",
+      "ten": "Vật tư Hệ thống tưới",
+      "keHoachTong": 1567596088
+    },
+    {
+      "maCu": "DA2CS",
+      "ten": "Vật tư thiết bị Chiếu sáng",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA2CX",
+      "ten": "Vật tư cây xanh, hoa kiểng",
+      "keHoachTong": 1505739294
+    },
+    {
+      "maCu": "DA2CXHL",
+      "ten": "Vật tư cây xanh, hoa kiểng (vườn HL)",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA2CXMN",
+      "ten": "Vật tư cây xanh, hoa kiểng (mua ngoài)",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA2CXK",
+      "ten": "Vật tư CX khác (cây chóng, con bọ, đai, ống dẻo,…)",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA2DAT",
+      "ten": "Vật tư Đất trồng cây",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA2CCDC",
+      "ten": "Vật tư công cụ dụng cụ thi công",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA2PHAN",
+      "ten": "Vật tư phân thuốc, bảo vệ thực vật",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA2K",
+      "ten": "Vật tư khác",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA3",
+      "ten": "NHÂN CÔNG",
+      "keHoachTong": 403942847
+    },
+    {
+      "maCu": "DA3TC",
+      "ten": "Chi phí lương Đội thi công THEO CT",
+      "keHoachTong": 403942847
+    },
+    {
+      "maCu": "DA3DT",
+      "ten": "Chi phí lương tăng cường (nếu có)",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA3DT",
+      "ten": "Chi phí lương ĐTC - CÒN LẠI",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA4",
+      "ten": "KHOÁN THI CÔNG",
+      "keHoachTong": 3910344285
+    },
+    {
+      "maCu": "DA4HTT",
+      "ten": "Thầu phụ khoán Hệ thống tưới",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA4CX",
+      "ten": "Thầu phụ khoán Cây xanh, kiểng cỏ",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA4XD",
+      "ten": "Thầu phụ khoán Xây dựng",
+      "keHoachTong": 3835678731
+    },
+    {
+      "maCu": "DA4CS",
+      "ten": "Thầu phụ khoán Chiếu sáng",
+      "keHoachTong": 74665554
+    },
+    {
+      "maCu": "DA4K",
+      "ten": "Thầu phụ khoán khác",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA5",
+      "ten": "CHI PHÍ LÁN TRẠI ĐIỆN NƯỚC",
+      "keHoachTong": 18000000
+    },
+    {
+      "maCu": "DA5",
+      "ten": "Chi phí lán trại, container, điện nước công trình",
+      "keHoachTong": 18000000
+    },
+    {
+      "maCu": "DA6",
+      "ten": "CHI PHÍ KHÁC",
+      "keHoachTong": 383576614
+    },
+    {
+      "maCu": "DA6TN",
+      "ten": "Chi phí thí nghiệm (1%)",
+      "keHoachTong": 127858871
+    },
+    {
+      "maCu": "DA6GS",
+      "ten": "Chi phí Giám sát (1%)",
+      "keHoachTong": 127858871
+    },
+    {
+      "maCu": "DA6SCT",
+      "ten": "Chi phí theo sổ công trình (0,5%)",
+      "keHoachTong": 63929436
+    },
+    {
+      "maCu": "DA6XANG",
+      "ten": "Chi phí xăng dầu theo sổ công trình",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA6K",
+      "ten": "CP khác (0,5%)",
+      "keHoachTong": 63929436
+    },
+    {
+      "maCu": "DA7",
+      "ten": "CHI PHÍ MÁY MÓC THIẾT BỊ",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA7TN",
+      "ten": "Chi phí thuê xe, cơ giới",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA7NB",
+      "ten": "Chi phí phân bổ xe cơ giới nội bộ",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA8",
+      "ten": "CHI PHÍ TIẾP KHÁCH",
+      "keHoachTong": 63929436
+    },
+    {
+      "maCu": "DA8",
+      "ten": "Tiếp khách (0,5%)",
+      "keHoachTong": 63929436
+    },
+    {
+      "maCu": "DA9",
+      "ten": "CP AN NINH, GIAO THÔNG",
+      "keHoachTong": 12785887
+    },
+    {
+      "maCu": "DA9",
+      "ten": "Chi phí an ninh, giao thông (0,1%)",
+      "keHoachTong": 12785887
+    },
+    {
+      "maCu": "DA10",
+      "ten": "CP BẢO HIỂM, BẢO LÃNH CT",
+      "keHoachTong": 127858871
+    },
+    {
+      "maCu": "DA10",
+      "ten": "CP bảo hiểm, bảo lãnh CT (1%)",
+      "keHoachTong": 127858871
+    },
+    {
+      "maCu": "DA11",
+      "ten": "TIỀN ĐB CQT BỊ CẮT TRỪ",
+      "keHoachTong": 0
+    },
+    {
+      "maCu": "DA11",
+      "ten": "Tiền ĐB CQT bị cắt trừ",
+      "keHoachTong": 0
+    }
+  ]
+}

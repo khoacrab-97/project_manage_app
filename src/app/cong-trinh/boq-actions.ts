@@ -1,0 +1,350 @@
+"use server";
+
+/**
+ * Nhập khối lượng BOQ theo tháng và duyệt bill.
+ *
+ * LUỒNG XÁC NHẬN (theo yêu cầu nghiệp vụ):
+ *   - Chỉ huy trưởng (hoặc Admin) nhập  -> lưu và XÁC NHẬN luôn.
+ *   - Cán bộ kỹ thuật / Chuyên viên bậc cao nhập -> để CHỜ XÁC NHẬN, chỉ huy
+ *     trưởng duyệt sau.
+ *   - Sửa lại một tháng đã xác nhận thì trạng thái quay về theo người sửa: cán
+ *     bộ kỹ thuật sửa là phải duyệt lại, không giữ dấu xác nhận cũ.
+ *
+ * CHỈ tháng đã xác nhận mới được tính vào KPI (xử lý ở repository).
+ *
+ * Mọi hàm tự kiểm quyền VÀ kiểm phạm vi công trình — không dựa vào việc giao
+ * diện đã ẩn nút.
+ */
+import { revalidatePath } from "next/cache";
+import { db } from "@/lib/db";
+import { nguoiDungHienTai } from "@/lib/auth/phien";
+import { batBuocQuyen, coQuyen } from "@/lib/auth/quyen";
+import { layCongTrinh } from "@/lib/data/repository";
+
+export interface KetQuaBOQ {
+  ok: boolean;
+  thongDiep: string;
+}
+
+/** Tháng hợp lệ dạng yyyy-MM. */
+const LA_THANG = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+/**
+ * Tìm công trình TRONG PHẠM VI người dùng. Trả null nếu ngoài phạm vi — không
+ * phân biệt với "không tồn tại", để không lộ sự tồn tại của công trình khác.
+ */
+async function congTrinhTrongPhamVi(maCongTrinh: string) {
+  return (await layCongTrinh()).find((c) => c.maCongTrinh === maCongTrinh) ?? null;
+}
+
+/**
+ * Công trình dùng để GHI dữ liệu.
+ *
+ * Công trình đã nghiệm thu thì ĐÓNG BĂNG: không thêm, không chèn, không sửa gì
+ * nữa, chỉ được xem. Chặn ở đây chứ không chỉ ẩn nút trên giao diện.
+ *
+ * Muốn mở lại thì sửa công trình và bỏ tích "Đã hoàn thành" — cố ý để đường lùi
+ * đó mở, vì tích nhầm mà khoá vĩnh viễn thì không cứu được.
+ */
+async function congTrinhChoGhi(
+  maCongTrinh: string
+): Promise<{ ct: NonNullable<Awaited<ReturnType<typeof congTrinhTrongPhamVi>>> } | { loi: string }> {
+  const ct = await congTrinhTrongPhamVi(maCongTrinh);
+  if (!ct) return { loi: `Không tìm thấy công trình ${maCongTrinh}.` };
+  if (ct.trangThai === "Đã nghiệm thu") {
+    return {
+      loi: `Công trình ${maCongTrinh} đã hoàn thành (nghiệm thu) — chỉ được xem, không thêm hay sửa dữ liệu.`,
+    };
+  }
+  return { ct };
+}
+
+export async function themBillThang(formData: FormData): Promise<KetQuaBOQ> {
+  const u = await nguoiDungHienTai();
+  batBuocQuyen(u, "nhap_boq");
+
+  const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
+  const thang = String(formData.get("thang") ?? "").trim();
+  if (!LA_THANG.test(thang)) return { ok: false, thongDiep: "Tháng không hợp lệ (dạng yyyy-MM)." };
+
+  const kq = await congTrinhChoGhi(maCongTrinh);
+  if ("loi" in kq) return { ok: false, thongDiep: kq.loi };
+  const ct = kq.ct;
+
+  const soDong = await db.bOQLine.count({ where: { projectId: ct.id } });
+  if (!soDong) {
+    return { ok: false, thongDiep: "Công trình chưa có BOQ — cần nhập bảng khối lượng trước." };
+  }
+
+  if (await db.billThang.findUnique({ where: { projectId_thang: { projectId: ct.id, thang } } })) {
+    return { ok: false, thongDiep: `Bill tháng ${thang} đã tồn tại.` };
+  }
+
+  await db.billThang.create({
+    data: {
+      projectId: ct.id,
+      thang,
+      trangThai: "CHO_XAC_NHAN",
+      nguoiNhap: u!.email,
+      ngayNhap: new Date(),
+    },
+  });
+
+  revalidatePath(`/cong-trinh/${maCongTrinh}`);
+  return { ok: true, thongDiep: `Đã thêm Bill tháng ${thang}. Nhập khối lượng rồi lưu.` };
+}
+
+export async function luuKhoiLuong(formData: FormData): Promise<KetQuaBOQ> {
+  const u = await nguoiDungHienTai();
+  batBuocQuyen(u, "nhap_boq");
+
+  const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
+  const thang = String(formData.get("thang") ?? "").trim();
+  if (!LA_THANG.test(thang)) return { ok: false, thongDiep: "Tháng không hợp lệ." };
+
+  const kq = await congTrinhChoGhi(maCongTrinh);
+  if ("loi" in kq) return { ok: false, thongDiep: kq.loi };
+  const ct = kq.ct;
+
+  const bill = await db.billThang.findUnique({
+    where: { projectId_thang: { projectId: ct.id, thang } },
+  });
+  if (!bill) return { ok: false, thongDiep: `Chưa có Bill tháng ${thang}.` };
+
+  const dong = await db.bOQLine.findMany({ where: { projectId: ct.id }, select: { id: true } });
+
+  for (const l of dong) {
+    const raw = String(formData.get(`kl_${l.id}`) ?? "").trim().replace(/\s/g, "").replace(",", ".");
+    const kl = raw === "" ? 0 : Number(raw);
+    if (!Number.isFinite(kl) || kl < 0) {
+      return { ok: false, thongDiep: "Khối lượng phải là số không âm." };
+    }
+    if (kl === 0) {
+      await db.bOQThucHien.deleteMany({ where: { boqLineId: l.id, thang } });
+    } else {
+      await db.bOQThucHien.upsert({
+        where: { boqLineId_thang: { boqLineId: l.id, thang } },
+        create: { boqLineId: l.id, thang, khoiLuong: kl },
+        update: { khoiLuong: kl },
+      });
+    }
+
+    // Ô tích "đã thi công xong" — thuộc về công tác, không theo tháng.
+    const xong = formData.get(`xong_${l.id}`) === "on";
+    await db.bOQLine.update({ where: { id: l.id }, data: { hoanThanh: xong } });
+  }
+
+  // Người có quyền xác nhận thì lưu là xác nhận luôn; còn lại phải chờ duyệt.
+  const tuXacNhan = coQuyen(u, "xac_nhan_bill");
+  await db.billThang.update({
+    where: { id: bill.id },
+    data: {
+      nguoiNhap: u!.email,
+      ngayNhap: new Date(),
+      trangThai: tuXacNhan ? "DA_XAC_NHAN" : "CHO_XAC_NHAN",
+      nguoiXacNhan: tuXacNhan ? u!.email : null,
+      ngayXacNhan: tuXacNhan ? new Date() : null,
+    },
+  });
+
+  revalidatePath(`/cong-trinh/${maCongTrinh}`);
+  revalidatePath("/");
+  return {
+    ok: true,
+    thongDiep: tuXacNhan
+      ? `Đã lưu và xác nhận Bill tháng ${thang}.`
+      : `Đã lưu Bill tháng ${thang}. Chờ chỉ huy trưởng xác nhận mới tính vào KPI.`,
+  };
+}
+
+// ------------------------------------------------------------ Cột tùy chỉnh
+export async function themCot(formData: FormData): Promise<KetQuaBOQ> {
+  batBuocQuyen(await nguoiDungHienTai(), "nhap_boq");
+
+  const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
+  const ten = String(formData.get("ten") ?? "").trim();
+  if (!ten) return { ok: false, thongDiep: "Tên cột không được để trống." };
+
+  const kq = await congTrinhChoGhi(maCongTrinh);
+  if ("loi" in kq) return { ok: false, thongDiep: kq.loi };
+  const ct = kq.ct;
+
+  if (await db.bOQCot.findFirst({ where: { projectId: ct.id, ten } })) {
+    return { ok: false, thongDiep: `Cột "${ten}" đã có rồi.` };
+  }
+
+  // Lấy thuTu lớn nhất + 1, KHÔNG dùng count(): xoá một cột giữa chừng rồi thêm
+  // cột mới thì count() cho ra số đã có, hai cột trùng thứ tự và không sắp xếp được.
+  const max = await db.bOQCot.aggregate({ where: { projectId: ct.id }, _max: { thuTu: true } });
+  await db.bOQCot.create({
+    data: { projectId: ct.id, ten, thuTu: (max._max.thuTu ?? -1) + 1 },
+  });
+
+  revalidatePath(`/cong-trinh/${maCongTrinh}`);
+  return { ok: true, thongDiep: `Đã thêm cột "${ten}".` };
+}
+
+/**
+ * Xoá một cột tùy chỉnh và toàn bộ giá trị của nó (cascade).
+ * Có hàm này vì thêm cột mà không xoá được thì gõ nhầm tên là kẹt vĩnh viễn.
+ */
+export async function xoaCot(formData: FormData): Promise<KetQuaBOQ> {
+  batBuocQuyen(await nguoiDungHienTai(), "nhap_boq");
+
+  const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
+  const cotId = String(formData.get("cotId") ?? "").trim();
+
+  const kq = await congTrinhChoGhi(maCongTrinh);
+  if ("loi" in kq) return { ok: false, thongDiep: kq.loi };
+  const ct = kq.ct;
+
+  // Ràng projectId để không xoá được cột của công trình khác qua id đoán mò.
+  const cot = await db.bOQCot.findFirst({ where: { id: cotId, projectId: ct.id } });
+  if (!cot) return { ok: false, thongDiep: "Không tìm thấy cột." };
+
+  await db.bOQCot.delete({ where: { id: cot.id } });
+  revalidatePath(`/cong-trinh/${maCongTrinh}`);
+  return { ok: true, thongDiep: `Đã xoá cột "${cot.ten}".` };
+}
+
+/**
+ * Đổi chỗ một cột tùy chỉnh sang trái/phải. Dùng nút mũi tên thay vì kéo thả —
+ * ít mã hơn nhiều mà vẫn đủ việc.
+ *
+ * ĐÁNH SỐ LẠI cả danh sách chứ không hoán vị hai giá trị `thuTu`: nếu dữ liệu
+ * cũ lỡ có hai cột trùng thứ tự thì hoán vị sẽ không đổi được gì, còn đánh số
+ * lại vừa chuyển đúng vừa tự chữa luôn chỗ trùng.
+ */
+export async function chuyenCot(formData: FormData): Promise<KetQuaBOQ> {
+  batBuocQuyen(await nguoiDungHienTai(), "nhap_boq");
+
+  const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
+  const cotId = String(formData.get("cotId") ?? "").trim();
+  const sang = String(formData.get("huong") ?? "");
+
+  const kq = await congTrinhChoGhi(maCongTrinh);
+  if ("loi" in kq) return { ok: false, thongDiep: kq.loi };
+  const ct = kq.ct;
+
+  const ds = await db.bOQCot.findMany({
+    where: { projectId: ct.id },
+    orderBy: [{ thuTu: "asc" }, { id: "asc" }],
+  });
+  const i = ds.findIndex((c) => c.id === cotId);
+  if (i < 0) return { ok: false, thongDiep: "Không tìm thấy cột." };
+
+  const j = sang === "trai" ? i - 1 : i + 1;
+  if (j < 0 || j >= ds.length) return { ok: false, thongDiep: "Cột đã ở đầu/cuối rồi." };
+
+  const moi = [...ds];
+  [moi[i], moi[j]] = [moi[j], moi[i]];
+  for (let k = 0; k < moi.length; k++) {
+    await db.bOQCot.update({ where: { id: moi[k].id }, data: { thuTu: k } });
+  }
+
+  revalidatePath(`/cong-trinh/${maCongTrinh}`);
+  return { ok: true, thongDiep: `Đã chuyển cột "${ds[i].ten}".` };
+}
+
+/** Lưu giá trị MỘT ô cột tùy chỉnh — sửa trực tiếp ngay trên bảng BOQ. */
+export async function luuOCot(formData: FormData): Promise<KetQuaBOQ> {
+  batBuocQuyen(await nguoiDungHienTai(), "nhap_boq");
+
+  const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
+  const cotId = String(formData.get("cotId") ?? "").trim();
+  const boqLineId = String(formData.get("boqLineId") ?? "").trim();
+  const giaTri = String(formData.get("giaTri") ?? "").trim();
+
+  const kq = await congTrinhChoGhi(maCongTrinh);
+  if ("loi" in kq) return { ok: false, thongDiep: kq.loi };
+  const ct = kq.ct;
+
+  // Ràng cả cột lẫn dòng về đúng công trình này, chặn sửa xuyên công trình bằng id đoán mò.
+  const cot = await db.bOQCot.findFirst({ where: { id: cotId, projectId: ct.id } });
+  const dong = await db.bOQLine.findFirst({ where: { id: boqLineId, projectId: ct.id } });
+  if (!cot || !dong) return { ok: false, thongDiep: "Không tìm thấy ô cần sửa." };
+
+  if (giaTri === "") {
+    await db.bOQGiaTriCot.deleteMany({ where: { cotId, boqLineId } });
+  } else {
+    await db.bOQGiaTriCot.upsert({
+      where: { cotId_boqLineId: { cotId, boqLineId } },
+      create: { cotId, boqLineId, giaTri },
+      update: { giaTri },
+    });
+  }
+
+  revalidatePath(`/cong-trinh/${maCongTrinh}`);
+  return { ok: true, thongDiep: "Đã lưu." };
+}
+
+/**
+ * Thêm một dòng BOQ phát sinh, chèn vào ĐÚNG vị trí người dùng chọn.
+ * `sauDongId` rỗng = chèn lên đầu. Các dòng phía sau được đẩy `thuTu` xuống.
+ */
+export async function themDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
+  batBuocQuyen(await nguoiDungHienTai(), "nhap_boq");
+
+  const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
+  const stt = String(formData.get("stt") ?? "").trim();
+  const noiDung = String(formData.get("noiDung") ?? "").trim();
+  const dvt = String(formData.get("dvt") ?? "").trim();
+  const sauDongId = String(formData.get("sauDongId") ?? "").trim();
+
+  const so = (t: string) => Number(String(t).replace(/\s/g, "").replace(/\./g, "").replace(",", "."));
+  const khoiLuong = so(String(formData.get("khoiLuong") ?? "0"));
+  const donGia = so(String(formData.get("donGia") ?? "0"));
+
+  if (!stt) return { ok: false, thongDiep: "STT không được để trống." };
+  if (!noiDung) return { ok: false, thongDiep: "Nội dung công việc không được để trống." };
+  if (!Number.isFinite(khoiLuong) || khoiLuong < 0) {
+    return { ok: false, thongDiep: "Khối lượng phải là số không âm." };
+  }
+  if (!Number.isFinite(donGia) || donGia < 0) {
+    return { ok: false, thongDiep: "Đơn giá phải là số không âm." };
+  }
+
+  const kq = await congTrinhChoGhi(maCongTrinh);
+  if ("loi" in kq) return { ok: false, thongDiep: kq.loi };
+  const ct = kq.ct;
+
+  const ds = await db.bOQLine.findMany({ where: { projectId: ct.id }, orderBy: { thuTu: "asc" } });
+  const viTri = sauDongId ? ds.findIndex((d) => d.id === sauDongId) + 1 : 0;
+
+  // Đẩy các dòng từ vị trí chèn trở đi xuống một bậc để chừa chỗ.
+  for (let k = ds.length - 1; k >= viTri; k--) {
+    await db.bOQLine.update({ where: { id: ds[k].id }, data: { thuTu: k + 1 } });
+  }
+  await db.bOQLine.create({
+    data: { projectId: ct.id, stt, noiDung, dvt: dvt || null, khoiLuong, donGia, thuTu: viTri },
+  });
+
+  revalidatePath(`/cong-trinh/${maCongTrinh}`);
+  return { ok: true, thongDiep: `Đã thêm công tác "${stt} — ${noiDung}".` };
+}
+
+export async function xacNhanBill(formData: FormData): Promise<KetQuaBOQ> {
+  const u = await nguoiDungHienTai();
+  batBuocQuyen(u, "xac_nhan_bill");
+
+  const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
+  const thang = String(formData.get("thang") ?? "").trim();
+
+  const kq = await congTrinhChoGhi(maCongTrinh);
+  if ("loi" in kq) return { ok: false, thongDiep: kq.loi };
+  const ct = kq.ct;
+
+  const bill = await db.billThang.findUnique({
+    where: { projectId_thang: { projectId: ct.id, thang } },
+  });
+  if (!bill) return { ok: false, thongDiep: `Chưa có Bill tháng ${thang}.` };
+
+  await db.billThang.update({
+    where: { id: bill.id },
+    data: { trangThai: "DA_XAC_NHAN", nguoiXacNhan: u!.email, ngayXacNhan: new Date() },
+  });
+
+  revalidatePath(`/cong-trinh/${maCongTrinh}`);
+  revalidatePath("/");
+  return { ok: true, thongDiep: `Đã xác nhận Bill tháng ${thang}. Số liệu được tính vào KPI.` };
+}

@@ -1,0 +1,13 @@
+services:
+  app:
+    build: .
+    image: prmana-app:latest
+    container_name: prmana-app
+    # Tự bật lại khi server khởi động lại hoặc container chết.
+    restart: unless-stopped
+    ports:
+      # Chỉ mở trong mạng nội bộ công ty. Ứng dụng CHƯA có đăng nhập nên
+      # không được publish thẳng ra Internet.
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production

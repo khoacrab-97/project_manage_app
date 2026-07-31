@@ -1,0 +1,606 @@
+// MÔ HÌNH DỮ LIỆU — bám §9 của PLAN_XAY_DUNG_APP.
+//
+// Chọn SQLite: quy mô thật là 31 công trình, ~9.100 giao dịch/năm, vài chục người
+// dùng, chạy trên một server nội bộ. SQLite thừa sức, lại không phải cài và bảo trì
+// thêm một dịch vụ; sao lưu bằng cách copy một file. Đổi sang Postgres sau chỉ là
+// đổi `provider` và migrate lại — schema dưới đây cố ý không dùng tính năng riêng
+// của Postgres (không scalar list, không native type) để giữ khả năng chuyển đổi.
+//
+// TIỀN DÙNG Float, KHÔNG dùng Decimal. Lý do: mọi số tiền là ĐỒNG NGUYÊN và dưới
+// 2^53 nên float64 biểu diễn chính xác tuyệt đối, tránh phải chuyển đổi Decimal ở
+// mọi ranh giới server/client. Test bất biến (seed.test.ts) so tổng bằng phép so
+// khớp tuyệt đối nên sẽ đỏ ngay nếu có sai số.
+//
+// Nguyên tắc đã cài vào schema:
+//   - Không xóa cứng giao dịch đã ghi sổ (§8.9): không cascade từ Transaction.
+//   - Dữ liệu lỗi nằm ở TransactionStaging, không lẫn vào Transaction (§17.1).
+//   - rowHash là chốt chống cộng trùng khi tải lại/đồng bộ lại (§11.3).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  // Prisma 7 không nhận `url` ở đây nữa — đường dẫn nằm trong prisma.config.ts.
+}
+
+// ---------------------------------------------------------------- Danh mục
+
+model Project {
+  id                 String    @id @default(cuid())
+  maCongTrinh        String    @unique
+  tenCongTrinh       String
+  maBase             String?
+  chuDauTu           String?
+  chiHuyTruong       String?
+  phongPhuTrach      String?
+  ngayBatDau         DateTime?
+  ngayKetThucKeHoach DateTime?
+  /// Ngày nghiệm thu thực tế. BẮT BUỘC khi trangThai = "Đã nghiệm thu" —
+  /// là mốc cuối của biểu đồ theo tháng ở màn hình chi tiết công trình.
+  ngayHoanThanh      DateTime?
+  trangThai          String    @default("Đang thi công")
+  loaiDuAn           String?
+  diaDiem            String?
+  giaTriHopDong      Float? // Phase 2
+  bienLNMucTieu      Float?
+  ngayCapNhatCuoi    DateTime?
+  isActive           Boolean   @default(true)
+
+  // Nguồn dữ liệu chính: mỗi công trình một Google Sheet riêng.
+  googleSheetUrl String?
+  googleSheetGid String?
+  lanDongBoCuoi  DateTime?
+
+  transactions  Transaction[]
+  planLines     PlanLine[]
+  importBatches ImportBatch[]
+  nguoiDuocGan  UserProject[]
+  boqLines      BOQLine[]
+  billThangs    BillThang[]
+  boqCots       BOQCot[]
+
+  // Module Quản lý công nhân — quan hệ ngược, không đổi hành vi sẵn có.
+  chamCongCT    CongTrinhChamCong?
+  phanCongNgays PhanCongNgay[]
+  chamCongs     ChamCong[]
+
+  @@index([trangThai])
+  @@index([isActive])
+}
+
+/// Một dòng khối lượng hợp đồng (BOQ) — dựng theo sheet "1.2 GÍA TRỊ BILL".
+/// Thành tiền KHÔNG lưu: luôn tính = khoiLuong × donGia rồi làm tròn về đồng,
+/// đúng như công thức ROUND(D*E,0) của file mẫu. Lưu sẵn sẽ có ngày lệch nhau.
+model BOQLine {
+  id        String  @id @default(cuid())
+  projectId String
+  stt       String
+  noiDung   String
+  dvt       String?
+  /// Khối lượng theo hợp đồng.
+  khoiLuong Float
+  donGia    Float
+  thuTu     Int
+  /// Công tác đã thi công xong — chỉ huy trưởng tích khi cập nhật khối lượng.
+  hoanThanh Boolean @default(false)
+
+  project   Project        @relation(fields: [projectId], references: [id])
+  thucHien  BOQThucHien[]
+  giaTriCot BOQGiaTriCot[]
+
+  @@index([projectId])
+}
+
+/// Cột do người dùng thêm vào BOQ của một công trình.
+///
+/// Dạng "general" như Excel: lưu văn bản thô, KHÔNG tham gia tính toán. Các cột
+/// gốc (Khối lượng, Đơn giá, Thành tiền) vẫn tính như cũ và không đụng tới.
+model BOQCot {
+  id        String @id @default(cuid())
+  projectId String
+  ten       String
+  thuTu     Int
+
+  project Project        @relation(fields: [projectId], references: [id])
+  giaTri  BOQGiaTriCot[]
+
+  @@index([projectId])
+}
+
+/// Giá trị của một cột tùy chỉnh trên một dòng BOQ.
+model BOQGiaTriCot {
+  id        String @id @default(cuid())
+  cotId     String
+  boqLineId String
+  giaTri    String
+
+  cot  BOQCot  @relation(fields: [cotId], references: [id], onDelete: Cascade)
+  line BOQLine @relation(fields: [boqLineId], references: [id], onDelete: Cascade)
+
+  @@unique([cotId, boqLineId])
+}
+
+/// Bill của một công trình trong một tháng, kèm trạng thái xác nhận.
+///
+/// Chỉ huy trưởng nhập thì xác nhận luôn; Cán bộ kỹ thuật / Chuyên viên bậc cao
+/// nhập thì phải qua bước duyệt. CHỈ tháng `DA_XAC_NHAN` mới được tính vào KPI.
+model BillThang {
+  id        String @id @default(cuid())
+  projectId String
+  /// Dạng yyyy-MM.
+  thang     String
+  /// CHO_XAC_NHAN | DA_XAC_NHAN
+  trangThai String @default("CHO_XAC_NHAN")
+
+  nguoiNhap    String?
+  ngayNhap     DateTime?
+  nguoiXacNhan String?
+  ngayXacNhan  DateTime?
+
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@unique([projectId, thang])
+  @@index([trangThai])
+}
+
+/// Khối lượng thực hiện trong một tháng của một dòng BOQ.
+/// Chỉ huy trưởng nhập hằng tháng; đây là căn cứ duy nhất để tính giá trị Bill.
+model BOQThucHien {
+  id        String @id @default(cuid())
+  boqLineId String
+  /// Dạng yyyy-MM, khớp Transaction.thangThucHien.
+  thang     String
+  khoiLuong Float
+
+  line BOQLine @relation(fields: [boqLineId], references: [id], onDelete: Cascade)
+
+  @@unique([boqLineId, thang])
+  @@index([thang])
+}
+
+model CostRevenueCode {
+  ma                  String    @id
+  ten                 String
+  /// "Doanh thu" | "Chi phí"
+  loai                String
+  maCha               String?
+  capMa               Int       @default(1)
+  /// Mã nhóm = false: không được ghi giao dịch trực tiếp (§3.4).
+  choPhepNhapTrucTiep Boolean   @default(true)
+  isActive            Boolean   @default(true)
+  hieuLucTu           DateTime?
+  hieuLucDen          DateTime?
+  thuTuHienThi        Int       @default(0)
+
+  cha CostRevenueCode?  @relation("CayMa", fields: [maCha], references: [ma])
+  con CostRevenueCode[] @relation("CayMa")
+
+  transactions Transaction[]
+  planLines    PlanLine[]
+  crosswalks   CodeCrosswalk[]
+
+  @@index([loai, isActive])
+}
+
+/// Ánh xạ hệ mã cũ (DA*) trong KẾ HOẠCH TH sang hệ mã mới (CP-*).
+/// Không có bảng này thì KPI "Kế hoạch vs Thực hiện" vô nghĩa.
+model CodeCrosswalk {
+  id         String    @id @default(cuid())
+  maCu       String    @unique
+  tenCu      String
+  maMoi      String?
+  /// "auto" (máy đề xuất theo tên) | "manual" (người sửa)
+  nguonMap   String    @default("auto")
+  daDuyet    Boolean   @default(false)
+  nguoiDuyet String?
+  ngayDuyet  DateTime?
+  ghiChu     String?
+
+  codeMoi CostRevenueCode? @relation(fields: [maMoi], references: [ma])
+}
+
+// ---------------------------------------------------------------- Kế hoạch
+
+model PlanLine {
+  id             String    @id @default(cuid())
+  projectId      String
+  /// Mã hệ mới sau crosswalk. null = chưa ánh xạ được -> LOẠI khỏi KPI.
+  maDTCP         String?
+  /// Mã gốc trong file kế hoạch, giữ lại để truy vết.
+  maGoc          String
+  loaiKeHoach    String    @default("Chi phí")
+  thang          String // yyyy-MM
+  giaTri         Float
+  /// Tăng dần mỗi lần lưu, không ghi đè — giữ lịch sử ngân sách (§8.4).
+  phienBan       Int       @default(1)
+  trangThaiDuyet String    @default("DRAFT")
+  ngayHieuLuc    DateTime?
+  ghiChu         String?
+  nguoiSua       String?
+  ngaySua        DateTime  @default(now())
+
+  project Project          @relation(fields: [projectId], references: [id])
+  code    CostRevenueCode? @relation(fields: [maDTCP], references: [ma])
+
+  @@unique([projectId, maGoc, thang, phienBan])
+  @@index([projectId, thang])
+}
+
+// ---------------------------------------------------------------- Nhập liệu
+
+model ImportBatch {
+  id       String @id @default(cuid())
+  tenFile  String
+  /// Hash nội dung nguồn — chặn nhập lại y hệt một lần nữa.
+  hashFile String
+  /// "excel" | "google-sheet"
+  nguon    String @default("excel")
+
+  projectId     String?
+  kyDuLieu      String?
+  nguoiTai      String
+  thoiDiemTai   DateTime  @default(now())
+  soDong        Int       @default(0)
+  soDongHopLe   Int       @default(0)
+  soDongLoi     Int       @default(0)
+  /// UPLOADED | VALIDATING | ERROR | READY_FOR_REVIEW | APPROVED | POSTED | REPLACED | CANCELLED
+  trangThai     String    @default("UPLOADED")
+  nguoiDuyet    String?
+  thoiDiemDuyet DateTime?
+  /// Lô thay thế lô này, phục vụ cơ chế replace batch (§11.3).
+  thayTheChoId  String?
+
+  project      Project?             @relation(fields: [projectId], references: [id])
+  transactions Transaction[]
+  staging      TransactionStaging[]
+  errors       ImportError[]
+
+  @@index([trangThai])
+  @@index([hashFile])
+}
+
+/// Dòng đã tải lên nhưng CHƯA phê duyệt. Dòng có lỗi mức Error dừng ở đây và
+/// không bao giờ được cộng vào báo cáo.
+model TransactionStaging {
+  id            String    @id @default(cuid())
+  importBatchId String
+  dongExcel     Int
+  maCongTrinh   String?
+  tenCongTrinh  String?
+  soHoaDon      String?
+  ngayChungTu   DateTime?
+  thangThucHien String?
+  tuanThucHien  Int?
+  noiDung       String?
+  dvt           String?
+  donGia        Float?
+  soLuong       Float?
+  soTien        Float?
+  maDTCP        String?
+  ghiChu        String?
+  rowHash       String
+
+  batch ImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+
+  @@index([importBatchId])
+  @@index([rowHash])
+}
+
+model ImportError {
+  id            String  @id @default(cuid())
+  importBatchId String
+  dong          Int
+  cot           String?
+  maLoi         String
+  /// Error | Warning | Information
+  mucDo         String
+  thongDiep     String
+  cachXuLy      String?
+  daXuLy        Boolean @default(false)
+
+  batch ImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+
+  @@index([importBatchId, mucDo])
+}
+
+// ---------------------------------------------------------------- Sổ chính thức
+
+/// SỔ DỮ LIỆU CHÍNH THỨC. 15 cột nguồn + trường hệ thống.
+/// Không xóa cứng: muốn hủy thì tạo bút toán đảo và ghi AuditLog.
+model Transaction {
+  id                String    @id @default(cuid())
+  sttNguon          Int?
+  projectId         String
+  tenCongTrinhNguon String?
+  maBase            String?
+  soHoaDon          String?
+  ngayChungTu       DateTime?
+  thangThucHien     String // yyyy-MM
+  tuanThucHien      Int?
+  noiDung           String
+  dvt               String?
+  donGia            Float?
+  soLuong           Float?
+  soTien            Float
+  maDTCP            String
+  ghiChu            String?
+
+  importBatchId  String
+  sourceFileName String?
+  /// CHINH_THUC | DAO (bút toán đảo)
+  trangThai      String    @default("CHINH_THUC")
+  /// Chốt chống cộng trùng khi nhập/đồng bộ lại (§11.3).
+  rowHash        String
+  nguoiDuyet     String?
+  ngayDuyet      DateTime?
+  createdAt      DateTime  @default(now())
+
+  project Project         @relation(fields: [projectId], references: [id])
+  code    CostRevenueCode @relation(fields: [maDTCP], references: [ma])
+  batch   ImportBatch     @relation(fields: [importBatchId], references: [id])
+  audits  AuditLog[]
+
+  /// Cùng một dòng không được ghi sổ hai lần.
+  @@unique([rowHash, projectId])
+  @@index([projectId, thangThucHien])
+  @@index([maDTCP, thangThucHien])
+  @@index([thangThucHien])
+}
+
+// ---------------------------------------------------------------- Kiểm soát
+
+model PeriodLock {
+  ky            String    @id // yyyy-MM
+  daKhoa        Boolean   @default(false)
+  nguoiKhoa     String?
+  thoiDiemKhoa  DateTime?
+  lyDoMoLai     String?
+  nguoiMoLai    String?
+  thoiDiemMoLai DateTime?
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  bang          String
+  banGhiId      String
+  transactionId String?
+  hanhDong      String // CREATE | UPDATE | POST | REVERSE | LOCK | UNLOCK
+  truong        String?
+  giaTriTruoc   String?
+  giaTriSau     String?
+  lyDo          String?
+  nguoiThucHien String
+  thoiDiem      DateTime @default(now())
+
+  transaction Transaction? @relation(fields: [transactionId], references: [id])
+
+  @@index([bang, banGhiId])
+  @@index([thoiDiem])
+}
+
+model Alert {
+  id                  String    @id @default(cuid())
+  loai                String
+  mucDo               String // P0 | P1 | P2
+  maCongTrinh         String?
+  tieuDe              String
+  moTa                String?
+  trangThai           String    @default("Mới")
+  nguoiChiuTrachNhiem String?
+  ngayPhatSinh        DateTime  @default(now())
+  ngayDong            DateTime?
+
+  @@index([mucDo, trangThai])
+}
+
+// ---------------------------------------------------------------- Người dùng
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  hoTen         String
+  emailVerified DateTime?
+  image         String?
+  /// ADMIN | BAN_GIAM_DOC | TAI_CHINH | TRUONG_PHONG | CHI_HUY_TRUONG | CHI_XEM
+  /// ADMIN là key main — toàn quyền.
+  /// Băm scrypt dạng "salt:hash". Rỗng = tài khoản chưa được cấp mật khẩu.
+  matKhauHash   String    @default("")
+  vaiTro        String    @default("CHI_XEM")
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+
+  sessions   Session[]
+  phamViGiao UserProject[]
+  doiDAQuanLy DoiDA[] @relation("DoiDAQuanLy")
+
+  @@index([vaiTro])
+}
+
+/// Phạm vi công trình được giao cho người dùng.
+/// Dùng bảng nối thay vì scalar list: SQLite không hỗ trợ String[], và bảng nối
+/// cho phép ràng buộc khóa ngoại + đánh chỉ mục.
+/// Không có dòng nào = phạm vi do vai trò quyết định (xem src/lib/auth/quyen.ts).
+model UserProject {
+  userId    String
+  projectId String
+  ngayGan   DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@id([userId, projectId])
+  @@index([projectId])
+}
+
+// --- Phiên đăng nhập ---
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+
+/// Mục menu bị ẩn với một vai trò.
+///
+/// Lưu danh sách BỊ ẨN chứ không phải danh sách được phép: mặc định của công ty
+/// là "mở hết rồi Admin tắt bớt", nên bảng rỗng = mọi vai trò thấy đủ 9 mục.
+/// Admin bỏ tích một mục thì thêm một dòng ở đây.
+/// ADMIN không bao giờ bị ẩn — chặn cứng trong mã, không phụ thuộc bảng này.
+model MenuBiAn {
+  vaiTro String
+  maMenu String
+
+  @@id([vaiTro, maMenu])
+  @@index([vaiTro])
+}
+
+// ============================================================================
+// QUẢN LÝ CÔNG NHÂN — dựng theo "Quy trình quản lý chấm công công nhân".
+//
+// Nguyên tắc cốt lõi (§4): TÁCH RIÊNG "phân công" (kế hoạch) và "chấm công"
+// (thực tế). Gộp làm một thì khi công nhân đổi công trình, nghỉ đột xuất hay bị
+// điều chuyển ngoài kế hoạch sẽ không còn cách nào biết thực tế lệch kế hoạch
+// ở đâu — mà đó chính là báo cáo đối chiếu §6 yêu cầu.
+//
+// KHÔNG dựng lại bảng công trình: dùng thẳng `Project` đang có. Bảng
+// `CongTrinhChamCong` chỉ bổ sung hai thuộc tính riêng của nghiệp vụ chấm công.
+//
+// Tổng hợp tháng (§4.5) KHÔNG lưu thành bảng: luôn tính lại từ `ChamCong` khi
+// đọc. Lưu sẵn thì mỗi lần sửa một dòng chấm công lại phải nhớ tính lại, sai
+// lệch là chuyện sớm muộn.
+// ============================================================================
+
+/// Hồ sơ công nhân (§4.1).
+model CongNhan {
+  id     String @id @default(cuid())
+  maCN   String @unique
+  hoTen  String
+  /// NOI_THANH (Đội thi công) | NGOAI_THANH (Đội DA) — quyết định có đi qua bước
+  /// phân công hay không.
+  doi    String @default("NOI_THANH")
+  /// Đội DA công nhân thuộc về — chỉ dùng cho NGOAI_THANH. NOI_THANH để trống.
+  doiDAId String?
+  doiDA   DoiDA? @relation(fields: [doiDAId], references: [id])
+  /// CBQL (nội thành) hoặc CBPT (ngoại thành) đang giữ hồ sơ.
+  nguoiQuanLy String?
+  ngheNghiep  String?
+  ghiChu      String?
+  ngayTao     DateTime @default(now())
+
+  phanCongNgays PhanCongNgay[]
+  chamCongs     ChamCong[]
+
+  @@index([doi])
+}
+
+/// Thuộc tính chấm công của một công trình (§4.2).
+/// Tách khỏi `Project` để module này không chạm vào dữ liệu của các tab khác.
+model CongTrinhChamCong {
+  id        String @id @default(cuid())
+  projectId String @unique
+  /// NOI_THANH | NGOAI_THANH
+  khuVuc        String  @default("NOI_THANH")
+  /// Người chấm công tại công trình.
+  nguoiPhuTrach String?
+  /// Đội DA sở hữu công trình — chỉ dùng khi khuVuc = NGOAI_THANH.
+  doiDAId String?
+  doiDA   DoiDA? @relation(fields: [doiDAId], references: [id])
+
+  congTrinh Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+/// Danh mục Đội DA (đội dự án ngoại thành) — ADMIN tự đặt theo quy định công ty.
+/// Công nhân và công trình ngoại thành đều trỏ vào đây (một đội làm nhiều công trình).
+model DoiDA {
+  id      String   @id @default(cuid())
+  ten     String   @unique
+  /// Người quản lý đội — tài khoản User (CHT/CBKT/CVBC). Người này chấm công cho
+  /// cả dự án và ở tab Chấm công chỉ thấy dự án mình quản lý.
+  nguoiQuanLyId String?
+  nguoiQuanLy   User?  @relation("DoiDAQuanLy", fields: [nguoiQuanLyId], references: [id])
+  ngayTao DateTime @default(now())
+
+  congNhans  CongNhan[]
+  congTrinhs CongTrinhChamCong[]
+
+  @@index([nguoiQuanLyId])
+}
+
+/// Phân công ngày — KẾ HOẠCH, chỉ áp dụng đội nội thành (§4.3).
+model PhanCongNgay {
+  id         String @id @default(cuid())
+  /// Dạng yyyy-MM-dd.
+  ngay       String
+  congNhanId String
+  projectId  String
+  /// Buổi được điều: CA_NGAY | SANG | CHIEU. Một người trong ngày chỉ có thể cả
+  /// ngày một nơi, hoặc sáng một nơi + chiều một nơi khác — ràng buộc đó ép ở
+  /// giao diện ma trận, không ở DB.
+  buoi       String @default("CA_NGAY")
+  nguoiPhanCong String?
+  ngayTao    DateTime @default(now())
+
+  congNhan  CongNhan @relation(fields: [congNhanId], references: [id], onDelete: Cascade)
+  congTrinh Project  @relation(fields: [projectId], references: [id])
+
+  /// Một công nhân được điều nhiều công trình trong một ngày (sáng A, chiều B),
+  /// nên khóa duy nhất theo cả projectId — chỉ chặn trùng đúng một ô ma trận.
+  @@unique([ngay, congNhanId, projectId])
+  @@index([ngay])
+  @@index([projectId])
+}
+
+/// Chấm công — THỰC TẾ, nguồn duy nhất để tổng hợp (§4.4).
+model ChamCong {
+  id         String @id @default(cuid())
+  /// Dạng yyyy-MM-dd.
+  ngay       String
+  congNhanId String
+  /// Công trình THỰC TẾ làm việc, có thể khác `PhanCongNgay`.
+  projectId  String
+  /// Cán bộ phụ trách xác nhận từng ca: mỗi ca làm tính 0,5 công.
+  caSang     Boolean @default(false)
+  caChieu    Boolean @default(false)
+  /// Ca không làm là vắng: null (không vắng) | CO_PHEP | KHONG_PHEP.
+  /// Vắng CÓ PHÉP vẫn được tính công (nghỉ phép); KHÔNG PHÉP thì không.
+  loaiVang   String?
+  lyDoVang   String?
+  /// Giờ tăng ca tách hai loại — một ngày có thể có cả hai. Riêng Chủ nhật, toàn
+  /// bộ giờ (cả hai) được gộp vào cột tăng ca Chủ nhật khi tổng hợp.
+  gioTangCaNgay Float @default(0)
+  gioTangCaDem  Float @default(0)
+  nguoiChamCong String?
+  ngayTao    DateTime @default(now())
+
+  congNhan  CongNhan @relation(fields: [congNhanId], references: [id], onDelete: Cascade)
+  congTrinh Project  @relation(fields: [projectId], references: [id])
+
+  /// Cho phép một công nhân làm nhiều công trình trong cùng một ngày (§7).
+  /// Chặn cứng ở mức (ngày, công nhân) sẽ làm mất dữ liệu thật; thay vào đó
+  /// màn hình cảnh báo khi tổng công trong ngày vượt 1.
+  @@unique([ngay, congNhanId, projectId])
+  @@index([ngay])
+  @@index([projectId])
+}
+
+/// Ngày lễ do ADMIN khai báo. Khi tổng hợp, ngày lễ được xử lý như Chủ nhật:
+/// KHÔNG tính công thường, toàn bộ giờ làm dồn vào cột tăng ca ngày lễ.
+model NgayLe {
+  id      String   @id @default(cuid())
+  /// Tháng (1-12) và ngày trong tháng (1-31) theo dương lịch.
+  thang   Int
+  ngay    Int
+  /// null = lặp lại HẰNG NĂM (lễ dương lịch cố định: 1/1, 30/4, 1/5, 2/9, 24/11);
+  /// có năm = chỉ áp dụng năm đó (lễ âm lịch phải nhập tay từng năm vì không rơi
+  /// cùng ngày dương mỗi năm).
+  nam     Int?
+  ten     String
+  ngayTao DateTime @default(now())
+
+  @@index([thang, ngay])
+}
