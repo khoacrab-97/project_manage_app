@@ -124,6 +124,18 @@ export const layCongTrinh = cache(async (): Promise<CongTrinh[]> => {
   }));
 });
 
+/** Công trình đã NGỪNG theo dõi (isActive=false) — cho mục "Mở lại theo dõi". */
+export async function layCongTrinhNgung(): Promise<
+  { maCongTrinh: string; tenCongTrinh: string }[]
+> {
+  const ds = await db.project.findMany({
+    where: { isActive: false, ...(await locProject()) },
+    orderBy: { maCongTrinh: "asc" },
+    select: { maCongTrinh: true, tenCongTrinh: true },
+  });
+  return ds.map((p) => ({ maCongTrinh: p.maCongTrinh, tenCongTrinh: p.tenCongTrinh }));
+}
+
 /** id nội bộ ↔ mã công trình, dùng để dịch kết quả groupBy. */
 const banDoCongTrinh = cache(async () => {
   const ds = await db.project.findMany({ select: { id: true, maCongTrinh: true } });

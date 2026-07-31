@@ -13,10 +13,15 @@ import {
   ThanhTyLe,
 } from "@/components/ui";
 import { ngay, phanTram, tien } from "@/lib/format";
-import { danhMucSucKhoe, demSucKhoe, type DongDanhMuc } from "@/lib/data/repository";
+import {
+  danhMucSucKhoe,
+  demSucKhoe,
+  layCongTrinhNgung,
+  type DongDanhMuc,
+} from "@/lib/data/repository";
 import { nguoiDungHienTai } from "@/lib/auth/phien";
 import { coQuyen } from "@/lib/auth/quyen";
-import { FormThemCongTrinh, NutSuaCongTrinh } from "@/components/sua-cong-trinh";
+import { FormThemCongTrinh, NutMoLaiTheoDoi, NutSuaCongTrinh } from "@/components/sua-cong-trinh";
 
 export const metadata = { title: "Danh mục công trình" };
 
@@ -25,6 +30,8 @@ export default async function TrangDanhMucCongTrinh() {
   const dem = await demSucKhoe();
   // Ẩn nút với vai trò không được phép. Chốt chặn thật nằm trong Server Action.
   const duocSua = coQuyen(await nguoiDungHienTai(), "tao_cong_trinh");
+  // Công trình đã ngừng theo dõi — chỉ hiện cho người được sửa, để mở lại.
+  const dsNgung = duocSua ? await layCongTrinhNgung() : [];
 
   // Hai nhóm tách bạch: đã nghiệm thu lên trên (đóng sổ, chỉ tra cứu), đang thi
   // công xuống dưới (nơi số liệu còn chạy hằng ngày).
@@ -63,6 +70,37 @@ export default async function TrangDanhMucCongTrinh() {
             moTa="Dữ liệu đã đóng băng — chỉ tra cứu, không thêm hay sửa được nữa"
           />
           <BangCongTrinh ds={daXong} duocSua={duocSua} mo />
+        </The>
+      ) : null}
+
+      {dsNgung.length ? (
+        <The className="mt-4">
+          <TheDau
+            tieuDe={`Ngừng theo dõi (${dsNgung.length})`}
+            moTa="Công trình đã bỏ tích “Còn theo dõi” — ẩn khỏi báo cáo. Bấm “Mở lại theo dõi” để đưa về danh mục."
+          />
+          <Bang>
+            <thead>
+              <tr>
+                <Th>Mã công trình</Th>
+                <Th>Tên công trình</Th>
+                <Th className="w-40" />
+              </tr>
+            </thead>
+            <tbody>
+              {dsNgung.map((c) => (
+                <tr key={c.maCongTrinh} className="text-chunhat hover:bg-nen">
+                  <Td className="font-mono whitespace-nowrap">{c.maCongTrinh}</Td>
+                  <Td className="max-w-[280px] truncate text-xs" title={c.tenCongTrinh}>
+                    {c.tenCongTrinh}
+                  </Td>
+                  <Td>
+                    <NutMoLaiTheoDoi maCongTrinh={c.maCongTrinh} />
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </Bang>
         </The>
       ) : null}
 

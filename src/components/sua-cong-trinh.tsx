@@ -1,8 +1,13 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Check, Pencil, Plus, X } from "lucide-react";
-import { suaCongTrinh, taoCongTrinh, type KetQuaCongTrinh } from "@/app/cong-trinh/actions";
+import { Check, Pencil, Plus, RotateCcw, X } from "lucide-react";
+import {
+  moLaiTheoDoi,
+  suaCongTrinh,
+  taoCongTrinh,
+  type KetQuaCongTrinh,
+} from "@/app/cong-trinh/actions";
 import type { CongTrinh } from "@/lib/types";
 
 const O = "rounded-md border border-vien bg-the px-2 py-1 text-xs";
@@ -147,6 +152,28 @@ function OChung({ ct }: { ct?: CongTrinh }) {
  * Trước đây form bung ra ngay trong ô của bảng, đẩy các cột giãn ra và phải cuộn
  * ngang mới thấy hết — hộp thoại tách khỏi bảng nên không còn chuyện đó.
  */
+/** Nút một-cú-bấm bật lại theo dõi cho công trình đã ngừng. */
+export function NutMoLaiTheoDoi({ maCongTrinh }: { maCongTrinh: string }) {
+  const [kq, setKq] = useState<KetQuaCongTrinh | null>(null);
+  const [dangChay, batDau] = useTransition();
+  return (
+    <form
+      action={(fd) => batDau(async () => setKq(await moLaiTheoDoi(fd)))}
+      className="inline-flex items-center gap-1"
+    >
+      <input type="hidden" name="maCongTrinh" value={maCongTrinh} />
+      <button
+        type="submit"
+        disabled={dangChay}
+        className="inline-flex items-center gap-1 rounded-md border border-vien px-2 py-0.5 text-xs font-medium text-nhan hover:bg-nen disabled:opacity-50"
+      >
+        <RotateCcw className="size-3" /> {dangChay ? "…" : "Mở lại theo dõi"}
+      </button>
+      {kq && !kq.ok ? <span className="text-[11px] text-rose-600">{kq.thongDiep}</span> : null}
+    </form>
+  );
+}
+
 export function NutSuaCongTrinh({ ct }: { ct: CongTrinh }) {
   const [mo, setMo] = useState(false);
   const [kq, setKq] = useState<KetQuaCongTrinh | null>(null);

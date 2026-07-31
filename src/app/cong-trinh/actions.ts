@@ -149,6 +149,23 @@ export async function taoCongTrinh(formData: FormData): Promise<KetQuaCongTrinh>
   return { ok: true, thongDiep: `Đã tạo công trình ${maCongTrinh}.` };
 }
 
+/** Bật lại theo dõi một công trình đã ngừng (isActive = true). */
+export async function moLaiTheoDoi(formData: FormData): Promise<KetQuaCongTrinh> {
+  batBuocQuyen(await nguoiDungHienTai(), "tao_cong_trinh");
+
+  const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
+  const cu = await db.project.findUnique({ where: { maCongTrinh } });
+  if (!cu) return { ok: false, thongDiep: `Không tìm thấy công trình ${maCongTrinh}.` };
+  if (cu.isActive) return { ok: true, thongDiep: `${maCongTrinh} đang được theo dõi.` };
+
+  await db.project.update({ where: { maCongTrinh }, data: { isActive: true } });
+  await ghiAudit(cu.id, "UPDATE", "isActive", "false", "true");
+
+  revalidatePath("/cong-trinh");
+  revalidatePath("/");
+  return { ok: true, thongDiep: `Đã mở lại theo dõi ${maCongTrinh}.` };
+}
+
 export async function suaCongTrinh(formData: FormData): Promise<KetQuaCongTrinh> {
   batBuocQuyen(await nguoiDungHienTai(), "tao_cong_trinh");
 
