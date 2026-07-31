@@ -129,10 +129,10 @@ function BangCongTrinh({
                 {r.congTrinh.maCongTrinh}
               </Link>
             </Td>
-            <Td className="max-w-[240px] truncate text-xs" title={r.congTrinh.tenCongTrinh}>
+            <Td className="max-w-60 truncate text-xs" title={r.congTrinh.tenCongTrinh}>
               {r.congTrinh.tenCongTrinh}
             </Td>
-            <Td className="max-w-[180px] truncate text-xs" title={r.congTrinh.chuDauTu}>
+            <Td className="max-w-45 truncate text-xs" title={r.congTrinh.chuDauTu}>
               {r.congTrinh.chuDauTu}
             </Td>
             <Td className="text-xs whitespace-nowrap">{r.congTrinh.chiHuyTruong}</Td>
