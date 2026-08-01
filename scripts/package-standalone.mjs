@@ -5,14 +5,8 @@
  * .next/static và public phải tự chép vào đúng chỗ, nếu thiếu thì trang lên
  * nhưng mất sạch CSS. Script này làm việc đó và chạy được cả trên Windows.
  *
- * QUY ƯỚC THƯ MỤC TRIỂN KHAI — quan trọng:
- *
- *   dist/            bản build. ĐÓNG GÓI LẠI LÀ XOÁ SẠCH thư mục này.
- *   data/prmana.db   dữ liệu vận hành. NẰM NGOÀI dist/ nên không bao giờ bị đè.
- *
- * Nếu để cơ sở dữ liệu bên trong dist/ thì mỗi lần cập nhật ứng dụng sẽ xoá mất
- * toàn bộ số liệu đã nhập. Vì vậy script chỉ chép DB sang data/ KHI CHƯA CÓ, và
- * tuyệt đối không ghi đè file đã tồn tại.
+ * Cơ sở dữ liệu chạy trên Postgres qua biến DATABASE_URL. Bản đóng gói chỉ chứa
+ * ứng dụng, không chứa dữ liệu vận hành.
  */
 import {
   chmodSync,
@@ -21,7 +15,6 @@ import {
   mkdirSync,
   readdirSync,
   rmSync,
-  statSync,
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
@@ -29,8 +22,6 @@ import path from "node:path";
 const goc = process.cwd();
 const standalone = path.join(goc, ".next", "standalone");
 const dich = path.join(goc, "dist");
-const thuMucData = path.join(goc, "data");
-const dbDich = path.join(thuMucData, "prmana.db");
 
 if (!existsSync(standalone)) {
   console.error('Chưa có .next/standalone. Chạy "npm run build" trước.');
@@ -77,36 +68,9 @@ if (existsSync(path.join(goc, "public"))) {
 // làm việc, mà bản đóng gói chạy từ dist/ — nên phải chép sang.
 cpSync(path.join(goc, "templates"), path.join(dich, "templates"), { recursive: true });
 
-// ---------- 2. Kiểm tra native module của SQLite ----------
-// Thiếu file này thì ứng dụng vẫn khởi động nhưng chết ngay ở truy vấn đầu tiên,
-// nên phải phát hiện tại đây chứ không để người vận hành gặp lỗi lúc chạy thật.
-const nativeSqlite = path.join(
-  dich,
-  "node_modules",
-  "better-sqlite3",
-  "build",
-  "Release",
-  "better_sqlite3.node"
-);
-if (!existsSync(nativeSqlite)) {
-  console.error("");
-  console.error("LỖI: không tìm thấy better_sqlite3.node trong bản đóng gói.");
-  console.error("      Ứng dụng sẽ không truy vấn được cơ sở dữ liệu.");
-  console.error("      Kiểm tra outputFileTracingIncludes trong next.config.ts.");
-  process.exit(1);
-}
-
-// ---------- 3. Kiểm tra thư mục dữ liệu ----------
-// DATABASE_URL trong .env trỏ thẳng vào data/prmana.db, nên `prisma migrate` đã
-// tạo file ở đúng chỗ. Script chỉ kiểm tra, KHÔNG chép và KHÔNG ghi đè.
-mkdirSync(thuMucData, { recursive: true });
-const ghiChuDb = existsSync(dbDich)
-  ? `giữ nguyên dữ liệu đang có (${(statSync(dbDich).size / 1024 / 1024).toFixed(1)} MB)`
-  : "CHƯA CÓ — chạy `npm run db:migrate` rồi `npm run db:seed` trước khi khởi động";
-
-// ---------- 4. Sinh sẵn lệnh chạy ----------
-// Người vận hành không phải nhớ đặt DATABASE_URL. Đường dẫn tương đối từ dist/
-// trỏ ngược ra ../data/ nên chép cả hai thư mục sang máy khác vẫn chạy được.
+// ---------- 2. Sinh sẵn lệnh chạy ----------
+// DATABASE_URL không được ghi vào dist/ vì là secret. Máy chạy phải đặt biến này
+// trỏ tới Postgres trước khi khởi động.
 const CONG = 3000;
 
 /*
@@ -127,7 +91,10 @@ writeFileSync(
     "set NODE_ENV=production",
     `set HOSTNAME=${DIA_CHI}`,
     `if "%PORT%"=="" set PORT=${CONG}`,
-    'if "%DATABASE_URL%"=="" set DATABASE_URL=file:../data/prmana.db',
+    'if "%DATABASE_URL%"=="" (',
+    "  echo Chua cau hinh DATABASE_URL Postgres.",
+    "  exit /b 1",
+    ")",
     // Ba chế độ:
     //   chay.cmd       -> bấm tay: in hướng dẫn + mở trình duyệt
     //   chay.cmd nen   -> chạy ngầm, không cửa sổ, không mở trình duyệt (Task Scheduler)
@@ -164,7 +131,10 @@ writeFileSync(
     "export NODE_ENV=production",
     `export HOSTNAME=${DIA_CHI}`,
     `export PORT="\${PORT:-${CONG}}"`,
-    'export DATABASE_URL="${DATABASE_URL:-file:../data/prmana.db}"',
+    'if [ -z "${DATABASE_URL:-}" ]; then',
+    '  echo "Chưa cấu hình DATABASE_URL Postgres."',
+    "  exit 1",
+    "fi",
     'echo "Đang chạy tại http://localhost:$PORT"',
     "exec node server.js",
     "",
@@ -178,7 +148,7 @@ try {
 }
 
 console.log("Đã đóng gói vào thư mục dist/");
-console.log(`Cơ sở dữ liệu: data/prmana.db — ${ghiChuDb}`);
+console.log("Cơ sở dữ liệu: Postgres qua biến DATABASE_URL.");
 console.log("");
 console.log("Chạy:");
 console.log("  Windows:  dist\\chay.cmd");
@@ -186,4 +156,4 @@ console.log("  Linux:    ./dist/chay.sh");
 console.log("Lấy bản mới sau khi đóng gói lại (tắt bản cũ rồi chạy lại): dist\\chay.cmd moi");
 console.log(`Đổi cổng: đặt biến PORT trước khi chạy (mặc định ${CONG}).`);
 console.log("");
-console.log("Sao lưu hệ thống = copy thư mục data/. Đừng xoá nó khi cập nhật app.");
+console.log("Sao lưu hệ thống bằng công cụ/backup của Postgres provider.");

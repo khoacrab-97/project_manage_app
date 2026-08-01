@@ -8,6 +8,11 @@ import "dotenv/config";
 import path from "node:path";
 import { defineConfig } from "prisma/config";
 
+// `prisma generate` chạy trong postinstall/build và không cần kết nối DB thật.
+// Runtime vẫn chặn thiếu DATABASE_URL trong src/lib/prisma-client.ts.
+const datasourceUrl =
+  process.env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5432/prmana";
+
 export default defineConfig({
   schema: path.join("prisma", "schema.prisma"),
   migrations: {
@@ -15,6 +20,6 @@ export default defineConfig({
     seed: "npx tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env.DATABASE_URL ?? "file:./prisma/prmana.db",
+    url: datasourceUrl,
   },
 });

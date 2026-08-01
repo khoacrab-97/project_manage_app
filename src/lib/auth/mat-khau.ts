@@ -2,7 +2,7 @@
  * Băm và kiểm tra mật khẩu bằng scrypt của Node.
  *
  * Không dùng bcrypt/argon2 vì cả hai đều là native module — sẽ lại phải ép đóng
- * gói file .node như đã gặp với better-sqlite3. scrypt có sẵn trong Node, đủ mạnh
+ * gói native runtime riêng. scrypt có sẵn trong Node, đủ mạnh
  * và không thêm phụ thuộc nào.
  *
  * Định dạng lưu: "salt_hex:hash_hex".
@@ -35,4 +35,3 @@ export async function kiemTraMatKhau(matKhau: string, luuTru: string): Promise<b
   // So sánh theo thời gian hằng số để không rò rỉ thông tin qua thời gian phản hồi.
   return timingSafeEqual(thucTe, mongDoi);
 }
-

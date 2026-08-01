@@ -7,15 +7,12 @@
  * repository -> trang render.
  */
 import { randomBytes } from "node:crypto";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { PrismaClient } from "@prisma/client";
 import "dotenv/config";
 import { bamMatKhau, kiemTraMatKhau } from "../src/lib/auth/mat-khau";
+import { taoPrismaClient } from "../src/lib/prisma-client";
 import { coQuyen, DS_VAI_TRO } from "../src/lib/auth/quyen";
 
-const db = new PrismaClient({
-  adapter: new PrismaBetterSqlite3({ url: process.env.DATABASE_URL! }),
-});
+const db = taoPrismaClient();
 const GOC = "http://127.0.0.1:3000";
 /** Mã các mục menu, giữ khớp với src/lib/menu.ts. */
 const MENU_IDS = ["tong-quan","cong-trinh","chi-phi","ke-hoach","cong-nhan","nhap-du-lieu","kiem-tra-du-lieu","danh-muc"];

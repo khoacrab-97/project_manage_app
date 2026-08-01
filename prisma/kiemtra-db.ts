@@ -2,14 +2,11 @@
  * Đối chiếu dữ liệu trong cơ sở dữ liệu với ma trận OUTPUT_NAM gốc.
  * Chạy: npx tsx prisma/kiemtra-db.ts
  */
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { PrismaClient } from "@prisma/client";
 import "dotenv/config";
 import { taoBoDuLieu } from "../src/lib/data/seed/index";
+import { taoPrismaClient } from "../src/lib/prisma-client";
 
-const db = new PrismaClient({
-  adapter: new PrismaBetterSqlite3({ url: process.env.DATABASE_URL! }),
-});
+const db = taoPrismaClient();
 const f = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
 async function main() {

@@ -5,13 +5,10 @@
  * Script này kiểm tra ĐIỀU KIỆN DỮ LIỆU mà Server Action `suaMa` dựa vào, và
  * kiểm tra ghi/khôi phục thật xuống cơ sở dữ liệu.
  */
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { PrismaClient } from "@prisma/client";
 import "dotenv/config";
+import { taoPrismaClient } from "../src/lib/prisma-client";
 
-const db = new PrismaClient({
-  adapter: new PrismaBetterSqlite3({ url: process.env.DATABASE_URL! }),
-});
+const db = taoPrismaClient();
 
 async function main() {
   let loi = 0;

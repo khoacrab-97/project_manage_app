@@ -1,10 +1,7 @@
 // MÔ HÌNH DỮ LIỆU — bám §9 của PLAN_XAY_DUNG_APP.
 //
-// Chọn SQLite: quy mô thật là 31 công trình, ~9.100 giao dịch/năm, vài chục người
-// dùng, chạy trên một server nội bộ. SQLite thừa sức, lại không phải cài và bảo trì
-// thêm một dịch vụ; sao lưu bằng cách copy một file. Đổi sang Postgres sau chỉ là
-// đổi `provider` và migrate lại — schema dưới đây cố ý không dùng tính năng riêng
-// của Postgres (không scalar list, không native type) để giữ khả năng chuyển đổi.
+// Chọn Postgres để local và Railway cùng ghi vào một cơ sở dữ liệu trung tâm.
+// Schema vẫn tránh tính năng riêng khó thay thế để giữ khả năng triển khai linh hoạt.
 //
 // TIỀN DÙNG Float, KHÔNG dùng Decimal. Lý do: mọi số tiền là ĐỒNG NGUYÊN và dưới
 // 2^53 nên float64 biểu diễn chính xác tuyệt đối, tránh phải chuyển đổi Decimal ở
@@ -21,7 +18,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   // Prisma 7 không nhận `url` ở đây nữa — đường dẫn nằm trong prisma.config.ts.
 }
 
@@ -419,8 +416,7 @@ model User {
 }
 
 /// Phạm vi công trình được giao cho người dùng.
-/// Dùng bảng nối thay vì scalar list: SQLite không hỗ trợ String[], và bảng nối
-/// cho phép ràng buộc khóa ngoại + đánh chỉ mục.
+/// Dùng bảng nối thay vì scalar list để có ràng buộc khóa ngoại + đánh chỉ mục rõ ràng.
 /// Không có dòng nào = phạm vi do vai trò quyết định (xem src/lib/auth/quyen.ts).
 model UserProject {
   userId    String

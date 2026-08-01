@@ -5,20 +5,16 @@
  * liệu đã nghiệm thu ở Phase 1 (tổng khớp tuyệt đối ma trận OUTPUT_NAM).
  *
  * ⚠️ AN TOÀN: script chỉ chạy khi bảng Transaction còn RỖNG. Sau khi go-live, chạy
- * lại `prisma db seed` sẽ không đụng vào dữ liệu thật. Muốn nạp lại từ đầu phải xoá
- * file DB một cách có chủ ý.
+ * lại `prisma db seed` sẽ không đụng vào dữ liệu thật. Muốn nạp lại từ đầu phải
+ * reset database một cách có chủ ý.
  */
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { PrismaClient } from "@prisma/client";
 import "dotenv/config";
 import { taoBoDuLieu } from "../src/lib/data/seed/index";
+import { taoPrismaClient } from "../src/lib/prisma-client";
 
-const adapter = new PrismaBetterSqlite3({
-  url: process.env.DATABASE_URL ?? "file:./prisma/prmana.db",
-});
-const db = new PrismaClient({ adapter });
+const db = taoPrismaClient();
 
-/** Chia mảng thành từng khối — SQLite giới hạn số tham số mỗi câu lệnh. */
+/** Chia mảng thành từng khối để tránh tạo câu lệnh quá lớn. */
 function khoi<T>(ds: T[], co: number): T[][] {
   const kq: T[][] = [];
   for (let i = 0; i < ds.length; i += co) kq.push(ds.slice(i, i + co));

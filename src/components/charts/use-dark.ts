@@ -1,6 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+
+const TRUY_VAN_TOI = "(prefers-color-scheme: dark)";
+
+function dangKy(thayDoi: () => void) {
+  const mq = window.matchMedia(TRUY_VAN_TOI);
+  mq.addEventListener("change", thayDoi);
+  return () => mq.removeEventListener("change", thayDoi);
+}
+
+const anhChupClient = () => window.matchMedia(TRUY_VAN_TOI).matches;
+const anhChupServer = () => false;
 
 /**
  * Theo dõi chế độ tối của hệ điều hành.
@@ -8,15 +19,5 @@ import { useEffect, useState } from "react";
  * ở phía client. Lần render đầu trả false để server và client khớp nhau.
  */
 export function useDark(): boolean {
-  const [toi, setToi] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    setToi(mq.matches);
-    const doi = (e: MediaQueryListEvent) => setToi(e.matches);
-    mq.addEventListener("change", doi);
-    return () => mq.removeEventListener("change", doi);
-  }, []);
-
-  return toi;
+  return useSyncExternalStore(dangKy, anhChupClient, anhChupServer);
 }

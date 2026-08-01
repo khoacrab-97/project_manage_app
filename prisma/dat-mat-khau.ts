@@ -6,14 +6,11 @@
  *
  * Mật khẩu bắt buộc truyền vào, ít nhất 8 ký tự.
  */
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { PrismaClient } from "@prisma/client";
 import "dotenv/config";
 import { bamMatKhau } from "../src/lib/auth/mat-khau";
+import { taoPrismaClient } from "../src/lib/prisma-client";
 
-const db = new PrismaClient({
-  adapter: new PrismaBetterSqlite3({ url: process.env.DATABASE_URL! }),
-});
+const db = taoPrismaClient();
 
 async function main() {
   const email = process.argv[2]?.trim().toLowerCase();
@@ -42,7 +39,6 @@ async function main() {
   await db.session.deleteMany({ where: { userId: u.id } });
 
   console.log(`Da dat mat khau cho ${email} (vai tro ${u.vaiTro}).`);
-  console.log(`Mat khau: ${matKhau}`);
 }
 
 main().finally(() => db.$disconnect());

@@ -10,12 +10,9 @@
  * một kết quả (PRNG có hạt giống cố định) và tự xoá BOQ cũ của 4 công trình.
  */
 import "dotenv/config";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { PrismaClient } from "@prisma/client";
+import { taoPrismaClient } from "../src/lib/prisma-client";
 
-const db = new PrismaClient({
-  adapter: new PrismaBetterSqlite3({ url: process.env.DATABASE_URL ?? "file:./data/prmana.db" }),
-});
+const db = taoPrismaClient();
 
 const CONG_TRINH_DEMO = ["HL-00182", "HL-00240", "BGT-CXHTTQL50", "TSLA-SUKIEN"];
 

@@ -1,7 +1,7 @@
 /**
  * ★ RANH GIỚI DỮ LIỆU ★
  *
- * Toàn bộ UI chỉ đọc dữ liệu qua file này. Từ Phase 2, thân hàm truy vấn SQLite
+ * Toàn bộ UI chỉ đọc dữ liệu qua file này. Từ Phase 2, thân hàm truy vấn
  * qua Prisma; tên hàm và kiểu trả về giữ nguyên như bản prototype để các trang
  * không phải viết lại — chỉ thêm `await`.
  *
@@ -1306,4 +1306,3 @@ export async function chuoiEVM(
     return { thang: t, ev, ac: acLuy };
   });
 }
-

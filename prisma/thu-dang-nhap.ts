@@ -2,17 +2,14 @@
  * Chẩn đoán đăng nhập: kiểm tra đúng những gì Server Action làm.
  *   npx tsx prisma/thu-dang-nhap.ts <email> <matKhau>
  */
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { PrismaClient } from "@prisma/client";
 import "dotenv/config";
 import { kiemTraMatKhau } from "../src/lib/auth/mat-khau";
+import { taoPrismaClient } from "../src/lib/prisma-client";
 
-const db = new PrismaClient({
-  adapter: new PrismaBetterSqlite3({ url: process.env.DATABASE_URL! }),
-});
+const db = taoPrismaClient();
 
 async function main() {
-  console.log("  DATABASE_URL =", process.env.DATABASE_URL);
+  console.log("  DATABASE_URL da cau hinh:", process.env.DATABASE_URL ? "CO" : "KHONG");
 
   const email = (process.argv[2] ?? "").trim().toLowerCase();
   const matKhau = process.argv[3] ?? "";
@@ -33,7 +30,7 @@ async function main() {
 
   if (matKhau) {
     const dung = await kiemTraMatKhau(matKhau, u.matKhauHash);
-    console.log(`  Mat khau "${matKhau}" :`, dung ? "DUNG" : "SAI");
+    console.log("  Mat khau truyen vao  :", dung ? "DUNG" : "SAI");
   }
 }
 

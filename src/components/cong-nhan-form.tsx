@@ -27,7 +27,7 @@ import {
   xoaNgayLe,
 } from "@/app/cong-nhan/actions";
 // CHỈ import KIỂU — import giá trị runtime từ cong-nhan.ts sẽ kéo cả `db`
-// (better-sqlite3) vào bundle client và vỡ build. Nhãn buổi để cục bộ ở đây.
+// vào bundle client và vỡ build. Nhãn buổi để cục bộ ở đây.
 import type { Buoi, DongChamCongDA, ONgayTimeSheet } from "@/lib/data/cong-nhan";
 
 const NHAN_BUOI: Record<Buoi, string> = {
@@ -1454,7 +1454,7 @@ export function BangChamCongDA({
                       value={s.ctId}
                       disabled={ro}
                       onChange={(e) => suaO(k, { ctId: e.target.value })}
-                      className={`${O} max-w-[180px]`}
+                      className={`${O} max-w-45`}
                     >
                       <option value="">— Không làm —</option>
                       {congTrinhs.map((ct) => (
@@ -1803,7 +1803,7 @@ export function DanhSachDoiTab({
                   </Td>
                   <Td className="text-xs">{c.ngheNghiep || "—"}</Td>
                   <Td className="text-xs">{c.nguoiQuanLy || "—"}</Td>
-                  <Td className="max-w-[200px] truncate text-xs" title={c.ghiChu}>
+                  <Td className="max-w-50 truncate text-xs" title={c.ghiChu}>
                     {c.ghiChu || "—"}
                   </Td>
                 </tr>
