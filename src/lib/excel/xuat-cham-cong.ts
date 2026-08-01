@@ -350,7 +350,9 @@ function phanBoCong(wb: ExcelJS.Workbook, d: DuLieuXuatChamCong, tenSheet: strin
   duAn.forEach((ma, j) => {
     ws.mergeCells(4, base(j), 4, base(j) + 3);
     dat(4, base(j), ma);
-    conNhan.forEach((nhan, i) => dat(5, base(j) + i, nhan));
+    conNhan.forEach((nhan, i) => {
+      dat(5, base(j) + i, nhan);
+    });
   });
   const tongHopNhan: [number, string][] = [
     [cNP, "Nghỉ\nphép"],
@@ -509,7 +511,9 @@ function bangChamCong(
       ws.mergeCells(9, g.s, 9, g.e); // tên nhóm ở hàng 9
       for (let c = g.s; c <= g.e; c++) oĐĐ(ws.getCell(9, c));
       ws.getCell(9, g.s).value = g.ten;
-      g.con.forEach((t, i) => oĐĐ(ws.getCell(10, g.s + i), t));
+      g.con.forEach((t, i) => {
+        oĐĐ(ws.getCell(10, g.s + i), t);
+      });
     } else {
       ws.mergeCells(9, g.s, 10, g.s); // cột đơn gộp dọc 2 hàng
       oĐĐ(ws.getCell(9, g.s), g.ten);
@@ -554,7 +558,9 @@ function bangChamCong(
 
   // Bề rộng cột bám mẫu.
   const rong = [9.14, 22.4, 27, 17, 17, 24.2, 19.4, 22, 11.7, 11.7, 11.7, 11.7, 11.7, 11.7, 10.7, 12, 12.7, 10.7, 12.4, 39.8];
-  rong.forEach((w, i) => (ws.getColumn(i + 1).width = w));
+  rong.forEach((w, i) => {
+    ws.getColumn(i + 1).width = w;
+  });
   ws.getRow(10).height = 78.75; // dòng nhãn con nhiều dòng — cao như mẫu
   dungFontMau(ws);
   tenBangCo(ws, 4);
