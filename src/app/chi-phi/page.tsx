@@ -23,16 +23,18 @@ export default async function TrangCoCauChiPhi({
   const thang = thangs.includes(sp.thang ?? "") ? sp.thang : undefined;
 
   const loc = thang ? { thang } : {};
-  const nhom = await coCauChiPhiTheoNhom(loc);
-  const chiTiet = await coCauChiPhi(loc);
-  const tong = await tongQuanCongTy(thang);
-  const danhMuc = await layDanhMucMa();
-
   // So sánh với tháng liền trước để thấy mã nào tăng bất thường.
   const iThang = thang ? thangs.indexOf(thang) : -1;
   const thangTruoc = iThang > 0 ? thangs[iThang - 1] : undefined;
+  const [nhom, chiTiet, tong, danhMuc, chiTietTruoc] = await Promise.all([
+    coCauChiPhiTheoNhom(loc),
+    coCauChiPhi(loc),
+    tongQuanCongTy(thang),
+    layDanhMucMa(),
+    thangTruoc ? coCauChiPhi({ thang: thangTruoc }) : Promise.resolve([]),
+  ]);
   const truoc = new Map(
-    (thangTruoc ? await coCauChiPhi({ thang: thangTruoc }) : []).map((c) => [c.ma, c.soTien])
+    chiTietTruoc.map((c) => [c.ma, c.soTien])
   );
 
   const top8 = nhom.slice(0, 8);

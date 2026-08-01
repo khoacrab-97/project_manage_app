@@ -12,12 +12,15 @@ import {
 export const metadata = { title: "Kiểm tra dữ liệu" };
 
 export default async function TrangKiemTraDuLieu() {
-  const chiTieu = await chatLuongDuLieu();
-  const diem = await diemChatLuong();
-  const loi = await layLoiDuLieu();
-  const cho = await layGiaoDichChoXuLy();
+  const [chiTieu, diem, loi, cho, loNhap] = await Promise.all([
+    chatLuongDuLieu(),
+    diemChatLuong(),
+    layLoiDuLieu(),
+    layGiaoDichChoXuLy(),
+    layLoNhap(),
+  ]);
   const traGD = new Map(cho.map((g) => [g.importBatchId + "|" + (g.sttNguon + 2), g]));
-  const loLoi = (await layLoNhap()).filter((l) => l.trangThai === "ERROR");
+  const loLoi = loNhap.filter((l) => l.trangThai === "ERROR");
 
   const tongLoiNghiemTrong = chiTieu.filter((c) => c.nghiemTrong).reduce((a, c) => a + c.soLuong, 0);
 

@@ -46,10 +46,37 @@ export default async function TrangTongQuan({
   /** Xu hướng xem theo tháng hay gộp theo quý. Mặc định tháng. */
   const kyXem: "thang" | "quy" = sp.ky === "quy" ? "quy" : "thang";
 
-  const luyKe = await tongQuanCongTy();
-  const thang = await thangMoiNhat();
-  const chuoi = await chuoiTheoThang();
-  const chuoiQuy = await chuoiTheoQuy();
+  const [
+    luyKe,
+    thang,
+    chuoi,
+    chuoiQuy,
+    suckhoe,
+    canhBao,
+    coCau,
+    danhMuc,
+    nop,
+    diem,
+    evm,
+    chuoiEV,
+    topLoiNhuanDs,
+    topRuiRoDs,
+  ] = await Promise.all([
+    tongQuanCongTy(),
+    thangMoiNhat(),
+    chuoiTheoThang(),
+    chuoiTheoQuy(),
+    demSucKhoe(),
+    layCanhBao(),
+    coCauChiPhiTheoNhom(),
+    danhMucSucKhoe(),
+    tinhTrangNopDuLieu(),
+    diemChatLuong(),
+    chiSoEVM(),
+    chuoiEVM(),
+    topLoiNhuan(),
+    topRuiRo(),
+  ]);
 
   // Biểu đồ và bảng dùng chung một bộ dữ liệu; chỉ đổi khóa và cách gắn nhãn.
   const chuoiXem =
@@ -68,19 +95,10 @@ export default async function TrangTongQuan({
   const kyTruoc = chuoiXem.at(-2);
   const delta = (nay: number, truoc: number | undefined) =>
     truoc === undefined ? null : bienDong(nay, truoc);
-  const suckhoe = await demSucKhoe();
-  const canhBao = await layCanhBao();
-  const coCau = await coCauChiPhiTheoNhom();
-  const danhMuc = await danhMucSucKhoe();
-  const nop = await tinhTrangNopDuLieu();
-  const diem = await diemChatLuong();
-
   const canhBaoP0 = canhBao.filter((c) => c.mucDo === "P0");
   const khongDoanhThu = danhMuc.filter((d) => d.doanhThu === 0 && d.chiPhi > 0);
 
   // ---- EVM: chỉ gồm công trình đã nhập BOQ, vì EV cần % hoàn thành vật lý ----
-  const evm = await chiSoEVM();
-  const chuoiEV = await chuoiEVM();
   const evmBAC = evm.reduce((a, d) => a + d.bac, 0);
   const evmEV = evm.reduce((a, d) => a + d.ev, 0);
   const evmAC = evm.reduce((a, d) => a + d.ac, 0);
@@ -454,7 +472,7 @@ export default async function TrangTongQuan({
               </tr>
             </thead>
             <tbody>
-              {(await topLoiNhuan()).map((r) => (
+              {topLoiNhuanDs.map((r) => (
                 <tr key={r.congTrinh.id} className="hover:bg-nen">
                   <Td>
                     <Link
@@ -486,7 +504,7 @@ export default async function TrangTongQuan({
               </tr>
             </thead>
             <tbody>
-              {(await topRuiRo()).map((r) => (
+              {topRuiRoDs.map((r) => (
                 <tr key={r.congTrinh.id} className="hover:bg-nen">
                   <Td>
                     <Link

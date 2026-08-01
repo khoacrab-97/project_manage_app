@@ -26,10 +26,13 @@ import { FormThemCongTrinh, NutMoLaiTheoDoi, NutSuaCongTrinh } from "@/component
 export const metadata = { title: "Danh mục công trình" };
 
 export default async function TrangDanhMucCongTrinh() {
-  const ds = await danhMucSucKhoe();
-  const dem = await demSucKhoe();
+  const [ds, dem, nguoiDung] = await Promise.all([
+    danhMucSucKhoe(),
+    demSucKhoe(),
+    nguoiDungHienTai(),
+  ]);
   // Ẩn nút với vai trò không được phép. Chốt chặn thật nằm trong Server Action.
-  const duocSua = coQuyen(await nguoiDungHienTai(), "tao_cong_trinh");
+  const duocSua = coQuyen(nguoiDung, "tao_cong_trinh");
   // Công trình đã ngừng theo dõi — chỉ hiện cho người được sửa, để mở lại.
   const dsNgung = duocSua ? await layCongTrinhNgung() : [];
 

@@ -5,10 +5,10 @@ import { FormThemMa, NutSuaMa, NutXoaMa } from "@/components/sua-ma";
 export const metadata = { title: "Danh mục mã DT–CP" };
 
 export default async function TrangDanhMuc() {
-  const danhMuc = await layDanhMucMa();
+  const [danhMuc, giaoDich] = await Promise.all([layDanhMucMa(), layGiaoDich()]);
 
   const phatSinh = new Map<string, { soDong: number }>();
-  for (const g of await layGiaoDich()) {
+  for (const g of giaoDich) {
     if (!g.maDTCP) continue;
     const o = phatSinh.get(g.maDTCP) ?? { soDong: 0 };
     o.soDong++;
