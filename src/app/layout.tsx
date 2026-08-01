@@ -17,6 +17,8 @@ export const metadata: Metadata = {
     "Ứng dụng quản trị doanh thu, chi phí và hiệu quả thi công theo công trình, tháng, quý và năm.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Đường dẫn do middleware gắn vào header; layout không tự biết mình đang ở đâu.
   const duongDan = (await headers()).get("x-duong-dan") ?? "/";
