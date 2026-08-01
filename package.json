@@ -23,35 +23,41 @@
     "db:thu-dang-nhap": "tsx prisma/thu-dang-nhap.ts"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "^7.8.0",
-    "@prisma/client": "^7.8.0",
+    "@prisma/adapter-pg": "^7.9.1",
+    "@prisma/client": "^7.9.1",
     "@tanstack/react-table": "^8.21.3",
     "clsx": "^2.1.1",
     "exceljs": "^4.4.0",
-    "lucide-react": "^1.25.0",
-    "next": "16.2.10",
+    "lucide-react": "^1.28.0",
+    "next": "^16.2.12",
     "pg": "^8.22.0",
-    "prisma": "^7.8.0",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "recharts": "^3.9.2",
+    "prisma": "^7.9.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "recharts": "^3.10.1",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^26.1.2",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "dotenv": "^17.4.2",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.10",
-    "tailwindcss": "^4",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.2.12",
+    "tailwindcss": "^4.3.3",
     "tsx": "^4.23.1",
-    "typescript": "^5",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vitest": "^4.1.10"
   },
   "allowScripts": {
-    "@prisma/engines@7.8.0": true
+    "@prisma/engines@7.9.1": true
+  },
+  "overrides": {
+    "postcss": "^8.5.25",
+    "sharp": "^0.35.3",
+    "uuid": "11.1.1"
   }
 }
