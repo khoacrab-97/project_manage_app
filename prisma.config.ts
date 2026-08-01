@@ -11,7 +11,7 @@ import { defineConfig } from "prisma/config";
 // `prisma generate` chạy trong postinstall/build và không cần kết nối DB thật.
 // Runtime vẫn chặn thiếu DATABASE_URL trong src/lib/prisma-client.ts.
 const datasourceUrl =
-  process.env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5432/prmana";
+  process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/prmana";
 
 export default defineConfig({
   schema: path.join("prisma", "schema.prisma"),

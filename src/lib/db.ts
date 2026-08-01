@@ -9,8 +9,22 @@
  */
 import { taoPrismaClient } from "@/lib/prisma-client";
 
-const g = globalThis as unknown as { _prisma?: ReturnType<typeof taoPrismaClient> };
+type PrismaDb = ReturnType<typeof taoPrismaClient>;
 
-export const db = g._prisma ?? taoPrismaClient();
+const g = globalThis as unknown as { _prisma?: PrismaDb };
+let client: PrismaDb | undefined;
 
-if (process.env.NODE_ENV !== "production") g._prisma = db;
+function layClient() {
+  if (!client) {
+    client = process.env.NODE_ENV !== "production" ? (g._prisma ?? taoPrismaClient()) : taoPrismaClient();
+    if (process.env.NODE_ENV !== "production") g._prisma = client;
+  }
+  return client;
+}
+
+export const db = new Proxy({} as PrismaDb, {
+  get(_target, prop) {
+    const value = Reflect.get(layClient(), prop);
+    return typeof value === "function" ? value.bind(layClient()) : value;
+  },
+});

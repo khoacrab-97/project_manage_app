@@ -16,6 +16,10 @@ DATABASE_URL=${{Postgres.DATABASE_URL}}
 ADMIN_EMAIL=<email-admin>
 ```
 
+`DATABASE_URL` phải nằm ở service app, không chỉ ở service Postgres: Dockerfile
+nhận biến này trong build stage để `next build` chạy được, và runtime cũng dùng
+cùng biến đó để truy vấn DB.
+
 Không cần nữa:
 
 ```text
