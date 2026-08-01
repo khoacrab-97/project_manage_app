@@ -40,11 +40,9 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "better-sqlite3": "^13.0.2",
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
@@ -54,7 +52,6 @@
     "vitest": "^4.1.10"
   },
   "allowScripts": {
-    "@prisma/engines@7.8.0": true,
-    "better-sqlite3@13.0.2": true
+    "@prisma/engines@7.8.0": true
   }
 }
