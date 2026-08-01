@@ -443,7 +443,7 @@ export default async function TrangTongQuan({
             <tbody>
               {duLieuCoCau.map((c) => (
                 <tr key={c.ma} className="hover:bg-nen">
-                  <Td className="max-w-[160px] truncate text-xs" title={c.ten}>
+                  <Td className="max-w-40 truncate text-xs" title={c.ten}>
                     {c.ten}
                   </Td>
                   <Td phai className="text-xs">
@@ -556,7 +556,7 @@ export default async function TrangTongQuan({
                     {d.congTrinh.maCongTrinh}
                   </Link>
                 </Td>
-                <Td className="max-w-[280px] truncate text-xs" title={d.congTrinh.tenCongTrinh}>
+                <Td className="max-w-70 truncate text-xs" title={d.congTrinh.tenCongTrinh}>
                   {d.congTrinh.tenCongTrinh}
                 </Td>
                 <Td phai>{tien(d.cpKeHoach)}</Td>

@@ -138,11 +138,11 @@ export default async function TrangKiemTraDuLieu() {
                       <Nhan bienThe={l.mucDo === "Error" ? "do" : "vang"}>{l.mucDo}</Nhan>
                     </Td>
                     <Td className="font-mono text-[11px]">{l.maLoi}</Td>
-                    <Td className="max-w-[300px] text-xs">{l.thongDiep}</Td>
+                    <Td className="max-w-75 text-xs">{l.thongDiep}</Td>
                     <Td phai className="text-xs">
                       {gd ? tien(gd.soTien) : "—"}
                     </Td>
-                    <Td className="max-w-[240px] text-xs text-chunhat">{l.cachXuLy}</Td>
+                    <Td className="max-w-60 text-xs text-chunhat">{l.cachXuLy}</Td>
                   </tr>
                 );
               })}
