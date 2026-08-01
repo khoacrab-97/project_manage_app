@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { kiemTraMatKhau } from "@/lib/auth/mat-khau";
 import { donPhienHetHan, nguoiDungHienTai, taoPhien } from "@/lib/auth/phien";
+import { NutDangNhap } from "@/components/nut-dang-nhap";
 
 export const metadata = { title: "Đăng nhập" };
 
@@ -78,12 +79,7 @@ export default async function TrangDangNhap({
           </p>
         ) : null}
 
-        <button
-          type="submit"
-          className="mt-4 w-full rounded-lg bg-nhan py-2 text-sm font-medium text-white"
-        >
-          Đăng nhập
-        </button>
+        <NutDangNhap />
       </form>
 
       <p className="mt-4 text-center text-xs leading-relaxed text-chunhat">

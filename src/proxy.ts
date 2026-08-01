@@ -1,19 +1,19 @@
 /**
  * Chặn sớm khi KHÔNG CÓ cookie phiên, và báo đường dẫn hiện tại xuống layout.
  *
- * Middleware chạy trên edge runtime nên không truy vấn được cơ sở dữ liệu, tức là
+ * Proxy không truy vấn cơ sở dữ liệu, tức là
  * KHÔNG kiểm tra được cookie còn hiệu lực hay không. Vì vậy nó chỉ là lớp chặn thứ
  * nhất; lớp bắt buộc thật nằm ở `src/app/layout.tsx` — nơi gọi `nguoiDungHienTai()`
  * để đối chiếu token với cơ sở dữ liệu.
  *
- * Layout không tự biết đường dẫn, nên middleware gắn vào header `x-duong-dan` để
+ * Layout không tự biết đường dẫn, nên proxy gắn vào header `x-duong-dan` để
  * layout biết có đang ở trang đăng nhập hay không mà miễn trừ.
  */
 import { NextResponse, type NextRequest } from "next/server";
 
 const CONG_KHAI = ["/dang-nhap"];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   const header = new Headers(request.headers);
