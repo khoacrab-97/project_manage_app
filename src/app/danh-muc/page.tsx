@@ -1,19 +1,11 @@
 import { Bang, DauTrang, GhiChuNguon, Nhan, Td, The, TheDau, Th } from "@/components/ui";
-import { layDanhMucMa, layGiaoDich } from "@/lib/data/repository";
+import { demGiaoDichTheoMa, layDanhMucMa } from "@/lib/data/repository";
 import { FormThemMa, NutSuaMa, NutXoaMa } from "@/components/sua-ma";
 
 export const metadata = { title: "Danh mục mã DT–CP" };
 
 export default async function TrangDanhMuc() {
-  const [danhMuc, giaoDich] = await Promise.all([layDanhMucMa(), layGiaoDich()]);
-
-  const phatSinh = new Map<string, { soDong: number }>();
-  for (const g of giaoDich) {
-    if (!g.maDTCP) continue;
-    const o = phatSinh.get(g.maDTCP) ?? { soDong: 0 };
-    o.soDong++;
-    phatSinh.set(g.maDTCP, o);
-  }
+  const [danhMuc, phatSinh] = await Promise.all([layDanhMucMa(), demGiaoDichTheoMa()]);
 
   // Số mã con của từng mã nhóm — nút xoá phải biết để chặn xoá nhóm còn con.
   const soCon = new Map<string, number>();
@@ -91,14 +83,14 @@ export default async function TrangDanhMuc() {
           </thead>
           <tbody>
             {hang.map(({ ma, con }) => {
-              const ps = phatSinh.get(ma.ma);
+              const soDong = phatSinh.get(ma.ma) ?? 0;
               return (
                 <tr key={ma.ma} className={con ? "hover:bg-nen" : "bg-nen/60 hover:bg-nen"}>
                   {/* Cây bút trên, thùng rác dưới — xếp dọc để cột thao tác chỉ rộng một biểu tượng. */}
                   <Td className="px-2">
                     <div className="flex flex-col items-center gap-0.5">
-                      <NutSuaMa ma={ma} soGiaoDich={ps?.soDong ?? 0} />
-                      <NutXoaMa ma={ma} soGiaoDich={ps?.soDong ?? 0} soCon={soCon.get(ma.ma) ?? 0} />
+                      <NutSuaMa ma={ma} soGiaoDich={soDong} />
+                      <NutXoaMa ma={ma} soGiaoDich={soDong} soCon={soCon.get(ma.ma) ?? 0} />
                     </div>
                   </Td>
                   <Td className={`font-mono text-xs ${con ? "pl-8" : "font-semibold"}`}>{ma.ma}</Td>
@@ -115,7 +107,7 @@ export default async function TrangDanhMuc() {
                     )}
                   </Td>
                   <Td phai className="text-xs">
-                    {ps ? ps.soDong.toLocaleString("vi-VN") : <span className="text-chunhat">0</span>}
+                    {soDong > 0 ? soDong.toLocaleString("vi-VN") : <span className="text-chunhat">0</span>}
                   </Td>
                 </tr>
               );

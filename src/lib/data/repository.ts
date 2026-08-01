@@ -374,6 +374,15 @@ export async function layGiaoDich(loc: BoLocGiaoDich = {}): Promise<GiaoDich[]> 
   }));
 }
 
+export async function demGiaoDichTheoMa(loc: BoLocGiaoDich = {}): Promise<Map<string, number>> {
+  const rows = await db.transaction.groupBy({
+    by: ["maDTCP"],
+    _count: { _all: true },
+    where: await dieuKien(loc),
+  });
+  return new Map(rows.map((r) => [r.maDTCP, r._count._all]));
+}
+
 export async function layGiaoDichChoXuLy(): Promise<GiaoDich[]> {
   const pv = await phamViHienTai();
   const ds = await db.transactionStaging.findMany({
