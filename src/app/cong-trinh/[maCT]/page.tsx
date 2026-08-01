@@ -483,6 +483,17 @@ async function BOQTab({
         </div>
       ) : null}
 
+      {/* BOQ dạng BẢNG TÍNH (chỉ xem) — luôn hiện khi có BOQ, kể cả chưa có kỳ Bill. */}
+      <The className="mt-3">
+        <TheDau
+          tieuDe="Bảng khối lượng BOQ"
+          moTa={`${dongs.length} công tác · dạng bảng tính, chỉ xem`}
+        />
+        <div className="p-3">
+          <SpreadsheetBOQ dongs={dongs} tong={ttHopDong} />
+        </div>
+      </The>
+
       {ky ? (
         <>
           <The className="mt-3">
@@ -644,6 +655,75 @@ async function BOQTab({
   );
 }
 
+
+/**
+ * BOQ dạng bảng tính CHỈ XEM: viền ô kiểu Excel, header dính khi cuộn dọc, cuộn
+ * ngang nếu tràn, dòng TỔNG dính đáy. Cột hợp đồng: STT · Nội dung · ĐVT · Khối
+ * lượng · Đơn giá · Thành tiền. Sửa BOQ vẫn qua các nút/ô ở phần dưới, không ở đây.
+ */
+function SpreadsheetBOQ({
+  dongs,
+  tong,
+}: {
+  dongs: {
+    id: string;
+    stt: string;
+    noiDung: string;
+    dvt: string;
+    klHopDong: number;
+    donGia: number;
+    ttHopDong: number;
+    hoanThanh: boolean;
+  }[];
+  tong: number;
+}) {
+  const oS = "border border-vien px-2 py-1 text-xs whitespace-nowrap";
+  const oT =
+    "border border-vien bg-nen px-2 py-1.5 text-xs font-semibold whitespace-nowrap";
+  return (
+    <div className="max-h-[65vh] overflow-auto rounded-lg border border-vien">
+      <table className="min-w-full border-collapse">
+        <thead className="sticky top-0 z-10">
+          <tr>
+            <th className={`${oT} text-left`}>STT</th>
+            <th className={`${oT} text-left`}>Nội dung hạng mục</th>
+            <th className={`${oT} text-left`}>ĐVT</th>
+            <th className={`${oT} text-right`}>Khối lượng</th>
+            <th className={`${oT} text-right`}>Đơn giá</th>
+            <th className={`${oT} text-right`}>Thành tiền</th>
+          </tr>
+        </thead>
+        <tbody>
+          {dongs.map((d) => (
+            <tr key={d.id} className="hover:bg-nen/50">
+              <td className={`${oS} font-mono`}>
+                {d.stt}
+                {d.hoanThanh ? (
+                  <span className="ml-1 text-emerald-600 dark:text-emerald-400" title="Đã thi công xong">
+                    ✓
+                  </span>
+                ) : null}
+              </td>
+              <td className="border border-vien px-2 py-1 text-xs" style={{ minWidth: 280 }}>
+                {d.noiDung}
+              </td>
+              <td className={oS}>{d.dvt}</td>
+              <td className={`${oS} text-right font-mono`}>{khoiLuong(d.klHopDong)}</td>
+              <td className={`${oS} text-right font-mono`}>{tien(d.donGia)}</td>
+              <td className={`${oS} text-right font-mono`}>{tien(d.ttHopDong)}</td>
+            </tr>
+          ))}
+          <tr className="sticky bottom-0">
+            <td className={`${oT} text-right`} colSpan={5}>
+              TỔNG
+            </td>
+            <td className={`${oT} text-right font-mono`}>{tien(tong)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------- Doanh thu
 async function DoanhThu({
