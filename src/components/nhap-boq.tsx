@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { Check, Pencil, Plus, ShieldCheck, X } from "lucide-react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { Check, Download, Pencil, Plus, ShieldCheck, Trash2, Upload, X } from "lucide-react";
 import {
+  docFileBOQ,
   luuKhoiLuong,
   themBillThang,
   themNhieuDongBOQ,
@@ -436,6 +437,218 @@ export function LuoiNhapBOQ({
           </div>
           <ThongBao kq={kq} />
         </form>
+      </div>
+    </div>
+  );
+}
+
+interface ODongBOQ {
+  stt: string;
+  noiDung: string;
+  dvt: string;
+  khoiLuong: string;
+  donGia: string;
+}
+
+/**
+ * Import BOQ từ file Excel: tải file mẫu → điền → upload → app đọc → **review sửa
+ * được** → xác nhận & lưu (NỐI vào cuối BOQ theo thứ tự import).
+ *
+ * Hai bước trong một hộp nổi: chưa đọc file thì hiện ô chọn file; đọc xong chuyển
+ * sang lưới review controlled, sửa/xoá dòng thoải mái rồi bấm lưu.
+ */
+export function ImportBOQ({ maCongTrinh }: { maCongTrinh: string }) {
+  const [mo, setMo] = useState(false);
+  const [dongs, setDongs] = useState<ODongBOQ[] | null>(null);
+  const [kqDoc, setKqDoc] = useState<KetQuaBOQ | null>(null);
+  const [kqLuu, setKqLuu] = useState<KetQuaBOQ | null>(null);
+  const [dangDoc, batDauDoc] = useTransition();
+  const [dangLuu, batDauLuu] = useTransition();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!mo) return;
+    const f = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMo(false);
+    };
+    window.addEventListener("keydown", f);
+    return () => window.removeEventListener("keydown", f);
+  }, [mo]);
+
+  const dong = () => {
+    setMo(false);
+    setDongs(null);
+    setKqDoc(null);
+    setKqLuu(null);
+  };
+
+  const doc = () => {
+    const file = fileRef.current?.files?.[0];
+    if (!file) {
+      setKqDoc({ ok: false, thongDiep: "Chưa chọn file." });
+      return;
+    }
+    const fd = new FormData();
+    fd.append("maCongTrinh", maCongTrinh);
+    fd.append("file", file);
+    batDauDoc(async () => {
+      const r = await docFileBOQ(fd);
+      setKqDoc({ ok: r.ok, thongDiep: r.thongDiep });
+      if (r.ok) setDongs(r.dongs);
+    });
+  };
+
+  const luu = () => {
+    if (!dongs) return;
+    const fd = new FormData();
+    fd.append("maCongTrinh", maCongTrinh);
+    for (const d of dongs) {
+      fd.append("stt", d.stt);
+      fd.append("noiDung", d.noiDung);
+      fd.append("dvt", d.dvt);
+      fd.append("khoiLuong", d.khoiLuong);
+      fd.append("donGia", d.donGia);
+    }
+    batDauLuu(async () => {
+      const r = await themNhieuDongBOQ(fd);
+      setKqLuu(r);
+      if (r.ok) setTimeout(dong, 1000);
+    });
+  };
+
+  const suaO = (i: number, k: keyof ODongBOQ, v: string) =>
+    setDongs((s) => s!.map((d, j) => (j === i ? { ...d, [k]: v } : d)));
+  const xoaDong = (i: number) => setDongs((s) => s!.filter((_, j) => j !== i));
+  const themDong = () =>
+    setDongs((s) => [...(s ?? []), { stt: "", noiDung: "", dvt: "", khoiLuong: "", donGia: "" }]);
+
+  if (!mo) {
+    return (
+      <button
+        type="button"
+        onClick={() => setMo(true)}
+        className="inline-flex items-center gap-1 rounded-md border border-vien px-2.5 py-1 text-xs font-medium hover:bg-nen"
+      >
+        <Upload className="size-3.5" /> Import từ Excel
+      </button>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
+      <div className="my-6 w-full max-w-4xl rounded-xl border border-vien bg-the shadow-xl">
+        <div className="flex items-center justify-between border-b border-vien px-4 py-3">
+          <div>
+            <h2 className="text-sm font-semibold">Import BOQ từ Excel</h2>
+            <p className="mt-0.5 text-xs text-chunhat">
+              Tải file mẫu, điền BOQ, rồi upload để app đọc. Kiểm tra và sửa ở bước xem trước trước
+              khi lưu. Dữ liệu import được <strong>nối vào cuối</strong> BOQ hiện có.
+            </p>
+          </div>
+          <button type="button" onClick={dong} className="rounded-md border border-vien p-1.5" title="Đóng (Esc)">
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {dongs === null ? (
+          // --- Bước 1: chọn file ---
+          <div className="p-4">
+            <a
+              href="/api/mau-boq"
+              className="mb-3 inline-flex items-center gap-1.5 rounded-md border border-vien px-2.5 py-1 text-xs font-medium hover:bg-nen"
+            >
+              <Download className="size-3.5" /> Tải file mẫu
+            </a>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".xlsx"
+                className="text-xs file:mr-2 file:rounded-md file:border file:border-vien file:bg-the file:px-2 file:py-1 file:text-xs"
+              />
+              <button
+                type="button"
+                onClick={doc}
+                disabled={dangDoc}
+                className="inline-flex items-center gap-1 rounded-md bg-nhan px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+              >
+                <Upload className="size-3.5" /> {dangDoc ? "Đang đọc…" : "Đọc file"}
+              </button>
+            </div>
+            {kqDoc && !kqDoc.ok ? (
+              <p className="mt-2 text-xs text-rose-600 dark:text-rose-400">{kqDoc.thongDiep}</p>
+            ) : null}
+          </div>
+        ) : (
+          // --- Bước 2: review sửa được ---
+          <div>
+            <p className="border-b border-vien bg-nhannhat px-4 py-2 text-xs">
+              Đã đọc <strong>{dongs.length}</strong> dòng. Sửa trực tiếp bên dưới; dòng <span className="rounded bg-rose-100 px-1 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">thiếu STT hoặc nội dung</span> sẽ bị bỏ khi lưu.
+            </p>
+            <div className="max-h-[55vh] overflow-y-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead className="sticky top-0 bg-the">
+                  <tr>
+                    <th className="border-b border-vien px-2 py-1.5 text-left text-xs font-semibold text-chunhat">STT</th>
+                    <th className="border-b border-vien px-2 py-1.5 text-left text-xs font-semibold text-chunhat">Nội dung hạng mục</th>
+                    <th className="border-b border-vien px-2 py-1.5 text-left text-xs font-semibold text-chunhat">ĐVT</th>
+                    <th className="border-b border-vien px-2 py-1.5 text-right text-xs font-semibold text-chunhat">Khối lượng</th>
+                    <th className="border-b border-vien px-2 py-1.5 text-right text-xs font-semibold text-chunhat">Đơn giá</th>
+                    <th className="border-b border-vien px-2 py-1.5" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {dongs.map((d, i) => {
+                    const loi = !d.stt.trim() || !d.noiDung.trim();
+                    return (
+                      <tr key={i} className={loi ? "bg-rose-50 dark:bg-rose-950/20" : ""}>
+                        <td className="border-b border-vien px-1 py-1">
+                          <input value={d.stt} onChange={(e) => suaO(i, "stt", e.target.value)} className={`${O} w-16 font-mono`} />
+                        </td>
+                        <td className="border-b border-vien px-1 py-1">
+                          <input value={d.noiDung} onChange={(e) => suaO(i, "noiDung", e.target.value)} className={`${O} w-full min-w-[220px]`} />
+                        </td>
+                        <td className="border-b border-vien px-1 py-1">
+                          <input value={d.dvt} onChange={(e) => suaO(i, "dvt", e.target.value)} className={`${O} w-20`} />
+                        </td>
+                        <td className="border-b border-vien px-1 py-1">
+                          <input value={d.khoiLuong} onChange={(e) => suaO(i, "khoiLuong", e.target.value)} inputMode="decimal" className={`${O} w-24 text-right`} />
+                        </td>
+                        <td className="border-b border-vien px-1 py-1">
+                          <input value={d.donGia} onChange={(e) => suaO(i, "donGia", e.target.value)} inputMode="decimal" className={`${O} w-28 text-right`} />
+                        </td>
+                        <td className="border-b border-vien px-1 py-1 text-center">
+                          <button type="button" onClick={() => xoaDong(i)} title="Xoá dòng" className="rounded p-1 text-rose-600 hover:bg-nen dark:text-rose-400">
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 border-t border-vien px-4 py-3">
+              <button type="button" onClick={themDong} className="inline-flex items-center gap-1 rounded-md border border-vien px-2.5 py-1 text-xs">
+                <Plus className="size-3" /> Thêm dòng
+              </button>
+              <button
+                type="button"
+                onClick={luu}
+                disabled={dangLuu}
+                className="inline-flex items-center gap-1 rounded-md bg-nhan px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+              >
+                <Check className="size-3.5" /> {dangLuu ? "Đang lưu…" : `Xác nhận & Lưu ${dongs.length} dòng`}
+              </button>
+              <button type="button" onClick={() => { setDongs(null); setKqDoc(null); }} className="rounded-md border border-vien px-2.5 py-1 text-xs">
+                ← Chọn file khác
+              </button>
+              {kqLuu ? (
+                <span className={`text-xs ${kqLuu.ok ? "text-emerald-600" : "text-rose-600"}`}>{kqLuu.thongDiep}</span>
+              ) : null}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

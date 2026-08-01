@@ -40,7 +40,7 @@ import { loaiCua, traMa } from "@/lib/data/repository";
 import { nguoiDungHienTai } from "@/lib/auth/phien";
 import { coQuyen } from "@/lib/auth/quyen";
 import { NGAY_HIEN_TAI } from "@/lib/thresholds";
-import { BoxNhapBOQ, LuoiNhapBOQ, NutThemBill, NutXacNhan } from "@/components/nhap-boq";
+import { BoxNhapBOQ, ImportBOQ, LuoiNhapBOQ, NutThemBill, NutXacNhan } from "@/components/nhap-boq";
 import { NutThemCot, NutThemDong, ONhapCot, TieuDeCot } from "@/components/cot-boq";
 
 /**
@@ -403,7 +403,10 @@ async function BOQTab({
             tháng.
           </p>
           {duocNhap ? (
-            <LuoiNhapBOQ maCongTrinh={maCongTrinh} nhan="Tạo BOQ — nhập bảng khối lượng" noiBat />
+            <div className="flex flex-wrap items-center gap-2">
+              <LuoiNhapBOQ maCongTrinh={maCongTrinh} nhan="Tạo BOQ — nhập bảng khối lượng" noiBat />
+              <ImportBOQ maCongTrinh={maCongTrinh} />
+            </div>
           ) : null}
         </div>
       </The>
@@ -475,6 +478,7 @@ async function BOQTab({
             dongs={dongs.map((d) => ({ id: d.id, stt: d.stt, noiDung: d.noiDung }))}
           />
           <LuoiNhapBOQ maCongTrinh={maCongTrinh} />
+          <ImportBOQ maCongTrinh={maCongTrinh} />
           <NutThemCot maCongTrinh={maCongTrinh} />
         </div>
       ) : null}

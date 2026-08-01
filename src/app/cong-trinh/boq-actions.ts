@@ -20,10 +20,17 @@ import { db } from "@/lib/db";
 import { nguoiDungHienTai } from "@/lib/auth/phien";
 import { batBuocQuyen, coQuyen } from "@/lib/auth/quyen";
 import { layCongTrinh } from "@/lib/data/repository";
+import { docBOQTuExcel, type DongBOQDoc } from "@/lib/excel/parse-boq";
 
 export interface KetQuaBOQ {
   ok: boolean;
   thongDiep: string;
+}
+
+export interface KetQuaDocFileBOQ {
+  ok: boolean;
+  thongDiep: string;
+  dongs: DongBOQDoc[];
 }
 
 /** Tháng hợp lệ dạng yyyy-MM. */
@@ -385,6 +392,29 @@ export async function themNhieuDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
       ? `Đã thêm ${them} dòng BOQ. Bỏ qua: ${loi.join("; ")}.`
       : `Đã thêm ${them} dòng BOQ.`,
   };
+}
+
+/**
+ * Đọc file BOQ Excel người dùng tải lên và trả về các dòng ĐÃ NHẬN DIỆN để đưa
+ * vào bước review — CHƯA lưu gì. Người dùng sửa trên màn review rồi mới bấm lưu
+ * (dùng `themNhieuDongBOQ`). Kiểm quyền + công trình trước khi cho đọc.
+ */
+export async function docFileBOQ(formData: FormData): Promise<KetQuaDocFileBOQ> {
+  batBuocQuyen(await nguoiDungHienTai(), "nhap_boq");
+
+  const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
+  const kq = await congTrinhChoGhi(maCongTrinh);
+  if ("loi" in kq) return { ok: false, thongDiep: kq.loi, dongs: [] };
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, thongDiep: "Chưa chọn file Excel.", dongs: [] };
+  }
+
+  const buf = await file.arrayBuffer();
+  const doc = await docBOQTuExcel(buf);
+  if (doc.loi) return { ok: false, thongDiep: doc.loi, dongs: [] };
+  return { ok: true, thongDiep: `Đã đọc ${doc.dongs.length} dòng từ file.`, dongs: doc.dongs };
 }
 
 export async function xacNhanBill(formData: FormData): Promise<KetQuaBOQ> {
