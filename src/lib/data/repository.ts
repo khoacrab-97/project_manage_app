@@ -99,9 +99,12 @@ export const layDanhMucTheoCay = cache(
   }
 );
 
-export const layCongTrinh = cache(async (): Promise<CongTrinh[]> => {
+/** Đọc công trình đang hoạt động theo điều kiện `where` cho sẵn rồi ánh xạ. */
+async function dsCongTrinhTheoWhere(
+  them: Record<string, unknown>
+): Promise<CongTrinh[]> {
   const ds = await db.project.findMany({
-    where: { isActive: true, ...(await locProject()) },
+    where: { isActive: true, ...them },
     orderBy: { maCongTrinh: "asc" },
   });
   return ds.map((p) => ({
@@ -122,7 +125,20 @@ export const layCongTrinh = cache(async (): Promise<CongTrinh[]> => {
     giaTriHopDong: p.giaTriHopDong,
     googleSheetUrl: p.googleSheetUrl ?? "",
   }));
-});
+}
+
+export const layCongTrinh = cache(async (): Promise<CongTrinh[]> =>
+  dsCongTrinhTheoWhere(await locProject())
+);
+
+/**
+ * TẤT CẢ công trình đang hoạt động, KHÔNG lọc phạm vi. Chỉ dùng cho danh mục
+ * công trình — nơi user thấy được cả công trình ngoài phạm vi nhưng không bấm vào
+ * chi tiết được (chặn ở trang chi tiết qua `timCongTrinh`). Đừng dùng cho báo cáo.
+ */
+export const layCongTrinhTatCa = cache(async (): Promise<CongTrinh[]> =>
+  dsCongTrinhTheoWhere({})
+);
 
 /** Công trình đã NGỪNG theo dõi (isActive=false) — cho mục "Mở lại theo dõi". */
 export async function layCongTrinhNgung(): Promise<
@@ -696,9 +712,9 @@ export interface DongDanhMuc extends KetQuaSucKhoe {
   boqHopDong: number | null;
 }
 
-export const danhMucSucKhoe = cache(async (): Promise<DongDanhMuc[]> => {
+export const danhMucSucKhoe = cache(async (tatCa = false): Promise<DongDanhMuc[]> => {
   const [congTrinh, loai, keHoach, { idSangMa }] = await Promise.all([
-    layCongTrinh(),
+    tatCa ? layCongTrinhTatCa() : layCongTrinh(),
     banDoLoai(),
     keHoachTatCa(),
     banDoCongTrinh(),
@@ -708,7 +724,7 @@ export const danhMucSucKhoe = cache(async (): Promise<DongDanhMuc[]> => {
   const rows = await db.transaction.groupBy({
     by: ["projectId", "maDTCP"],
     _sum: { soTien: true },
-    where: await locTheoProjectId(),
+    where: tatCa ? {} : await locTheoProjectId(),
   });
   const { duAnCoBOQ, theoThang: billBOQ } = await billTuBOQ();
   const thucHien = new Map<string, { dt: number; cp: number }>();
@@ -732,7 +748,7 @@ export const danhMucSucKhoe = cache(async (): Promise<DongDanhMuc[]> => {
     thucHien.set(ma, o);
   }
 
-  const pvLoi = await phamViHienTai();
+  const pvLoi = tatCa ? null : await phamViHienTai();
   const loiRows = await db.transactionStaging.groupBy({
     by: ["maCongTrinh"],
     _count: { _all: true },

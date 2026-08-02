@@ -65,9 +65,19 @@ export async function luuCongNhan(formData: FormData): Promise<KetQuaCN> {
   }
 
   const duLieu = { maCN, hoTen, doi, doiDAId, ngheNghiep, nguoiQuanLy, ghiChu };
+  // Tích "Áp dụng cho tất cả trong đội": gán cùng người quản lý cho mọi công nhân
+  // cùng đội — Đội thi công (NOI_THANH) hoặc đúng một Đội DA (theo doiDAId).
+  const apDungTatCaDoi = formData.get("apDungTatCaDoi") === "on";
 
   if (id) {
     await db.congNhan.update({ where: { id }, data: duLieu });
+    // Chỉ lan khi có tên quản lý, tránh vô tình xoá trắng người quản lý cả đội.
+    if (apDungTatCaDoi && nguoiQuanLy) {
+      await db.congNhan.updateMany({
+        where: doi === "NGOAI_THANH" ? { doi: "NGOAI_THANH", doiDAId } : { doi: "NOI_THANH" },
+        data: { nguoiQuanLy },
+      });
+    }
   } else {
     await db.congNhan.create({ data: duLieu });
   }
