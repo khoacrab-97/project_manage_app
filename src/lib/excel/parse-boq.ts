@@ -14,7 +14,8 @@ export interface DongBOQDoc {
   stt: string;
   noiDung: string;
   dvt: string;
-  /** Giữ dạng chuỗi để đổ vào ô nhập ở màn review; app parse lại khi lưu. */
+  /** GIÁ TRỊ THÔ đúng như trong file — bước review (transform data) tự đọc số theo
+   * kiểu cột người dùng chọn, không chuẩn hoá sẵn ở đây (tránh đoán sai dấu số). */
   khoiLuong: string;
   donGia: string;
 }
@@ -40,20 +41,10 @@ function oGiaTri(cell: ExcelJS.Cell): unknown {
   return v !== null && typeof v === "object" && "result" in v ? (v as { result: unknown }).result : v;
 }
 
-/**
- * "1.234.567" hoặc "1234567,5" -> chuỗi số theo QUY ƯỚC VIỆT của app (phần thập
- * phân dùng DẤU PHẨY, không có dấu phân nhóm). Phải khớp cách `so()` ở boq-actions
- * đọc lại khi lưu — nó bỏ mọi dấu chấm và đổi phẩy thành chấm; nếu trả "35.5"
- * (chấm thập phân) thì bị hiểu nhầm thành 355. Ô rỗng/không phải số trả nguyên văn.
- */
-function soChuoi(v: unknown): string {
-  const raw = v === null || v === undefined ? "" : typeof v === "number" ? String(v) : String(v).trim();
-  if (raw === "") return "";
-  const s = raw.replace(/[\s.]/g, "").replace(",", ".");
-  const n = Number(s);
-  if (!Number.isFinite(n)) return typeof v === "string" ? v.trim() : "";
-  // Số nguyên giữ nguyên; số lẻ đổi dấu chấm thập phân của JS sang dấu phẩy.
-  return String(n).replace(".", ",");
+/** Giá trị ô về chuỗi THÔ (không chuẩn hoá số) — giữ đúng như file để review transform. */
+function oChuoi(cell: ExcelJS.Cell): string {
+  const v = oGiaTri(cell);
+  return v === null || v === undefined ? "" : String(v).trim();
 }
 
 export async function docBOQTuExcel(buffer: ArrayBuffer): Promise<KetQuaDocBOQ> {
@@ -105,11 +96,11 @@ export async function docBOQTuExcel(buffer: ArrayBuffer): Promise<KetQuaDocBOQ> 
   const dongs: DongBOQDoc[] = [];
   for (let r = dongTieuDe + 1; r <= ws.rowCount; r++) {
     const row = ws.getRow(r);
-    const stt = cStt ? String(oGiaTri(row.getCell(cStt)) ?? "").trim() : "";
-    const noiDung = cNoiDung ? String(oGiaTri(row.getCell(cNoiDung)) ?? "").trim() : "";
-    const dvt = cDvt ? String(oGiaTri(row.getCell(cDvt)) ?? "").trim() : "";
-    const khoiLuong = soChuoi(oGiaTri(row.getCell(cKL)));
-    const donGia = soChuoi(oGiaTri(row.getCell(cDG)));
+    const stt = cStt ? oChuoi(row.getCell(cStt)) : "";
+    const noiDung = cNoiDung ? oChuoi(row.getCell(cNoiDung)) : "";
+    const dvt = cDvt ? oChuoi(row.getCell(cDvt)) : "";
+    const khoiLuong = oChuoi(row.getCell(cKL));
+    const donGia = oChuoi(row.getCell(cDG));
     // Dòng trống hoàn toàn thì bỏ.
     if (!stt && !noiDung && !dvt && !khoiLuong && !donGia) continue;
     dongs.push({ stt, noiDung, dvt, khoiLuong, donGia });
