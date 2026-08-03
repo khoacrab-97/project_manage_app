@@ -16,6 +16,7 @@
     "extract:source": "node scripts/extract-source.mjs src/lib/data/source/source-data.json",
     "package": "pnpm run build && node scripts/package-standalone.mjs",
     "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "db:kiemtra": "tsx prisma/kiemtra-db.ts",
     "db:studio": "prisma studio",

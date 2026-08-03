@@ -9,6 +9,7 @@
     "ignoreUnknown": true,
     "includes": [
       "**",
+      "!!.dockerignore",
       "!!public/**/*.svg",
       "!!src/lib/data/source/source-data.json",
       "!!pnpm-lock.yaml"

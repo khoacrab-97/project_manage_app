@@ -4,6 +4,7 @@ node_modules
 .claude
 npm-debug.log*
 *.tsbuildinfo
+.env*
 README.md
 AGENTS.md
 HUONG_DAN_TRIEN_KHAI.md

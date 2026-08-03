@@ -18,7 +18,7 @@ ADMIN_EMAIL=<email-admin>
 
 `DATABASE_URL` phải nằm ở service app, không chỉ ở service Postgres: Dockerfile
 nhận biến này trong build stage để `next build` chạy được, và runtime cũng dùng
-cùng biến đó để truy vấn DB.
+cùng biến đó để chạy migration rồi truy vấn DB.
 
 Không cần nữa:
 
@@ -55,11 +55,15 @@ Mở `http://localhost:3000`.
 
 ## Migration và seed
 
-Triển khai schema lên Postgres:
+Dockerfile chạy tự động lệnh này mỗi lần container start trên Railway:
 
 ```bash
-pnpm exec prisma migrate deploy
+pnpm run db:deploy
 ```
+
+Lệnh này chỉ áp các migration đã commit trong `prisma/migrations`; không sinh
+migration mới và không seed dữ liệu. Nếu cần chạy thủ công để kiểm tra/sửa lỗi
+deploy, dùng cùng lệnh trên từ máy có `DATABASE_URL` production.
 
 Seed chỉ dùng cho database trống/demo:
 

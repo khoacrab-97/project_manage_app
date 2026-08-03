@@ -5,6 +5,7 @@ REM ============================================================
 REM  Bam dup file nay de BUILD ban moi nhat roi CHAY app.
 REM  - Dung pnpm theo packageManager cua project.
 REM  - Neu may chua co pnpm, script se thu bat Corepack va cai pnpm dung version.
+REM  - Tu chay Prisma migration truoc khi start app.
 REM  - Chay bang "next start": KHONG dong goi standalone (ban standalone
 REM    khong tuong thich voi node_modules kieu pnpm -> hay bao dong goi that bai).
 REM  - DATABASE_URL: Next tu doc tu file .env, KHONG can dat tay.
@@ -77,6 +78,16 @@ call pnpm install --frozen-lockfile
 if errorlevel 1 (
   echo.
   echo Cai dependency that bai. Neu vua pull code moi, kiem tra lai pnpm-lock.yaml.
+  pause
+  exit /b 1
+)
+
+echo.
+echo Dang cap nhat schema database ^(Prisma migrate deploy^)...
+call pnpm run db:deploy
+if errorlevel 1 (
+  echo.
+  echo Cap nhat schema database that bai. Kiem tra DATABASE_URL trong .env.
   pause
   exit /b 1
 )
