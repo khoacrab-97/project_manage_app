@@ -9,6 +9,7 @@ import {
   GhiChuNguon,
   LocLink,
   Nhan,
+  NhanCongTrinh,
   NhanSucKhoe,
   O_So,
   Td,
@@ -596,12 +597,11 @@ export default async function TrangTongQuan({
             {nop.slice(0, 10).map((r) => (
               <tr key={r.congTrinh.id} className="hover:bg-nen">
                 <Td className="whitespace-nowrap">
-                  <Link
+                  <NhanCongTrinh
+                    tenRutGon={r.congTrinh.tenRutGon}
+                    ma={r.congTrinh.maCongTrinh}
                     href={`/cong-trinh/${encodeURIComponent(r.congTrinh.maCongTrinh)}`}
-                    className="font-medium text-nhan hover:underline"
-                  >
-                    {r.congTrinh.maCongTrinh}
-                  </Link>
+                  />
                 </Td>
                 <Td className="max-w-[320px] truncate text-xs" title={r.congTrinh.tenCongTrinh}>
                   {r.congTrinh.tenCongTrinh}

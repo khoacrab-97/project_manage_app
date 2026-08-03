@@ -113,6 +113,7 @@ function docTruongChung(fd: FormData) {
 
   return {
     tenCongTrinh,
+    tenRutGon: docChu(fd, "tenRutGon"),
     trangThai,
     chuDauTu: docChu(fd, "chuDauTu"),
     chiHuyTruong: docChu(fd, "chiHuyTruong"),

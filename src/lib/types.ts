@@ -28,6 +28,8 @@ export interface CongTrinh {
   id: string;
   maCongTrinh: string;
   tenCongTrinh: string;
+  /** Tên rút gọn để nhận diện nhanh; rỗng thì dùng mã công trình. */
+  tenRutGon: string;
   maBase: string | null;
   chuDauTu: string;
   chiHuyTruong: string;

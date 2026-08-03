@@ -49,7 +49,17 @@ function OChung({ ct }: { ct?: CongTrinh }) {
   return (
     <>
       <label className="text-xs sm:col-span-2">
-        <span className="mb-0.5 block text-chunhat">Tên công trình</span>
+        <span className="mb-0.5 block text-chunhat">Tên công trình (Rút gọn)</span>
+        <input
+          name="tenRutGon"
+          defaultValue={ct?.tenRutGon}
+          className={`${O} w-full`}
+          placeholder="Tên ngắn dễ nhớ, vd: Nhà máy TSLA"
+        />
+      </label>
+
+      <label className="text-xs sm:col-span-2">
+        <span className="mb-0.5 block text-chunhat">Tên công trình / Gói thầu (đầy đủ)</span>
         <input name="tenCongTrinh" defaultValue={ct?.tenCongTrinh} className={`${O} w-full`} required />
       </label>
 

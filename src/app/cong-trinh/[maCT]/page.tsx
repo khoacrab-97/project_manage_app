@@ -174,9 +174,14 @@ export default async function TrangChiTietCongTrinh({
       </Link>
 
       <DauTrang
-        tieuDe={maCongTrinh}
+        tieuDe={ct.tenRutGon || maCongTrinh}
         moTa={
           <>
+            {ct.tenRutGon ? (
+              <>
+                <span className="font-mono">{maCongTrinh}</span> ·{" "}
+              </>
+            ) : null}
             {ct.tenCongTrinh} · {ct.chuDauTu}
             <br />
             Chỉ huy trưởng <strong>{ct.chiHuyTruong}</strong> · {ct.phongPhuTrach} · {ct.diaDiem} ·

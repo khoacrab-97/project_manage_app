@@ -110,6 +110,7 @@ export const layCongTrinhChamCong = cache(async () => {
     id: p.id,
     maCongTrinh: p.maCongTrinh,
     tenCongTrinh: p.tenCongTrinh,
+    tenRutGon: p.tenRutGon ?? "",
     khuVuc: (p.chamCongCT?.khuVuc ?? "NOI_THANH") as Doi,
     /** Đội DA sở hữu công trình (khi ngoại thành). */
     doiDAId: p.chamCongCT?.doiDAId ?? "",
@@ -373,7 +374,7 @@ export interface NgayDieuDong {
   soCongTrinh: number;
   soCongNhan: number;
   /** Bảng tổng hợp xem nhanh ngay trong lịch sử, khỏi phải mở bảng ma trận. */
-  congTrinh: { maCongTrinh: string; tenCongTrinh: string; congNhan: string[] }[];
+  congTrinh: { maCongTrinh: string; tenCongTrinh: string; tenRutGon: string; congNhan: string[] }[];
 }
 
 /**
@@ -388,13 +389,15 @@ export async function lichDieuDong(): Promise<{ thang: string; ngays: NgayDieuDo
 
   const theoNgay = new Map<
     string,
-    { ct: Map<string, { ten: string; cn: string[] }>; cnIds: Set<string>; soLuot: number }
+    { ct: Map<string, { ten: string; rutGon: string; cn: string[] }>; cnIds: Set<string>; soLuot: number }
   >();
   for (const p of ds) {
     const o = theoNgay.get(p.ngay) ?? { ct: new Map(), cnIds: new Set<string>(), soLuot: 0 };
     o.soLuot++;
     o.cnIds.add(p.congNhanId);
-    const c = o.ct.get(p.congTrinh.maCongTrinh) ?? { ten: p.congTrinh.tenCongTrinh, cn: [] };
+    const c =
+      o.ct.get(p.congTrinh.maCongTrinh) ??
+      { ten: p.congTrinh.tenCongTrinh, rutGon: p.congTrinh.tenRutGon ?? "", cn: [] };
     c.cn.push(`${p.congNhan.hoTen} (${NHAN_BUOI[p.buoi as Buoi]})`);
     o.ct.set(p.congTrinh.maCongTrinh, c);
     theoNgay.set(p.ngay, o);
@@ -407,7 +410,12 @@ export async function lichDieuDong(): Promise<{ thang: string; ngays: NgayDieuDo
       soCongTrinh: o.ct.size,
       soCongNhan: o.cnIds.size,
       congTrinh: [...o.ct.entries()]
-        .map(([maCongTrinh, c]) => ({ maCongTrinh, tenCongTrinh: c.ten, congNhan: c.cn }))
+        .map(([maCongTrinh, c]) => ({
+          maCongTrinh,
+          tenCongTrinh: c.ten,
+          tenRutGon: c.rutGon,
+          congNhan: c.cn,
+        }))
         .sort((a, b) => a.maCongTrinh.localeCompare(b.maCongTrinh)),
     }))
     .sort((a, b) => b.ngay.localeCompare(a.ngay));
@@ -560,7 +568,7 @@ export async function chamCongDoiDA(
   ngay: string
 ): Promise<{
   ten: string;
-  congTrinhs: { id: string; maCongTrinh: string; tenCongTrinh: string }[];
+  congTrinhs: { id: string; maCongTrinh: string; tenCongTrinh: string; tenRutGon: string }[];
   rows: DongChamCongDA[];
 } | null> {
   const doi = await db.doiDA.findUnique({ where: { id: doiDAId } });
@@ -606,6 +614,7 @@ export async function chamCongDoiDA(
       id: c.id,
       maCongTrinh: c.maCongTrinh,
       tenCongTrinh: c.tenCongTrinh,
+      tenRutGon: c.tenRutGon,
     })),
     rows,
   };
@@ -636,6 +645,7 @@ export interface TongHopCongNhan extends OT {
 export interface TongHopCongTrinh extends OT {
   maCongTrinh: string;
   tenCongTrinh: string;
+  tenRutGon: string;
   soCong: number;
   soNguoi: number;
 }
@@ -713,6 +723,7 @@ export async function tongHopThang(thang: string): Promise<{
       {
         maCongTrinh: d.congTrinh.maCongTrinh,
         tenCongTrinh: d.congTrinh.tenCongTrinh,
+        tenRutGon: d.congTrinh.tenRutGon ?? "",
         soCong: 0,
         soNguoi: 0,
         tcTrongNgay: 0,

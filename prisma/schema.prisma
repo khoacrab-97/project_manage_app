@@ -28,6 +28,8 @@ model Project {
   id                 String    @id @default(cuid())
   maCongTrinh        String    @unique
   tenCongTrinh       String
+  /// Tên rút gọn để nhận diện nhanh khi chọn/lọc (mã HL+số khó nhớ). Rỗng = dùng mã.
+  tenRutGon          String?
   maBase             String?
   chuDauTu           String?
   chiHuyTruong       String?

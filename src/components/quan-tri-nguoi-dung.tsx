@@ -72,7 +72,7 @@ export function QuanTriNguoiDung({
   toiLaAi,
 }: {
   nguoiDung: Dong[];
-  congTrinh: { ma: string; ten: string }[];
+  congTrinh: { ma: string; ten: string; rutGon: string }[];
   toiLaAi: string;
 }) {
   const [moTao, setMoTao] = useState(false);
@@ -285,14 +285,18 @@ export function QuanTriNguoiDung({
                 <div className="max-h-40 overflow-y-auto rounded-md border border-vien bg-the p-2">
                   <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
                     {congTrinh.map((c) => (
-                      <label key={c.ma} className="flex items-center gap-1.5 text-xs" title={c.ten}>
+                      <label
+                        key={c.ma}
+                        className="flex items-center gap-1.5 text-xs"
+                        title={`${c.ma} — ${c.ten}`}
+                      >
                         <input
                           type="checkbox"
                           name="phamVi"
                           value={c.ma}
                           defaultChecked={u.phamVi.includes(c.ma)}
                         />
-                        <span className="truncate">{c.ma}</span>
+                        <span className="truncate">{c.rutGon || c.ma}</span>
                       </label>
                     ))}
                   </div>

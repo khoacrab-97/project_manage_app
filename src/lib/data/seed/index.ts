@@ -188,6 +188,7 @@ export function taoBoDuLieu(): BoDuLieu {
       id: `ct-${i + 1}`,
       maCongTrinh: ma,
       tenCongTrinh: tenCongTrinhCua(ma),
+      tenRutGon: "",
       maBase: null,
       chuDauTu: chuDauTuCua(ma),
       chiHuyTruong: chonTheoMa(ma, DS_HO_TEN),

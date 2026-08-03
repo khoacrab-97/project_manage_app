@@ -1,7 +1,7 @@
 /** Bộ primitive dùng chung. Giữ nhỏ và không phụ thuộc thư viện ngoài. */
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Lock } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { MAU_SUC_KHOE } from "@/lib/kpi";
 import type { SucKhoe } from "@/lib/types";
@@ -198,6 +198,42 @@ export function LocLink({
     >
       {children}
     </Link>
+  );
+}
+
+// ---------------------------------------------------------------- Nhãn công trình
+/**
+ * Nhận diện công trình theo tên rút gọn: Tên rút gọn in đậm dòng trên, mã công
+ * trình nhỏ/mờ dòng dưới. Chưa nhập rút gọn thì mã làm dòng chính (fallback).
+ * `href` có thì dòng chính là link (dùng ở danh mục). `khoa` = ngoài phạm vi.
+ */
+export function NhanCongTrinh({
+  tenRutGon,
+  ma,
+  href,
+  khoa,
+}: {
+  tenRutGon?: string | null;
+  ma: string;
+  href?: string;
+  khoa?: boolean;
+}) {
+  const rg = tenRutGon?.trim();
+  const chinh = rg || ma;
+  return (
+    <span className="flex flex-col leading-tight">
+      {href ? (
+        <Link href={href} className="font-medium text-nhan hover:underline">
+          {chinh}
+        </Link>
+      ) : (
+        <span className={cn("font-medium", khoa && "inline-flex items-center gap-1 text-chunhat")}>
+          {khoa ? <Lock className="size-3" /> : null}
+          {chinh}
+        </span>
+      )}
+      {rg ? <span className="font-mono text-[11px] text-chunhat">{ma}</span> : null}
+    </span>
   );
 }
 

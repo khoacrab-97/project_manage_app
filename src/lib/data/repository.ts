@@ -111,6 +111,7 @@ async function dsCongTrinhTheoWhere(
     id: p.id,
     maCongTrinh: p.maCongTrinh,
     tenCongTrinh: p.tenCongTrinh,
+    tenRutGon: p.tenRutGon ?? "",
     maBase: p.maBase,
     chuDauTu: p.chuDauTu ?? "",
     chiHuyTruong: p.chiHuyTruong ?? "",

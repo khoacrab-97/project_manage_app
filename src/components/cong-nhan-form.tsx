@@ -42,6 +42,7 @@ export interface OChon {
   id: string;
   maCongTrinh: string;
   tenCongTrinh: string;
+  tenRutGon: string;
   khuVuc: string;
   /** Đội DA sở hữu công trình (khi ngoại thành). */
   doiDAId: string;
@@ -886,11 +887,11 @@ export function MaTranPhanCong({
               {congTrinh.map((ct) => (
                 <th
                   key={ct.id}
-                  className="border-b border-vien bg-the px-2 py-2 text-center font-mono text-xs font-semibold whitespace-nowrap text-chunhat"
-                  title={ct.tenCongTrinh}
+                  className="border-b border-vien bg-the px-2 py-2 text-center text-xs font-semibold whitespace-nowrap text-chunhat"
+                  title={`${ct.maCongTrinh} — ${ct.tenCongTrinh}`}
                 >
                   <div className="flex flex-col items-center gap-0.5">
-                    <span>{ct.maCongTrinh}</span>
+                    <span>{ct.tenRutGon || ct.maCongTrinh}</span>
                     {sua ? (
                       <button
                         type="button"
@@ -1347,7 +1348,7 @@ export function BangChamCongDA({
   ngay: string;
   doiDAId: string;
   chuNhat: boolean;
-  congTrinhs: { id: string; maCongTrinh: string; tenCongTrinh: string }[];
+  congTrinhs: { id: string; maCongTrinh: string; tenCongTrinh: string; tenRutGon: string }[];
   ds: DongChamCongDA[];
   /** Cả đội đã chấm đủ → mở ra là khóa, phải bấm Sửa. */
   daLuu: boolean;
@@ -1464,8 +1465,8 @@ export function BangChamCongDA({
                     >
                       <option value="">— Không làm —</option>
                       {congTrinhs.map((ct) => (
-                        <option key={ct.id} value={ct.id} title={ct.tenCongTrinh}>
-                          {ct.maCongTrinh}
+                        <option key={ct.id} value={ct.id} title={`${ct.maCongTrinh} — ${ct.tenCongTrinh}`}>
+                          {ct.tenRutGon || ct.maCongTrinh}
                         </option>
                       ))}
                     </select>
@@ -2031,9 +2032,12 @@ function SuaDoiDAModal({
                         value={c.id}
                         defaultChecked={daChon.has(c.id)}
                       />
-                      <span className="font-mono">{c.maCongTrinh}</span>
-                      <span className="truncate text-chunhat" title={c.tenCongTrinh}>
-                        {c.tenCongTrinh}
+                      <span className="font-medium">{c.tenRutGon || c.maCongTrinh}</span>
+                      <span
+                        className="truncate text-chunhat"
+                        title={`${c.maCongTrinh} — ${c.tenCongTrinh}`}
+                      >
+                        {c.tenRutGon ? c.maCongTrinh : c.tenCongTrinh}
                       </span>
                       {doiKhac ? (
                         <span className="ml-auto shrink-0 text-[11px] text-amber-600 dark:text-amber-400">

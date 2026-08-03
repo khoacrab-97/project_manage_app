@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { FileDown } from "lucide-react";
-import { Bang, CanhBaoBox, DauTrang, GhiChuNguon, LocLink, Nhan, Rong, Td, The, TheDau, TheGap, Th } from "@/components/ui";
+import { Bang, CanhBaoBox, DauTrang, GhiChuNguon, LocLink, Nhan, NhanCongTrinh, Rong, Td, The, TheDau, TheGap, Th } from "@/components/ui";
 import {
   baNgayMauChep,
   cacThangChamCong,
@@ -205,7 +205,9 @@ async function HoSo({ duocSua, laAdmin }: { duocSua: boolean; laAdmin: boolean }
             <tbody>
               {congTrinh.map((c) => (
                 <tr key={c.id} className="hover:bg-nen">
-                  <Td className="font-mono text-xs whitespace-nowrap">{c.maCongTrinh}</Td>
+                  <Td className="text-xs whitespace-nowrap">
+                    <NhanCongTrinh tenRutGon={c.tenRutGon} ma={c.maCongTrinh} />
+                  </Td>
                   <Td className="max-w-[280px] truncate text-xs" title={c.tenCongTrinh}>
                     {c.tenCongTrinh}
                   </Td>
@@ -345,8 +347,8 @@ async function PhanCong({
                           <tbody>
                             {n.congTrinh.map((c) => (
                               <tr key={c.maCongTrinh} className="align-top hover:bg-nen">
-                                <Td className="font-mono text-xs whitespace-nowrap">
-                                  {c.maCongTrinh}
+                                <Td className="text-xs whitespace-nowrap">
+                                  <NhanCongTrinh tenRutGon={c.tenRutGon} ma={c.maCongTrinh} />
                                 </Td>
                                 <Td className="max-w-[280px] truncate text-xs" title={c.tenCongTrinh}>
                                   {c.tenCongTrinh}
@@ -465,7 +467,7 @@ async function ChamCong({
         key={c.id}
         href={`/cong-nhan?muc=cham-cong&ngay=${ngay}&ct=${encodeURIComponent(c.maCongTrinh)}`}
         scroll={false}
-        title={c.tenCongTrinh}
+        title={`${c.maCongTrinh} — ${c.tenCongTrinh}`}
         className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap ${
           laActive
             ? "bg-nhan text-white"
@@ -474,7 +476,7 @@ async function ChamCong({
               : "text-chunhat hover:bg-nen hover:text-chu"
         }`}
       >
-        {c.maCongTrinh}
+        {c.tenRutGon || c.maCongTrinh}
         {n > 0 ? <span className="ml-1 font-semibold">({n})</span> : null}
       </Link>
     );
@@ -515,8 +517,8 @@ async function ChamCong({
         ) : (
           <>
             <TheDau
-              tieuDe={`Chấm công ${nhanNgay(ngay)} — ${activeCT!.maCongTrinh}`}
-              moTa={activeCT!.tenCongTrinh}
+              tieuDe={`Chấm công ${nhanNgay(ngay)} — ${activeCT!.tenRutGon || activeCT!.maCongTrinh}`}
+              moTa={`${activeCT!.maCongTrinh} · ${activeCT!.tenCongTrinh}`}
             />
             <BangChamCong
               key={`${ngay}:${activeCT!.id}`}
@@ -737,7 +739,9 @@ async function TongHopBang({ thang, view }: { thang: string; view: "cong-trinh" 
         <tbody>
           {th.theoCongTrinh.map((r) => (
             <tr key={r.maCongTrinh} className="hover:bg-nen">
-              <Td className="font-mono text-xs whitespace-nowrap">{r.maCongTrinh}</Td>
+              <Td className="text-xs whitespace-nowrap">
+                <NhanCongTrinh tenRutGon={r.tenRutGon} ma={r.maCongTrinh} />
+              </Td>
               <Td className="max-w-[220px] truncate text-xs" title={r.tenCongTrinh}>
                 {r.tenCongTrinh}
               </Td>

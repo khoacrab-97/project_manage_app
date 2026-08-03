@@ -58,7 +58,11 @@ export default async function TrangQuanTriNguoiDung() {
           isActive: u.isActive,
           phamVi: u.phamViGiao.map((p) => p.project.maCongTrinh),
         }))}
-        congTrinh={congTrinh.map((c) => ({ ma: c.maCongTrinh, ten: c.tenCongTrinh }))}
+        congTrinh={congTrinh.map((c) => ({
+          ma: c.maCongTrinh,
+          ten: c.tenCongTrinh,
+          rutGon: c.tenRutGon,
+        }))}
         toiLaAi={toi!.id}
       />
 

@@ -1,9 +1,9 @@
-import Link from "next/link";
 import {
   Bang,
   DauTrang,
   GhiChuNguon,
   Nhan,
+  NhanCongTrinh,
   NhanSucKhoe,
   O_So,
   Td,
@@ -13,7 +13,6 @@ import {
   ThanhTyLe,
 } from "@/components/ui";
 import { ngay, phanTram, tien } from "@/lib/format";
-import { Lock } from "lucide-react";
 import {
   danhMucSucKhoe,
   layCongTrinhNgung,
@@ -171,19 +170,14 @@ function BangCongTrinh({
             ) : null}
             <Td className={`sticky left-0 z-10 whitespace-nowrap ${mo ? "bg-nen/70" : "bg-the"}`}>
               {trongPhamVi(r.congTrinh.maCongTrinh) ? (
-                <Link
+                <NhanCongTrinh
+                  tenRutGon={r.congTrinh.tenRutGon}
+                  ma={r.congTrinh.maCongTrinh}
                   href={`/cong-trinh/${encodeURIComponent(r.congTrinh.maCongTrinh)}`}
-                  className="font-medium text-nhan hover:underline"
-                >
-                  {r.congTrinh.maCongTrinh}
-                </Link>
+                />
               ) : (
-                <span
-                  className="inline-flex items-center gap-1 font-medium text-chunhat"
-                  title="Ngoài phạm vi được giao — không xem chi tiết được"
-                >
-                  <Lock className="size-3" />
-                  {r.congTrinh.maCongTrinh}
+                <span title="Ngoài phạm vi được giao — không xem chi tiết được">
+                  <NhanCongTrinh tenRutGon={r.congTrinh.tenRutGon} ma={r.congTrinh.maCongTrinh} khoa />
                 </span>
               )}
             </Td>

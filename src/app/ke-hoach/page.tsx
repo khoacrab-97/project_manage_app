@@ -104,9 +104,9 @@ export default async function TrangKeHoach({
             key={c.maCongTrinh}
             href={`/ke-hoach?ct=${encodeURIComponent(c.maCongTrinh)}`}
             dangChon={ctChon?.maCongTrinh === c.maCongTrinh}
-            title={c.tenCongTrinh}
+            title={`${c.maCongTrinh} — ${c.tenCongTrinh}`}
           >
-            {c.maCongTrinh}
+            {c.tenRutGon || c.maCongTrinh}
           </LocLink>
         ))}
       </div>
