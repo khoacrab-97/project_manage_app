@@ -58,7 +58,7 @@ body {
 body {
   background: var(--nen);
   color: var(--chu);
-  font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: Arial, "Helvetica Neue", Helvetica, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 

@@ -40,7 +40,7 @@ import { loaiCua, traMa } from "@/lib/data/repository";
 import { nguoiDungHienTai } from "@/lib/auth/phien";
 import { coQuyen } from "@/lib/auth/quyen";
 import { NGAY_HIEN_TAI } from "@/lib/thresholds";
-import { BoxNhapBOQ, ImportBOQ, LuoiNhapBOQ, NutThemBill, NutXacNhan } from "@/components/nhap-boq";
+import { BoxNhapBOQ, ImportBOQ, LuoiNhapBOQ, NutThemBill, NutXacNhan, ThietLapVAT } from "@/components/nhap-boq";
 import { NutThemCot, NutThemDong, ONhapCot, TieuDeCot } from "@/components/cot-boq";
 
 /**
@@ -391,7 +391,9 @@ async function BOQTab({
   /** Công trình đã nghiệm thu — đóng băng, chỉ được xem. */
   daHoanThanh: boolean;
 }) {
-  const { thangs, dongs, cots } = await layBOQ(maCongTrinh);
+  const { thangs, dongs, cots, donGiaGomVAT, vatPhanTram } = await layBOQ(maCongTrinh);
+  // Bill (doanh thu) lấy chưa VAT: nếu đơn giá đã gồm VAT thì chia (1+vat%).
+  const heSoBill = donGiaGomVAT ? 1 / (1 + (vatPhanTram || 0) / 100) : 1;
   const u = await nguoiDungHienTai();
   // Công trình hoàn thành thì ẩn hết lối sửa. Chốt chặn thật nằm ở Server Action
   // (`congTrinhChoGhi`); ẩn ở đây chỉ để không mời người dùng bấm vào ngõ cụt.
@@ -426,8 +428,8 @@ async function BOQTab({
   const ttLuyKe = dongs.reduce((a, d) => a + d.ttLuyKe, 0);
   const ttXacNhan = thangs
     .filter((t) => t.trangThai === "DA_XAC_NHAN")
-    .reduce((a, t) => a + giaTriBillThang(dongs, t.thang), 0);
-  const billKy = ky ? giaTriBillThang(dongs, ky.thang) : 0;
+    .reduce((a, t) => a + giaTriBillThang(dongs, t.thang, heSoBill), 0);
+  const billKy = ky ? giaTriBillThang(dongs, ky.thang, heSoBill) : 0;
   const soXong = dongs.filter((d) => d.hoanThanh).length;
 
   /** Luỹ kế khối lượng của các tháng TRƯỚC kỳ đang chọn. */
@@ -483,8 +485,9 @@ async function BOQTab({
             dongs={dongs.map((d) => ({ id: d.id, stt: d.stt, noiDung: d.noiDung }))}
           />
           <LuoiNhapBOQ maCongTrinh={maCongTrinh} />
-          <ImportBOQ maCongTrinh={maCongTrinh} />
+          <ImportBOQ maCongTrinh={maCongTrinh} daCoBOQ />
           <NutThemCot maCongTrinh={maCongTrinh} />
+          <ThietLapVAT maCongTrinh={maCongTrinh} donGiaGomVAT={donGiaGomVAT} vatPhanTram={vatPhanTram} />
         </div>
       ) : null}
 
@@ -495,7 +498,7 @@ async function BOQTab({
           moTa={`${dongs.length} công tác · dạng bảng tính, chỉ xem`}
         />
         <div className="p-3">
-          <SpreadsheetBOQ dongs={dongs} tong={ttHopDong} />
+          <SpreadsheetBOQ dongs={dongs} tong={ttHopDong} donGiaGomVAT={donGiaGomVAT} vatPhanTram={vatPhanTram} />
         </div>
       </The>
 
@@ -669,6 +672,8 @@ async function BOQTab({
 function SpreadsheetBOQ({
   dongs,
   tong,
+  donGiaGomVAT,
+  vatPhanTram,
 }: {
   dongs: {
     id: string;
@@ -681,15 +686,25 @@ function SpreadsheetBOQ({
     hoanThanh: boolean;
   }[];
   tong: number;
+  donGiaGomVAT: boolean;
+  vatPhanTram: number;
 }) {
   const oS = "border border-vien px-2 py-1 text-xs whitespace-nowrap";
-  const oT =
-    "border border-vien bg-nen px-2 py-1.5 text-xs font-semibold whitespace-nowrap";
+  const oT = "border border-vien bg-nen px-2 py-1.5 text-xs font-semibold whitespace-nowrap";
+
+  // Hai dòng TỔNG theo VAT. `tong` là tổng theo đơn giá trong bảng: nếu đơn giá đã
+  // gồm VAT thì đó là "bao gồm VAT", ngược lại là "chưa VAT".
+  const v = (vatPhanTram || 0) / 100;
+  const nhanChinh = donGiaGomVAT ? "TỔNG (bao gồm VAT)" : "TỔNG (chưa VAT)";
+  const nhanPhu = donGiaGomVAT ? "TỔNG (chưa VAT)" : "TỔNG (bao gồm VAT)";
+  const giaPhu = donGiaGomVAT ? Math.round(tong / (1 + v)) : Math.round(tong * (1 + v));
+
   return (
     <div className="max-h-[65vh] overflow-auto rounded-lg border border-vien">
       <table className="min-w-full border-collapse">
-        <thead className="sticky top-0 z-10">
+        <thead className="sticky top-0 z-20">
           <tr>
+            <th className={`${oT} sticky left-0 z-30 text-right`}>ID</th>
             <th className={`${oT} text-left`}>STT</th>
             <th className={`${oT} text-left`}>Nội dung hạng mục</th>
             <th className={`${oT} text-left`}>ĐVT</th>
@@ -699,9 +714,10 @@ function SpreadsheetBOQ({
           </tr>
         </thead>
         <tbody>
-          {dongs.map((d) => (
+          {dongs.map((d, i) => (
             <tr key={d.id} className="hover:bg-nen/50">
-              <td className={`${oS} font-mono`}>
+              <td className={`${oS} so sticky left-0 z-10 bg-the text-right text-chunhat`}>{i + 1}</td>
+              <td className={oS}>
                 {d.stt}
                 {d.hoanThanh ? (
                   <span className="ml-1 text-emerald-600 dark:text-emerald-400" title="Đã thi công xong">
@@ -713,16 +729,23 @@ function SpreadsheetBOQ({
                 {d.noiDung}
               </td>
               <td className={oS}>{d.dvt}</td>
-              <td className={`${oS} text-right font-mono`}>{khoiLuong(d.klHopDong)}</td>
-              <td className={`${oS} text-right font-mono`}>{tien(d.donGia)}</td>
-              <td className={`${oS} text-right font-mono`}>{tien(d.ttHopDong)}</td>
+              <td className={`${oS} so text-right`}>{khoiLuong(d.klHopDong)}</td>
+              <td className={`${oS} so text-right`}>{tien(d.donGia)}</td>
+              <td className={`${oS} so text-right`}>{tien(d.ttHopDong)}</td>
             </tr>
           ))}
-          <tr className="sticky bottom-0">
-            <td className={`${oT} text-right`} colSpan={5}>
-              TỔNG
+          <tr className="sticky bottom-8">
+            <td className={`${oT} sticky left-0 z-10 text-right`} colSpan={6}>
+              {nhanChinh}
             </td>
-            <td className={`${oT} text-right font-mono`}>{tien(tong)}</td>
+            <td className={`${oT} so text-right`}>{tien(tong)}</td>
+          </tr>
+          <tr className="sticky bottom-0">
+            <td className={`${oT} sticky left-0 z-10 text-right`} colSpan={6}>
+              {nhanPhu}
+              {v > 0 ? <span className="ml-1 font-normal text-chunhat">· VAT {vatPhanTram}%</span> : null}
+            </td>
+            <td className={`${oT} so text-right`}>{tien(giaPhu)}</td>
           </tr>
         </tbody>
       </table>

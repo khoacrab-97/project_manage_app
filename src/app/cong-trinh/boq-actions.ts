@@ -351,7 +351,16 @@ export async function themNhieuDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
 
   const so = (t: string) => Number(String(t).replace(/\s/g, "").replace(/\./g, "").replace(",", "."));
 
-  const max = await db.bOQLine.aggregate({ where: { projectId: ct.id }, _max: { thuTu: true } });
+  // Ghi đè: xoá sạch BOQ cũ (cascade luôn khối lượng thực hiện + giá trị cột) rồi
+  // nhập lại từ đầu. Nối tiếp (mặc định): thêm vào sau dòng cuối.
+  const ghiDe = formData.get("ghiDe") === "1";
+  if (ghiDe) {
+    await db.bOQLine.deleteMany({ where: { projectId: ct.id } });
+  }
+
+  const max = ghiDe
+    ? { _max: { thuTu: null as number | null } }
+    : await db.bOQLine.aggregate({ where: { projectId: ct.id }, _max: { thuTu: true } });
   let thuTu = (max._max.thuTu ?? -1) + 1;
 
   const loi: string[] = [];
@@ -415,6 +424,33 @@ export async function docFileBOQ(formData: FormData): Promise<KetQuaDocFileBOQ> 
   const doc = await docBOQTuExcel(buf);
   if (doc.loi) return { ok: false, thongDiep: doc.loi, dongs: [] };
   return { ok: true, thongDiep: `Đã đọc ${doc.dongs.length} dòng từ file.`, dongs: doc.dongs };
+}
+
+/**
+ * Lưu thiết lập VAT của BOQ: đơn giá đã gồm VAT chưa + thuế suất VAT (%).
+ * Ảnh hưởng cách hiển thị dòng TỔNG và giá trị Bill (lấy chưa VAT).
+ */
+export async function luuThietLapVAT(formData: FormData): Promise<KetQuaBOQ> {
+  batBuocQuyen(await nguoiDungHienTai(), "nhap_boq");
+
+  const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
+  const kq = await congTrinhChoGhi(maCongTrinh);
+  if ("loi" in kq) return { ok: false, thongDiep: kq.loi };
+
+  const donGiaGomVAT = formData.get("donGiaGomVAT") === "on";
+  const vat = Number(String(formData.get("vatPhanTram") ?? "").replace(",", "."));
+  if (!Number.isFinite(vat) || vat < 0 || vat > 100) {
+    return { ok: false, thongDiep: "VAT (%) phải là số từ 0 đến 100." };
+  }
+
+  await db.project.update({
+    where: { id: kq.ct.id },
+    data: { donGiaGomVAT, vatPhanTram: vat },
+  });
+
+  revalidatePath(`/cong-trinh/${maCongTrinh}`);
+  revalidatePath("/");
+  return { ok: true, thongDiep: "Đã lưu thiết lập VAT." };
 }
 
 export async function xacNhanBill(formData: FormData): Promise<KetQuaBOQ> {

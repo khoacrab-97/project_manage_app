@@ -217,6 +217,19 @@ const billTuBOQ = cache(async () => {
     if (!daXacNhan.has(k)) continue; // chờ duyệt thì không vào KPI
     theoThang.set(k, (theoThang.get(k) ?? 0) + Math.round(t.khoiLuong * l.donGia));
   }
+
+  // Giá trị Bill (doanh thu) lấy theo CHƯA VAT: nếu đơn giá đã gồm VAT thì quy về
+  // chưa VAT = tổng / (1 + vat%). Áp hệ số theo từng công trình.
+  const projs = await db.project.findMany({
+    select: { id: true, donGiaGomVAT: true, vatPhanTram: true },
+  });
+  const heSo = new Map(
+    projs.map((p) => [p.id, p.donGiaGomVAT ? 1 / (1 + (p.vatPhanTram || 0) / 100) : 1])
+  );
+  for (const [k, v] of theoThang) {
+    const f = heSo.get(k.split("|")[0]) ?? 1;
+    if (f !== 1) theoThang.set(k, Math.round(v * f));
+  }
   return { duAnCoBOQ, theoThang };
 });
 
@@ -280,9 +293,15 @@ export interface CotBOQ {
  */
 export async function layBOQ(
   maCongTrinh: string
-): Promise<{ thangs: ThangBill[]; dongs: DongBOQ[]; cots: CotBOQ[] }> {
+): Promise<{
+  thangs: ThangBill[];
+  dongs: DongBOQ[];
+  cots: CotBOQ[];
+  donGiaGomVAT: boolean;
+  vatPhanTram: number;
+}> {
   const ct = (await layCongTrinh()).find((c) => c.maCongTrinh === maCongTrinh);
-  if (!ct) return { thangs: [], dongs: [], cots: [] };
+  if (!ct) return { thangs: [], dongs: [], cots: [], donGiaGomVAT: false, vatPhanTram: 10 };
 
   const ds = await db.bOQLine.findMany({
     where: { projectId: ct.id },
@@ -329,12 +348,27 @@ export async function layBOQ(
     };
   });
 
-  return { thangs, dongs, cots };
+  const vat = await db.project.findUnique({
+    where: { id: ct.id },
+    select: { donGiaGomVAT: true, vatPhanTram: true },
+  });
+
+  return {
+    thangs,
+    dongs,
+    cots,
+    donGiaGomVAT: vat?.donGiaGomVAT ?? false,
+    vatPhanTram: vat?.vatPhanTram ?? 10,
+  };
 }
 
-/** Giá trị Bill của một tháng = tổng thành tiền khối lượng thực hiện tháng đó. */
-export function giaTriBillThang(dongs: DongBOQ[], thang: string): number {
-  return dongs.reduce((a, d) => a + Math.round((d.klTheoThang[thang] ?? 0) * d.donGia), 0);
+/**
+ * Giá trị Bill của một tháng = tổng thành tiền khối lượng thực hiện tháng đó.
+ * `heSoChuaVAT` < 1 khi đơn giá đã gồm VAT (Bill lấy chưa VAT); mặc định 1.
+ */
+export function giaTriBillThang(dongs: DongBOQ[], thang: string, heSoChuaVAT = 1): number {
+  const gom = dongs.reduce((a, d) => a + Math.round((d.klTheoThang[thang] ?? 0) * d.donGia), 0);
+  return heSoChuaVAT === 1 ? gom : Math.round(gom * heSoChuaVAT);
 }
 
 // ------------------------------------------------------------ Giao dịch

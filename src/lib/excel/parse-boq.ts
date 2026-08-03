@@ -47,6 +47,18 @@ function oChuoi(cell: ExcelJS.Cell): string {
   return v === null || v === undefined ? "" : String(v).trim();
 }
 
+/**
+ * Đọc ô CỘT SỐ (khối lượng / đơn giá) — PHÂN BIỆT kiểu ô để không đọc sai:
+ *  - Ô Excel kiểu SỐ (đa số): lấy đúng con số (0.444 vẫn là 0.444), chỉ đổi "."
+ *    → "," cho khớp quy ước Việt ở bước lưu (`so()`/`docSoVN`). KHÔNG đoán dấu.
+ *  - Ô kiểu CHỮ: giữ chuỗi thô, để bước lưu áp quy ước Việt (dấu chấm = nghìn).
+ */
+function oSo(cell: ExcelJS.Cell): string {
+  const v = oGiaTri(cell);
+  if (typeof v === "number") return String(v).replace(".", ",");
+  return v === null || v === undefined ? "" : String(v).trim();
+}
+
 export async function docBOQTuExcel(buffer: ArrayBuffer): Promise<KetQuaDocBOQ> {
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buffer);
@@ -99,8 +111,8 @@ export async function docBOQTuExcel(buffer: ArrayBuffer): Promise<KetQuaDocBOQ> 
     const stt = cStt ? oChuoi(row.getCell(cStt)) : "";
     const noiDung = cNoiDung ? oChuoi(row.getCell(cNoiDung)) : "";
     const dvt = cDvt ? oChuoi(row.getCell(cDvt)) : "";
-    const khoiLuong = oChuoi(row.getCell(cKL));
-    const donGia = oChuoi(row.getCell(cDG));
+    const khoiLuong = oSo(row.getCell(cKL));
+    const donGia = oSo(row.getCell(cDG));
     // Dòng trống hoàn toàn thì bỏ.
     if (!stt && !noiDung && !dvt && !khoiLuong && !donGia) continue;
     dongs.push({ stt, noiDung, dvt, khoiLuong, donGia });

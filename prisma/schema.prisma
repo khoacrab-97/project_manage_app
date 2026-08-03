@@ -44,6 +44,11 @@ model Project {
   diaDiem            String?
   giaTriHopDong      Float? // Phase 2
   bienLNMucTieu      Float?
+  /// Đơn giá trong BOQ đã bao gồm VAT hay chưa. Nếu true, giá trị Bill (doanh thu)
+  /// được quy về CHƯA VAT = tổng / (1 + vatPhanTram/100).
+  donGiaGomVAT       Boolean   @default(false)
+  /// Thuế suất VAT (%) áp cho BOQ của công trình này.
+  vatPhanTram        Float     @default(10)
   ngayCapNhatCuoi    DateTime?
   isActive           Boolean   @default(true)
 

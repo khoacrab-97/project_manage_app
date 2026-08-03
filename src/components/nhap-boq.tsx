@@ -5,13 +5,14 @@ import { Check, Download, Pencil, Plus, ShieldCheck, Trash2, Upload, X } from "l
 import {
   docFileBOQ,
   luuKhoiLuong,
+  luuThietLapVAT,
   themBillThang,
   themNhieuDongBOQ,
   xacNhanBill,
   type KetQuaBOQ,
 } from "@/app/cong-trinh/boq-actions";
 import { khoiLuong as dinhDangKL, tien } from "@/lib/format";
-import { chuyenTheoKieu, NHAN_KIEU, type KieuCot } from "@/lib/so-linh-hoat";
+import { docSoVN } from "@/lib/so-vn";
 
 const O = "rounded-md border border-vien bg-the px-2 py-1 text-xs";
 
@@ -458,7 +459,7 @@ interface ODongBOQ {
  * Hai bước trong một hộp nổi: chưa đọc file thì hiện ô chọn file; đọc xong chuyển
  * sang lưới review controlled, sửa/xoá dòng thoải mái rồi bấm lưu.
  */
-/** 5 cột BOQ + cờ "là cột số" (cột số mới hiện transform/kiểu số). */
+/** 5 cột BOQ + cờ "là cột số". */
 const COT_BOQ: { key: keyof ODongBOQ; nhan: string; so: boolean }[] = [
   { key: "stt", nhan: "STT", so: false },
   { key: "noiDung", nhan: "Nội dung hạng mục", so: false },
@@ -466,19 +467,33 @@ const COT_BOQ: { key: keyof ODongBOQ; nhan: string; so: boolean }[] = [
   { key: "khoiLuong", nhan: "Khối lượng", so: true },
   { key: "donGia", nhan: "Đơn giá", so: true },
 ];
-const KIEU_MAC_DINH: KieuCot[] = ["text", "text", "text", "thapphan", "nguyen"];
-const KIEU_CHON: KieuCot[] = ["text", "nguyen", "thapphan", "phantram"];
 
-export function ImportBOQ({ maCongTrinh }: { maCongTrinh: string }) {
+/** Xem trước số sẽ lưu theo quy ước Việt. loi=true khi không đọc được. */
+function xemSo(raw: string): { hienThi: string; loi: boolean } {
+  const t = raw.trim();
+  if (t === "") return { hienThi: "", loi: false };
+  const n = docSoVN(t);
+  if (n === null) return { hienThi: "", loi: true };
+  return { hienThi: n.toLocaleString("vi-VN", { maximumFractionDigits: 6 }), loi: false };
+}
+
+export function ImportBOQ({
+  maCongTrinh,
+  daCoBOQ = false,
+}: {
+  maCongTrinh: string;
+  /** Công trình đã có BOQ — hiện lựa chọn Ghi đè / Nối tiếp. */
+  daCoBOQ?: boolean;
+}) {
   const [mo, setMo] = useState(false);
   const [dongs, setDongs] = useState<ODongBOQ[] | null>(null);
-  // Kiểu dữ liệu từng cột (transform data) — mặc định theo bản chất cột BOQ.
-  const [kieu, setKieu] = useState<KieuCot[]>(KIEU_MAC_DINH);
+  const [ghiDe, setGhiDe] = useState(false);
   const [kqDoc, setKqDoc] = useState<KetQuaBOQ | null>(null);
   const [kqLuu, setKqLuu] = useState<KetQuaBOQ | null>(null);
   const [dangDoc, batDauDoc] = useTransition();
   const [dangLuu, batDauLuu] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
+  const luoiRef = useRef<HTMLTableSectionElement>(null);
 
   useEffect(() => {
     if (!mo) return;
@@ -492,7 +507,7 @@ export function ImportBOQ({ maCongTrinh }: { maCongTrinh: string }) {
   const dong = () => {
     setMo(false);
     setDongs(null);
-    setKieu(KIEU_MAC_DINH);
+    setGhiDe(false);
     setKqDoc(null);
     setKqLuu(null);
   };
@@ -517,12 +532,10 @@ export function ImportBOQ({ maCongTrinh }: { maCongTrinh: string }) {
     if (!dongs) return;
     const fd = new FormData();
     fd.append("maCongTrinh", maCongTrinh);
-    // Áp KIỂU từng cột (transform) rồi gửi giá trị canonical để so() lưu đọc đúng.
-    for (const d of dongs) {
-      COT_BOQ.forEach((c, i) => {
-        fd.append(c.key, chuyenTheoKieu(d[c.key], kieu[i]).canonical);
-      });
-    }
+    if (ghiDe) fd.append("ghiDe", "1");
+    // Gửi GIÁ TRỊ THÔ; server so() đọc theo quy ước Việt. Ô số Excel đã được đọc
+    // chính xác ở tầng parse ("0,444"), nên qua so() ra đúng 0.444.
+    for (const d of dongs) COT_BOQ.forEach((c) => fd.append(c.key, d[c.key]));
     batDauLuu(async () => {
       const r = await themNhieuDongBOQ(fd);
       setKqLuu(r);
@@ -535,6 +548,27 @@ export function ImportBOQ({ maCongTrinh }: { maCongTrinh: string }) {
   const xoaDong = (i: number) => setDongs((s) => s!.filter((_, j) => j !== i));
   const themDong = () =>
     setDongs((s) => [...(s ?? []), { stt: "", noiDung: "", dvt: "", khoiLuong: "", donGia: "" }]);
+
+  // Di chuyển giữa các ô bằng phím mũi tên / Enter như bảng tính Excel.
+  const diChuyen = (e: React.KeyboardEvent) => {
+    const inp = e.target as HTMLInputElement;
+    const r = Number(inp.dataset.r);
+    const c = Number(inp.dataset.c);
+    if (Number.isNaN(r) || Number.isNaN(c)) return;
+    const den = (rr: number, cc: number) => {
+      const t = luoiRef.current?.querySelector<HTMLElement>(`[data-r="${rr}"][data-c="${cc}"]`);
+      if (t) {
+        e.preventDefault();
+        t.focus();
+      }
+    };
+    const dauO = inp.selectionStart === 0 && inp.selectionEnd === 0;
+    const cuoiO = inp.selectionStart === inp.value.length && inp.selectionEnd === inp.value.length;
+    if (e.key === "ArrowDown" || e.key === "Enter") den(r + 1, c);
+    else if (e.key === "ArrowUp") den(r - 1, c);
+    else if (e.key === "ArrowLeft" && dauO) den(r, c - 1);
+    else if (e.key === "ArrowRight" && cuoiO) den(r, c + 1);
+  };
 
   if (!mo) {
     return (
@@ -555,8 +589,8 @@ export function ImportBOQ({ maCongTrinh }: { maCongTrinh: string }) {
           <div>
             <h2 className="text-sm font-semibold">Import BOQ từ Excel</h2>
             <p className="mt-0.5 text-xs text-chunhat">
-              Tải file mẫu, điền BOQ, rồi upload để app đọc. Kiểm tra và sửa ở bước xem trước trước
-              khi lưu. Dữ liệu import được <strong>nối vào cuối</strong> BOQ hiện có.
+              Tải file mẫu, điền BOQ, rồi upload. Bước xem trước là <strong>bảng tính sửa được</strong>{" "}
+              (di chuyển bằng phím mũi tên). Ô số Excel được đọc <strong>giữ nguyên</strong> giá trị.
             </p>
           </div>
           <button type="button" onClick={dong} className="rounded-md border border-vien p-1.5" title="Đóng (Esc)">
@@ -594,66 +628,72 @@ export function ImportBOQ({ maCongTrinh }: { maCongTrinh: string }) {
             ) : null}
           </div>
         ) : (
-          // --- Bước 2: review sửa được ---
+          // --- Bước 2: bảng tính sửa được ---
           <div>
-            <p className="border-b border-vien bg-nhannhat px-4 py-2 text-xs">
-              Đã đọc <strong>{dongs.length}</strong> dòng. Chọn <strong>kiểu</strong> ở đầu mỗi cột để
-              app đọc đúng (số thập phân/số nguyên tự nhận diện dấu); dòng <span className="text-chunhat">= …</span> là
-              giá trị sẽ lưu — sửa ô nếu sai. Dòng <span className="rounded bg-rose-100 px-1 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">thiếu STT hoặc nội dung</span> bị bỏ khi lưu.
-            </p>
-            <div className="max-h-[55vh] overflow-y-auto">
+            <div className="border-b border-vien bg-nhannhat px-4 py-2 text-xs">
+              <p>
+                Đã đọc <strong>{dongs.length}</strong> dòng. Sửa trực tiếp như bảng tính; dòng{" "}
+                <span className="text-chunhat">= …</span> là giá trị số sẽ lưu (dấu <strong>,</strong> là
+                thập phân, <strong>.</strong> là ngăn nghìn). Dòng{" "}
+                <span className="rounded bg-rose-100 px-1 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+                  thiếu STT hoặc nội dung
+                </span>{" "}
+                bị bỏ khi lưu.
+              </p>
+              {daCoBOQ ? (
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <span className="font-medium text-chunhat">Công trình đã có BOQ:</span>
+                  <label className="inline-flex items-center gap-1">
+                    <input type="radio" name="cheDoImport" checked={!ghiDe} onChange={() => setGhiDe(false)} />
+                    Nối tiếp (thêm vào cuối)
+                  </label>
+                  <label className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400">
+                    <input type="radio" name="cheDoImport" checked={ghiDe} onChange={() => setGhiDe(true)} />
+                    Ghi đè (xoá BOQ cũ + dữ liệu Bill)
+                  </label>
+                </div>
+              ) : null}
+            </div>
+            <div className="max-h-[55vh] overflow-auto">
               <table className="w-full border-collapse text-sm">
                 <thead className="sticky top-0 z-10 bg-the">
                   <tr>
-                    {COT_BOQ.map((c, ci) => (
+                    {COT_BOQ.map((c) => (
                       <th
                         key={c.key}
-                        className={`border-b border-vien px-2 py-1.5 align-bottom text-xs font-semibold text-chunhat ${c.so ? "text-right" : "text-left"}`}
+                        className={`border border-vien bg-nen px-2 py-1.5 text-xs font-semibold text-chunhat ${c.so ? "text-right" : "text-left"}`}
                       >
-                        <div className={`flex flex-col gap-1 ${c.so ? "items-end" : "items-start"}`}>
-                          <span>{c.nhan}</span>
-                          <select
-                            value={kieu[ci]}
-                            onChange={(e) =>
-                              setKieu((k) => k.map((x, j) => (j === ci ? (e.target.value as KieuCot) : x)))
-                            }
-                            className="rounded border border-vien bg-the px-1 py-0.5 text-[11px] font-normal"
-                            title="Kiểu dữ liệu cột (transform)"
-                          >
-                            {KIEU_CHON.map((kc) => (
-                              <option key={kc} value={kc}>
-                                {NHAN_KIEU[kc]}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                        {c.nhan}
                       </th>
                     ))}
-                    <th className="border-b border-vien px-2 py-1.5" />
+                    <th className="border border-vien bg-nen px-2 py-1.5" />
                   </tr>
                 </thead>
-                <tbody>
+                <tbody ref={luoiRef}>
                   {dongs.map((d, i) => {
                     const thieu = !d.stt.trim() || !d.noiDung.trim();
                     return (
                       <tr key={i} className={thieu ? "bg-rose-50 dark:bg-rose-950/20" : ""}>
                         {COT_BOQ.map((c, ci) => {
-                          const kq = c.so ? chuyenTheoKieu(d[c.key], kieu[ci]) : null;
-                          const loiSo = !!kq?.loi && d[c.key].trim() !== "";
+                          const kq = c.so ? xemSo(d[c.key]) : null;
+                          const loiSo = !!kq?.loi;
                           const rong =
                             c.key === "noiDung"
                               ? "w-full min-w-[220px]"
                               : c.key === "stt"
-                                ? "w-16 font-mono"
+                                ? "w-16"
                                 : c.key === "dvt"
                                   ? "w-20"
                                   : "w-28 text-right";
                           return (
-                            <td key={c.key} className="border-b border-vien px-1 py-1 align-top">
+                            <td key={c.key} className="border border-vien px-1 py-1 align-top">
                               <div className={`flex flex-col ${c.so ? "items-end" : ""}`}>
                                 <input
+                                  data-r={i}
+                                  data-c={ci}
                                   value={d[c.key]}
                                   onChange={(e) => suaO(i, c.key, e.target.value)}
+                                  onKeyDown={diChuyen}
                                   inputMode={c.so ? "decimal" : undefined}
                                   className={`${O} ${rong} ${loiSo ? "border-rose-400" : ""}`}
                                 />
@@ -670,8 +710,13 @@ export function ImportBOQ({ maCongTrinh }: { maCongTrinh: string }) {
                             </td>
                           );
                         })}
-                        <td className="border-b border-vien px-1 py-1 text-center align-top">
-                          <button type="button" onClick={() => xoaDong(i)} title="Xoá dòng" className="rounded p-1 text-rose-600 hover:bg-nen dark:text-rose-400">
+                        <td className="border border-vien px-1 py-1 text-center align-top">
+                          <button
+                            type="button"
+                            onClick={() => xoaDong(i)}
+                            title="Xoá dòng"
+                            className="rounded p-1 text-rose-600 hover:bg-nen dark:text-rose-400"
+                          >
                             <Trash2 className="size-3.5" />
                           </button>
                         </td>
@@ -691,7 +736,8 @@ export function ImportBOQ({ maCongTrinh }: { maCongTrinh: string }) {
                 disabled={dangLuu}
                 className="inline-flex items-center gap-1 rounded-md bg-nhan px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
               >
-                <Check className="size-3.5" /> {dangLuu ? "Đang lưu…" : `Xác nhận & Lưu ${dongs.length} dòng`}
+                <Check className="size-3.5" />
+                {dangLuu ? "Đang lưu…" : `${ghiDe ? "Ghi đè" : "Lưu"} ${dongs.length} dòng`}
               </button>
               <button type="button" onClick={() => { setDongs(null); setKqDoc(null); }} className="rounded-md border border-vien px-2.5 py-1 text-xs">
                 ← Chọn file khác
@@ -704,6 +750,80 @@ export function ImportBOQ({ maCongTrinh }: { maCongTrinh: string }) {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Thiết lập VAT của BOQ: đơn giá đã gồm VAT chưa + thuế suất (%). Đổi thì dòng TỔNG
+ * và giá trị Bill (chưa VAT) tính lại theo đó.
+ */
+export function ThietLapVAT({
+  maCongTrinh,
+  donGiaGomVAT,
+  vatPhanTram,
+}: {
+  maCongTrinh: string;
+  donGiaGomVAT: boolean;
+  vatPhanTram: number;
+}) {
+  const [mo, setMo] = useState(false);
+  const [gom, setGom] = useState(donGiaGomVAT);
+  const [vat, setVat] = useState(String(vatPhanTram));
+  const [kq, setKq] = useState<KetQuaBOQ | null>(null);
+  const [dangChay, batDau] = useTransition();
+
+  if (!mo) {
+    return (
+      <button
+        type="button"
+        onClick={() => setMo(true)}
+        className="inline-flex items-center gap-1 rounded-md border border-vien px-2.5 py-1 text-xs font-medium hover:bg-nen"
+      >
+        VAT: {donGiaGomVAT ? `gồm ${vatPhanTram}%` : "chưa gồm"}
+      </button>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget);
+        batDau(async () => {
+          const r = await luuThietLapVAT(fd);
+          setKq(r);
+          if (r.ok) setTimeout(() => setMo(false), 700);
+        });
+      }}
+      className="rounded-lg border border-nhan bg-nhannhat p-3"
+    >
+      <input type="hidden" name="maCongTrinh" value={maCongTrinh} />
+      <p className="mb-2 text-xs font-semibold">Thiết lập VAT</p>
+      <label className="flex items-center gap-1.5 text-xs">
+        <input type="checkbox" name="donGiaGomVAT" checked={gom} onChange={(e) => setGom(e.target.checked)} />
+        Đơn giá trên đã bao gồm VAT
+      </label>
+      <label className="mt-2 flex items-center gap-1.5 text-xs">
+        VAT (%)
+        <input
+          name="vatPhanTram"
+          value={vat}
+          onChange={(e) => setVat(e.target.value)}
+          inputMode="decimal"
+          className={`${O} w-20 text-right`}
+        />
+      </label>
+      <p className="mt-1 text-[11px] text-chunhat">Giá trị Bill (doanh thu) luôn lấy theo giá CHƯA VAT.</p>
+      <div className="mt-2 flex gap-2">
+        <button type="submit" disabled={dangChay} className="rounded-md bg-nhan px-3 py-1 text-xs font-medium text-white disabled:opacity-60">
+          {dangChay ? "Đang lưu…" : "Lưu"}
+        </button>
+        <button type="button" onClick={() => setMo(false)} className="rounded-md border border-vien px-3 py-1 text-xs">
+          Đóng
+        </button>
+      </div>
+      <ThongBao kq={kq} />
+    </form>
   );
 }
 
