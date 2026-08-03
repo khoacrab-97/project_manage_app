@@ -1,33 +1,28 @@
 @echo off
 setlocal
 
-REM Bam dup file nay de dong goi lai va chay ban moi nhat.
-REM Script se nap DATABASE_URL tu .env/.env.local neu Windows chua co bien nay.
+REM ============================================================
+REM  Bam dup file nay de BUILD ban moi nhat roi CHAY app.
+REM  - Dung npm (co san cung Node): KHONG can pnpm / corepack / Admin.
+REM  - Chay bang "next start": KHONG dong goi standalone (ban standalone
+REM    khong tuong thich voi node_modules kieu pnpm -> hay bao dong goi that bai).
+REM  - DATABASE_URL: Next tu doc tu file .env, KHONG can dat tay.
+REM ============================================================
 cd /d "%~dp0"
 
-if "%DATABASE_URL%"=="" (
-  if exist ".env.local" call :load_env ".env.local"
-)
+if "%PORT%"=="" set "PORT=3000"
+set "NODE_ENV=production"
 
-if "%DATABASE_URL%"=="" (
-  if exist ".env" call :load_env ".env"
-)
-
-if "%DATABASE_URL%"=="" (
-  echo Chua cau hinh DATABASE_URL Postgres.
-  echo Hay tao file .env o cung thu muc voi file nay, vi du:
-  echo.
-  echo   DATABASE_URL=postgresql://...
-  echo.
+where npm >nul 2>&1
+if errorlevel 1 (
+  echo Khong tim thay npm. Hay cai Node.js roi thu lai.
   pause
   exit /b 1
 )
 
-if "%PORT%"=="" set "PORT=3000"
-
-where pnpm >nul 2>&1
-if errorlevel 1 (
-  echo Khong tim thay pnpm. Hay cai Node.js va chay: corepack enable
+if not exist ".env" (
+  echo Khong thay file .env ^(chua co DATABASE_URL Postgres^).
+  echo Hay tao .env o cung thu muc, vi du:  DATABASE_URL=postgresql://...
   pause
   exit /b 1
 )
@@ -38,40 +33,23 @@ for /f "tokens=5" %%p in ('netstat -ano ^| findstr /r /c:":%PORT% .*LISTENING"')
 )
 
 echo.
-echo Dang dong goi ban moi...
-call pnpm run package
-set "PACKAGE_CODE=%ERRORLEVEL%"
-
-if not "%PACKAGE_CODE%"=="0" (
+echo Dang build ban moi ^(co the mat 1-2 phut^)...
+call npm run build
+if errorlevel 1 (
   echo.
-  echo Dong goi that bai voi ma loi %PACKAGE_CODE%.
-  pause
-  exit /b %PACKAGE_CODE%
-)
-
-if not exist "dist\chay.cmd" (
-  echo.
-  echo Dong goi xong nhung khong thay dist\chay.cmd.
+  echo Build that bai. Xem thong bao loi o tren.
   pause
   exit /b 1
 )
 
 echo.
-call "dist\chay.cmd" moi
-set "EXIT_CODE=%ERRORLEVEL%"
+echo Dang chay tai http://localhost:%PORT%
+echo DONG CUA SO NAY LA TAT APP.
+start "" /min powershell -NoProfile -Command "Start-Sleep 6; Start-Process 'http://localhost:%PORT%'"
 
-if not "%EXIT_CODE%"=="0" (
-  echo.
-  echo Ung dung da dung voi ma loi %EXIT_CODE%.
-  pause
-)
+call npx next start -H "::" -p %PORT%
 
-exit /b %EXIT_CODE%
-
-:load_env
-for /f "usebackq tokens=1,* delims==" %%A in ("%~1") do (
-  if /I "%%A"=="DATABASE_URL" set "DATABASE_URL=%%~B"
-  if /I "%%A"=="PORT" if "%PORT%"=="" set "PORT=%%~B"
-  if /I "%%A"=="HTTPS" if "%HTTPS%"=="" set "HTTPS=%%~B"
-)
+echo.
+echo Ung dung da dung.
+pause
 exit /b 0
