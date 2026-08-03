@@ -91,7 +91,13 @@ export function QuanTriNguoiDung({
             action={(fd) =>
               batDau(async () => {
                 const r = await taoNguoiDung(fd);
-                setKqTao(r);
+                // Tạo xong thì đóng hộp thoại; tài khoản mới hiện ngay ở bảng dưới.
+                if (r.ok) {
+                  setMoTao(false);
+                  setKqTao(null);
+                } else {
+                  setKqTao(r);
+                }
               })
             }
             className="rounded-lg border border-nhan bg-nhannhat p-3"
@@ -139,7 +145,7 @@ export function QuanTriNguoiDung({
                 }}
                 className="rounded-md border border-vien px-3 py-1 text-xs"
               >
-                Đóng
+                Hủy
               </button>
             </div>
             <ThongBao kq={kqTao} />
@@ -241,7 +247,13 @@ export function QuanTriNguoiDung({
               action={(fd) =>
                 batDau(async () => {
                   const r = await doiVaiTro(fd);
-                  setKqSua((s) => ({ ...s, [u.id]: r }));
+                  // Lưu xong thì tự đóng form; đổi vai trò/phạm vi hiện ngay ở bảng.
+                  if (r.ok) {
+                    setDangSua(null);
+                    setKqSua((s) => ({ ...s, [u.id]: null }));
+                  } else {
+                    setKqSua((s) => ({ ...s, [u.id]: r }));
+                  }
                 })
               }
               className="border-t border-vien bg-nhannhat p-4"

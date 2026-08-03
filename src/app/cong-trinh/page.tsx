@@ -13,24 +13,28 @@ import {
   ThanhTyLe,
 } from "@/components/ui";
 import { ngay, phanTram, tien } from "@/lib/format";
+import { Lock } from "lucide-react";
 import {
   danhMucSucKhoe,
-  demSucKhoe,
   layCongTrinhNgung,
   type DongDanhMuc,
 } from "@/lib/data/repository";
 import { nguoiDungHienTai } from "@/lib/auth/phien";
-import { coQuyen } from "@/lib/auth/quyen";
+import { coQuyen, phamViCongTrinh } from "@/lib/auth/quyen";
 import { FormThemCongTrinh, NutMoLaiTheoDoi, NutSuaCongTrinh } from "@/components/sua-cong-trinh";
 
 export const metadata = { title: "Danh mục công trình" };
 
 export default async function TrangDanhMucCongTrinh() {
-  const [ds, dem, nguoiDung] = await Promise.all([
-    danhMucSucKhoe(),
-    demSucKhoe(),
-    nguoiDungHienTai(),
-  ]);
+  // Danh mục hiện MỌI công trình (kể cả ngoài phạm vi) — nhưng công trình ngoài
+  // phạm vi chỉ hiện tên, không bấm vào chi tiết được (chặn ở trang chi tiết).
+  const [ds, nguoiDung] = await Promise.all([danhMucSucKhoe(true), nguoiDungHienTai()]);
+  const pv = phamViCongTrinh(nguoiDung); // null = thấy tất cả (ADMIN, BGĐ, thư ký)
+  const trongPhamVi = (ma: string) => pv === null || pv.includes(ma);
+
+  const dem = { Xanh: 0, "Vàng": 0, "Đỏ": 0 } as Record<string, number>;
+  for (const r of ds) dem[r.sucKhoe]++;
+
   // Ẩn nút với vai trò không được phép. Chốt chặn thật nằm trong Server Action.
   const duocSua = coQuyen(nguoiDung, "tao_cong_trinh");
   // Công trình đã ngừng theo dõi — chỉ hiện cho người được sửa, để mở lại.
@@ -63,7 +67,7 @@ export default async function TrangDanhMucCongTrinh() {
 
       <The className="mb-4">
         <TheDau tieuDe={`Đang thi công (${dangChay.length})`} />
-        <BangCongTrinh ds={dangChay} duocSua={duocSua} />
+        <BangCongTrinh ds={dangChay} duocSua={duocSua} trongPhamVi={trongPhamVi} />
       </The>
 
       {daXong.length ? (
@@ -72,7 +76,7 @@ export default async function TrangDanhMucCongTrinh() {
             tieuDe={`Đã hoàn thành / nghiệm thu (${daXong.length})`}
             moTa="Dữ liệu đã đóng băng — chỉ tra cứu, không thêm hay sửa được nữa"
           />
-          <BangCongTrinh ds={daXong} duocSua={duocSua} mo />
+          <BangCongTrinh ds={daXong} duocSua={duocSua} trongPhamVi={trongPhamVi} mo />
         </The>
       ) : null}
 
@@ -125,10 +129,13 @@ export default async function TrangDanhMucCongTrinh() {
 function BangCongTrinh({
   ds,
   duocSua,
+  trongPhamVi,
   mo,
 }: {
   ds: DongDanhMuc[];
   duocSua: boolean;
+  /** Công trình này có nằm trong phạm vi người dùng không — quyết định bấm được hay không. */
+  trongPhamVi: (ma: string) => boolean;
   /** Làm tối cả nhóm — dùng cho công trình đã nghiệm thu. */
   mo?: boolean;
 }) {
@@ -163,12 +170,22 @@ function BangCongTrinh({
               </Td>
             ) : null}
             <Td className={`sticky left-0 z-10 whitespace-nowrap ${mo ? "bg-nen/70" : "bg-the"}`}>
-              <Link
-                href={`/cong-trinh/${encodeURIComponent(r.congTrinh.maCongTrinh)}`}
-                className="font-medium text-nhan hover:underline"
-              >
-                {r.congTrinh.maCongTrinh}
-              </Link>
+              {trongPhamVi(r.congTrinh.maCongTrinh) ? (
+                <Link
+                  href={`/cong-trinh/${encodeURIComponent(r.congTrinh.maCongTrinh)}`}
+                  className="font-medium text-nhan hover:underline"
+                >
+                  {r.congTrinh.maCongTrinh}
+                </Link>
+              ) : (
+                <span
+                  className="inline-flex items-center gap-1 font-medium text-chunhat"
+                  title="Ngoài phạm vi được giao — không xem chi tiết được"
+                >
+                  <Lock className="size-3" />
+                  {r.congTrinh.maCongTrinh}
+                </span>
+              )}
             </Td>
             <Td className="max-w-60 truncate text-xs" title={r.congTrinh.tenCongTrinh}>
               {r.congTrinh.tenCongTrinh}

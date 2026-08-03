@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LogOut, Shield } from "lucide-react";
+import { KeyRound, LogOut, Shield } from "lucide-react";
 import { nguoiDungHienTai, xoaPhien } from "@/lib/auth/phien";
 import { coQuyen, VAI_TRO } from "@/lib/auth/quyen";
 import { redirect } from "next/navigation";
@@ -25,6 +25,13 @@ export async function ThanhNguoiDung() {
           <Shield className="size-3.5" /> Quản trị
         </Link>
       ) : null}
+
+      <Link
+        href="/doi-mat-khau"
+        className="inline-flex items-center gap-1 text-xs font-medium text-chunhat hover:text-nhan hover:underline"
+      >
+        <KeyRound className="size-3.5" /> Đổi mật khẩu
+      </Link>
 
       <div className="text-right leading-tight">
         <p className="text-xs font-medium">{u.hoTen}</p>

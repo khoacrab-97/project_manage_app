@@ -11,6 +11,7 @@ import {
   type KetQuaBOQ,
 } from "@/app/cong-trinh/boq-actions";
 import { khoiLuong as dinhDangKL, tien } from "@/lib/format";
+import { chuyenTheoKieu, NHAN_KIEU, type KieuCot } from "@/lib/so-linh-hoat";
 
 const O = "rounded-md border border-vien bg-the px-2 py-1 text-xs";
 
@@ -457,9 +458,22 @@ interface ODongBOQ {
  * Hai bước trong một hộp nổi: chưa đọc file thì hiện ô chọn file; đọc xong chuyển
  * sang lưới review controlled, sửa/xoá dòng thoải mái rồi bấm lưu.
  */
+/** 5 cột BOQ + cờ "là cột số" (cột số mới hiện transform/kiểu số). */
+const COT_BOQ: { key: keyof ODongBOQ; nhan: string; so: boolean }[] = [
+  { key: "stt", nhan: "STT", so: false },
+  { key: "noiDung", nhan: "Nội dung hạng mục", so: false },
+  { key: "dvt", nhan: "ĐVT", so: false },
+  { key: "khoiLuong", nhan: "Khối lượng", so: true },
+  { key: "donGia", nhan: "Đơn giá", so: true },
+];
+const KIEU_MAC_DINH: KieuCot[] = ["text", "text", "text", "thapphan", "nguyen"];
+const KIEU_CHON: KieuCot[] = ["text", "nguyen", "thapphan", "phantram"];
+
 export function ImportBOQ({ maCongTrinh }: { maCongTrinh: string }) {
   const [mo, setMo] = useState(false);
   const [dongs, setDongs] = useState<ODongBOQ[] | null>(null);
+  // Kiểu dữ liệu từng cột (transform data) — mặc định theo bản chất cột BOQ.
+  const [kieu, setKieu] = useState<KieuCot[]>(KIEU_MAC_DINH);
   const [kqDoc, setKqDoc] = useState<KetQuaBOQ | null>(null);
   const [kqLuu, setKqLuu] = useState<KetQuaBOQ | null>(null);
   const [dangDoc, batDauDoc] = useTransition();
@@ -478,6 +492,7 @@ export function ImportBOQ({ maCongTrinh }: { maCongTrinh: string }) {
   const dong = () => {
     setMo(false);
     setDongs(null);
+    setKieu(KIEU_MAC_DINH);
     setKqDoc(null);
     setKqLuu(null);
   };
@@ -502,12 +517,9 @@ export function ImportBOQ({ maCongTrinh }: { maCongTrinh: string }) {
     if (!dongs) return;
     const fd = new FormData();
     fd.append("maCongTrinh", maCongTrinh);
+    // Áp KIỂU từng cột (transform) rồi gửi giá trị canonical để so() lưu đọc đúng.
     for (const d of dongs) {
-      fd.append("stt", d.stt);
-      fd.append("noiDung", d.noiDung);
-      fd.append("dvt", d.dvt);
-      fd.append("khoiLuong", d.khoiLuong);
-      fd.append("donGia", d.donGia);
+      COT_BOQ.forEach((c, i) => fd.append(c.key, chuyenTheoKieu(d[c.key], kieu[i]).canonical));
     }
     batDauLuu(async () => {
       const r = await themNhieuDongBOQ(fd);
@@ -583,41 +595,80 @@ export function ImportBOQ({ maCongTrinh }: { maCongTrinh: string }) {
           // --- Bước 2: review sửa được ---
           <div>
             <p className="border-b border-vien bg-nhannhat px-4 py-2 text-xs">
-              Đã đọc <strong>{dongs.length}</strong> dòng. Sửa trực tiếp bên dưới; dòng <span className="rounded bg-rose-100 px-1 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">thiếu STT hoặc nội dung</span> sẽ bị bỏ khi lưu.
+              Đã đọc <strong>{dongs.length}</strong> dòng. Chọn <strong>kiểu</strong> ở đầu mỗi cột để
+              app đọc đúng (số thập phân/số nguyên tự nhận diện dấu); dòng <span className="text-chunhat">= …</span> là
+              giá trị sẽ lưu — sửa ô nếu sai. Dòng <span className="rounded bg-rose-100 px-1 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">thiếu STT hoặc nội dung</span> bị bỏ khi lưu.
             </p>
             <div className="max-h-[55vh] overflow-y-auto">
               <table className="w-full border-collapse text-sm">
-                <thead className="sticky top-0 bg-the">
+                <thead className="sticky top-0 z-10 bg-the">
                   <tr>
-                    <th className="border-b border-vien px-2 py-1.5 text-left text-xs font-semibold text-chunhat">STT</th>
-                    <th className="border-b border-vien px-2 py-1.5 text-left text-xs font-semibold text-chunhat">Nội dung hạng mục</th>
-                    <th className="border-b border-vien px-2 py-1.5 text-left text-xs font-semibold text-chunhat">ĐVT</th>
-                    <th className="border-b border-vien px-2 py-1.5 text-right text-xs font-semibold text-chunhat">Khối lượng</th>
-                    <th className="border-b border-vien px-2 py-1.5 text-right text-xs font-semibold text-chunhat">Đơn giá</th>
+                    {COT_BOQ.map((c, ci) => (
+                      <th
+                        key={c.key}
+                        className={`border-b border-vien px-2 py-1.5 align-bottom text-xs font-semibold text-chunhat ${c.so ? "text-right" : "text-left"}`}
+                      >
+                        <div className={`flex flex-col gap-1 ${c.so ? "items-end" : "items-start"}`}>
+                          <span>{c.nhan}</span>
+                          <select
+                            value={kieu[ci]}
+                            onChange={(e) =>
+                              setKieu((k) => k.map((x, j) => (j === ci ? (e.target.value as KieuCot) : x)))
+                            }
+                            className="rounded border border-vien bg-the px-1 py-0.5 text-[11px] font-normal"
+                            title="Kiểu dữ liệu cột (transform)"
+                          >
+                            {KIEU_CHON.map((kc) => (
+                              <option key={kc} value={kc}>
+                                {NHAN_KIEU[kc]}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </th>
+                    ))}
                     <th className="border-b border-vien px-2 py-1.5" />
                   </tr>
                 </thead>
                 <tbody>
                   {dongs.map((d, i) => {
-                    const loi = !d.stt.trim() || !d.noiDung.trim();
+                    const thieu = !d.stt.trim() || !d.noiDung.trim();
                     return (
-                      <tr key={i} className={loi ? "bg-rose-50 dark:bg-rose-950/20" : ""}>
-                        <td className="border-b border-vien px-1 py-1">
-                          <input value={d.stt} onChange={(e) => suaO(i, "stt", e.target.value)} className={`${O} w-16 font-mono`} />
-                        </td>
-                        <td className="border-b border-vien px-1 py-1">
-                          <input value={d.noiDung} onChange={(e) => suaO(i, "noiDung", e.target.value)} className={`${O} w-full min-w-[220px]`} />
-                        </td>
-                        <td className="border-b border-vien px-1 py-1">
-                          <input value={d.dvt} onChange={(e) => suaO(i, "dvt", e.target.value)} className={`${O} w-20`} />
-                        </td>
-                        <td className="border-b border-vien px-1 py-1">
-                          <input value={d.khoiLuong} onChange={(e) => suaO(i, "khoiLuong", e.target.value)} inputMode="decimal" className={`${O} w-24 text-right`} />
-                        </td>
-                        <td className="border-b border-vien px-1 py-1">
-                          <input value={d.donGia} onChange={(e) => suaO(i, "donGia", e.target.value)} inputMode="decimal" className={`${O} w-28 text-right`} />
-                        </td>
-                        <td className="border-b border-vien px-1 py-1 text-center">
+                      <tr key={i} className={thieu ? "bg-rose-50 dark:bg-rose-950/20" : ""}>
+                        {COT_BOQ.map((c, ci) => {
+                          const kq = c.so ? chuyenTheoKieu(d[c.key], kieu[ci]) : null;
+                          const loiSo = !!kq?.loi && d[c.key].trim() !== "";
+                          const rong =
+                            c.key === "noiDung"
+                              ? "w-full min-w-[220px]"
+                              : c.key === "stt"
+                                ? "w-16 font-mono"
+                                : c.key === "dvt"
+                                  ? "w-20"
+                                  : "w-28 text-right";
+                          return (
+                            <td key={c.key} className="border-b border-vien px-1 py-1 align-top">
+                              <div className={`flex flex-col ${c.so ? "items-end" : ""}`}>
+                                <input
+                                  value={d[c.key]}
+                                  onChange={(e) => suaO(i, c.key, e.target.value)}
+                                  inputMode={c.so ? "decimal" : undefined}
+                                  className={`${O} ${rong} ${loiSo ? "border-rose-400" : ""}`}
+                                />
+                                {c.so ? (
+                                  loiSo ? (
+                                    <span className="mt-0.5 text-[10px] text-rose-600 dark:text-rose-400">
+                                      không đọc được số
+                                    </span>
+                                  ) : kq!.hienThi !== "" ? (
+                                    <span className="mt-0.5 text-[10px] text-chunhat">= {kq!.hienThi}</span>
+                                  ) : null
+                                ) : null}
+                              </div>
+                            </td>
+                          );
+                        })}
+                        <td className="border-b border-vien px-1 py-1 text-center align-top">
                           <button type="button" onClick={() => xoaDong(i)} title="Xoá dòng" className="rounded p-1 text-rose-600 hover:bg-nen dark:text-rose-400">
                             <Trash2 className="size-3.5" />
                           </button>

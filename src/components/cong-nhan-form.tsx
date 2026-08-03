@@ -263,6 +263,12 @@ export function FormCongNhan({
               />
             </label>
 
+            <label className="flex items-center gap-1.5 text-xs sm:col-span-2">
+              <input type="checkbox" name="apDungTatCaDoi" />
+              Áp dụng người quản lý này cho tất cả công nhân trong{" "}
+              {doiChon === "NGOAI_THANH" ? "đội DA này" : "Đội thi công"}
+            </label>
+
             <label className="text-xs sm:col-span-2">
               <span className="mb-0.5 block text-chunhat">Ghi chú</span>
               <input name="ghiChu" defaultValue={suaCN.ghiChu} className={`${O} w-full`} />
