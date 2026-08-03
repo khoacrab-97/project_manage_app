@@ -6,10 +6,11 @@ xây theo `PLAN_XAY_DUNG_APP_QUAN_LY_DOANH_THU_CHI_PHI_XAY_DUNG.md`.
 ## Chạy thử
 
 ```bash
-npm install
-npm run dev      # http://localhost:3000 — KHÔNG cần cơ sở dữ liệu
-npm test         # 16 test, quan trọng nhất là bất biến số liệu
-npm run build    # kiểm tra build production
+corepack enable
+pnpm install
+pnpm run dev      # http://localhost:3000
+pnpm test         # 17 test, quan trọng nhất là bất biến số liệu
+pnpm run build    # kiểm tra build production
 ```
 
 ## Trạng thái: đây là gì và chưa là gì
@@ -72,6 +73,6 @@ src/app/                        9 trang theo menu §22
 Khi 3 file Excel thay đổi:
 
 ```bash
-npm run extract:source
-npm test        # bất biến phải vẫn xanh
+pnpm run extract:source
+pnpm test        # bất biến phải vẫn xanh
 ```

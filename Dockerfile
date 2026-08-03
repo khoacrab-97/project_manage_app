@@ -2,23 +2,29 @@
 # Dùng output "standalone" của Next.js: ảnh cuối chỉ chứa server và đúng những
 # node_modules cần thiết, không mang theo toàn bộ dependency dev.
 
+# ---------- Base: bật pnpm qua Corepack ----------
+FROM node:22-alpine AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable && corepack prepare pnpm@11.18.0 --activate
+
 # ---------- Giai đoạn 1: cài dependency ----------
-FROM node:22-alpine AS deps
+FROM base AS deps
 WORKDIR /app
-COPY package.json package-lock.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
 # ---------- Giai đoạn 2: build ----------
-FROM node:22-alpine AS builder
+FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG DATABASE_URL
 ENV DATABASE_URL=$DATABASE_URL
-RUN npm run build
+RUN pnpm run build
 
 # ---------- Giai đoạn 3: chạy ----------
 FROM node:22-alpine AS runner

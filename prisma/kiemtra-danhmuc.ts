@@ -1,6 +1,6 @@
 /**
  * Kiểm chứng quy tắc sửa danh mục mã (§3.4, §17.2).
- * Chạy: npx tsx prisma/kiemtra-danhmuc.ts
+ * Chạy: pnpm exec tsx prisma/kiemtra-danhmuc.ts
  *
  * Script này kiểm tra ĐIỀU KIỆN DỮ LIỆU mà Server Action `suaMa` dựa vào, và
  * kiểm tra ghi/khôi phục thật xuống cơ sở dữ liệu.

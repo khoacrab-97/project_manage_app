@@ -2,7 +2,7 @@
  * Đặt mật khẩu cho một tài khoản từ dòng lệnh.
  * Dùng khi cấp mật khẩu lần đầu cho ADMIN, hoặc khi quản trị tự khoá mình ra ngoài.
  *
- *   npx tsx prisma/dat-mat-khau.ts <email> <matKhau>
+ *   pnpm exec tsx prisma/dat-mat-khau.ts <email> <matKhau>
  *
  * Mật khẩu bắt buộc truyền vào, ít nhất 8 ký tự.
  */
@@ -15,7 +15,7 @@ const db = taoPrismaClient();
 async function main() {
   const email = process.argv[2]?.trim().toLowerCase();
   if (!email) {
-    console.error("Cach dung: npx tsx prisma/dat-mat-khau.ts <email> <matKhau>");
+    console.error("Cach dung: pnpm exec tsx prisma/dat-mat-khau.ts <email> <matKhau>");
     process.exit(1);
   }
 
@@ -28,7 +28,7 @@ async function main() {
   const matKhau = process.argv[3];
   if (!matKhau || matKhau.length < 8) {
     console.error("Phai truyen mat khau, it nhat 8 ky tu.");
-    console.error("  npx tsx prisma/dat-mat-khau.ts <email> <matKhau>");
+    console.error("  pnpm exec tsx prisma/dat-mat-khau.ts <email> <matKhau>");
     process.exit(1);
   }
   await db.user.update({

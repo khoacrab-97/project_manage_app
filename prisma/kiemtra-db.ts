@@ -1,6 +1,6 @@
 /**
  * Đối chiếu dữ liệu trong cơ sở dữ liệu với ma trận OUTPUT_NAM gốc.
- * Chạy: npx tsx prisma/kiemtra-db.ts
+ * Chạy: pnpm exec tsx prisma/kiemtra-db.ts
  */
 import "dotenv/config";
 import { taoBoDuLieu } from "../src/lib/data/seed/index";

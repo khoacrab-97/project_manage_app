@@ -1,6 +1,6 @@
 /**
  * Kiểm chứng đăng nhập và phân quyền.
- * Chạy: npx tsx prisma/kiemtra-quyen.ts   (cần dev server đang chạy ở cổng 3000)
+ * Chạy: pnpm exec tsx prisma/kiemtra-quyen.ts   (cần dev server đang chạy ở cổng 3000)
  *
  * Tạo phiên thật trong cơ sở dữ liệu rồi gọi HTTP kèm cookie phiên đó — tức là đi
  * đúng đường mà trình duyệt đi: cookie -> nguoiDungHienTai() -> lọc phạm vi trong

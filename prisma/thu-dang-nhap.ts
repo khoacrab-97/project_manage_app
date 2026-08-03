@@ -1,6 +1,6 @@
 /**
  * Chẩn đoán đăng nhập: kiểm tra đúng những gì Server Action làm.
- *   npx tsx prisma/thu-dang-nhap.ts <email> <matKhau>
+ *   pnpm exec tsx prisma/thu-dang-nhap.ts <email> <matKhau>
  */
 import "dotenv/config";
 import { kiemTraMatKhau } from "../src/lib/auth/mat-khau";

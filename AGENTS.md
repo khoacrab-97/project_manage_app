@@ -12,9 +12,9 @@ cache hỏng chứ không phải thiếu gói: `rm -rf .next` rồi chạy lại
 ## Quy tắc riêng của dự án
 
 1. **Không sửa `src/lib/data/source/source-data.json` bằng tay.** File này sinh ra
-   từ 3 file Excel gốc bằng `npm run extract:source`.
+   từ 3 file Excel gốc bằng `pnpm run extract:source`.
 
-2. **Bất biến số liệu là thứ không được phá.** `npm test` kiểm tra tổng giao dịch
+2. **Bất biến số liệu là thứ không được phá.** `pnpm test` kiểm tra tổng giao dịch
    theo từng ô (mã × công trình) khớp tuyệt đối ma trận `OUTPUT_NAM`. Test đỏ
    nghĩa là mọi con số trên dashboard mất giá trị.
 

@@ -227,7 +227,7 @@ export function BoxNhapBOQ({
                 {dongs.map((d) => (
                   <tr key={d.id} className={`border-b border-vien/60 ${xong[d.id] ? "bg-nen/50" : ""}`}>
                     <td className="px-3 py-1.5 font-mono text-xs">{d.stt}</td>
-                    <td className="max-w-[300px] truncate px-3 py-1.5 text-xs" title={d.noiDung}>
+                    <td className="max-w-75 truncate px-3 py-1.5 text-xs" title={d.noiDung}>
                       {d.noiDung}
                     </td>
                     <td className="px-3 py-1.5 text-xs whitespace-nowrap">{d.dvt}</td>
@@ -402,7 +402,7 @@ export function LuoiNhapBOQ({
                       <input name="stt" className={`${O} w-16 font-mono`} placeholder="1" />
                     </td>
                     <td className="border-b border-vien px-1 py-1">
-                      <input name="noiDung" className={`${O} w-full min-w-[220px]`} />
+                      <input name="noiDung" className={`${O} w-full min-w-55`} />
                     </td>
                     <td className="border-b border-vien px-1 py-1">
                       <input name="dvt" className={`${O} w-20`} placeholder="m³" />
@@ -519,7 +519,9 @@ export function ImportBOQ({ maCongTrinh }: { maCongTrinh: string }) {
     fd.append("maCongTrinh", maCongTrinh);
     // Áp KIỂU từng cột (transform) rồi gửi giá trị canonical để so() lưu đọc đúng.
     for (const d of dongs) {
-      COT_BOQ.forEach((c, i) => fd.append(c.key, chuyenTheoKieu(d[c.key], kieu[i]).canonical));
+      COT_BOQ.forEach((c, i) => {
+        fd.append(c.key, chuyenTheoKieu(d[c.key], kieu[i]).canonical);
+      });
     }
     batDauLuu(async () => {
       const r = await themNhieuDongBOQ(fd);

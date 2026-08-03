@@ -11,7 +11,7 @@
       "**",
       "!!public/**/*.svg",
       "!!src/lib/data/source/source-data.json",
-      "!!package-lock.json"
+      "!!pnpm-lock.yaml"
     ]
   },
   "formatter": {

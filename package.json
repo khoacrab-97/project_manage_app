@@ -2,6 +2,7 @@
   "name": "prmana-app",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@11.18.0",
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "next dev",
@@ -13,7 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "extract:source": "node scripts/extract-source.mjs src/lib/data/source/source-data.json",
-    "package": "npm run build && node scripts/package-standalone.mjs",
+    "package": "pnpm run build && node scripts/package-standalone.mjs",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:kiemtra": "tsx prisma/kiemtra-db.ts",
@@ -50,13 +51,5 @@
     "tsx": "^4.23.5",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vitest": "^4.1.10"
-  },
-  "allowScripts": {
-    "@prisma/engines@7.9.1": true
-  },
-  "overrides": {
-    "postcss": "^8.5.25",
-    "sharp": "^0.35.3",
-    "uuid": "11.1.1"
   }
 }

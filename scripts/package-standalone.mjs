@@ -24,7 +24,7 @@ const standalone = path.join(goc, ".next", "standalone");
 const dich = path.join(goc, "dist");
 
 if (!existsSync(standalone)) {
-  console.error('Chưa có .next/standalone. Chạy "npm run build" trước.');
+  console.error('Chưa có .next/standalone. Chạy "pnpm run build" trước.');
   process.exit(1);
 }
 

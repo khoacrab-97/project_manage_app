@@ -25,9 +25,9 @@ if "%DATABASE_URL%"=="" (
 
 if "%PORT%"=="" set "PORT=3000"
 
-where npm >nul 2>&1
+where pnpm >nul 2>&1
 if errorlevel 1 (
-  echo Khong tim thay npm. Hay cai Node.js truoc khi chay file nay.
+  echo Khong tim thay pnpm. Hay cai Node.js va chay: corepack enable
   pause
   exit /b 1
 )
@@ -39,7 +39,7 @@ for /f "tokens=5" %%p in ('netstat -ano ^| findstr /r /c:":%PORT% .*LISTENING"')
 
 echo.
 echo Dang dong goi ban moi...
-call npm run package
+call pnpm run package
 set "PACKAGE_CODE=%ERRORLEVEL%"
 
 if not "%PACKAGE_CODE%"=="0" (

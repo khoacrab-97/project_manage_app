@@ -45,9 +45,10 @@ Không commit `.env`.
 ## Cài đặt và chạy
 
 ```bash
-npm install
-npx prisma generate
-npm run dev
+corepack enable
+pnpm install
+pnpm exec prisma generate
+pnpm run dev
 ```
 
 Mở `http://localhost:3000`.
@@ -57,14 +58,14 @@ Mở `http://localhost:3000`.
 Triển khai schema lên Postgres:
 
 ```bash
-npx prisma migrate deploy
+pnpm exec prisma migrate deploy
 ```
 
 Seed chỉ dùng cho database trống/demo:
 
 ```bash
-npm run db:seed
-npm run db:matkhau -- <email-admin> <mat-khau>
+pnpm run db:seed
+pnpm run db:matkhau -- <email-admin> <mat-khau>
 ```
 
 Nếu đã import dữ liệu từ SQLite production thì không chạy seed lại.
@@ -72,10 +73,10 @@ Nếu đã import dữ liệu từ SQLite production thì không chạy seed l�
 ## Kiểm tra sau deploy
 
 ```bash
-npm test
-npm run build
-npm run db:kiemtra
-npm run db:kiemtra-danhmuc
+pnpm test
+pnpm run build
+pnpm run db:kiemtra
+pnpm run db:kiemtra-danhmuc
 ```
 
 Kiểm tra trên web:
