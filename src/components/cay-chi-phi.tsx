@@ -101,7 +101,7 @@ export function CayChiPhi({
                   className={`bg-nen/60 hover:bg-nen ${n.con.length ? "cursor-pointer" : ""}`}
                   onClick={n.con.length ? () => setMo({ ...mo, [n.ma]: !dangMo }) : undefined}
                 >
-                  <Td className="font-mono text-xs font-semibold whitespace-nowrap">
+                  <Td className="text-xs font-semibold whitespace-nowrap">
                     {n.con.length ? (
                       dangMo ? (
                         <ChevronDown className="mr-1 inline size-3" />
@@ -134,7 +134,7 @@ export function CayChiPhi({
                 {dangMo
                   ? n.con.map((c) => (
                       <tr key={c.ma} className="hover:bg-nen">
-                        <Td className="pl-8 font-mono text-xs whitespace-nowrap">{c.ma}</Td>
+                        <Td className="pl-8 text-xs whitespace-nowrap">{c.ma}</Td>
                         <Td className="max-w-[280px] truncate text-xs" title={c.ten}>
                           {c.ten}
                         </Td>

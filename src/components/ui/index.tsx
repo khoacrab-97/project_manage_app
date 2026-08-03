@@ -232,7 +232,7 @@ export function NhanCongTrinh({
           {chinh}
         </span>
       )}
-      {rg ? <span className="font-mono text-[11px] text-chunhat">{ma}</span> : null}
+      {rg ? <span className="text-[11px] text-chunhat">{ma}</span> : null}
     </span>
   );
 }

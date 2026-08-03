@@ -39,14 +39,6 @@ function docNgay(fd: FormData, ten: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** Ô số để trống thì là null. Trả `undefined` khi gõ vào chữ, để báo lỗi. */
-function docSo(fd: FormData, ten: string): number | null | undefined {
-  const v = String(fd.get(ten) ?? "").trim().replace(/[.,\s]/g, "");
-  if (!v) return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : undefined;
-}
-
 function docChu(fd: FormData, ten: string): string | null {
   const v = String(fd.get(ten) ?? "").trim();
   return v === "" ? null : v;
@@ -83,18 +75,6 @@ function docTruongChung(fd: FormData) {
 
   const trangThai = docTrangThai(fd);
 
-  const giaTriHopDong = docSo(fd, "giaTriHopDong");
-  if (giaTriHopDong === undefined) return "Giá trị hợp đồng phải là số." as const;
-  if (giaTriHopDong !== null && giaTriHopDong < 0) {
-    return "Giá trị hợp đồng không được âm." as const;
-  }
-
-  const bienPhanTram = docSo(fd, "bienLNMucTieu");
-  if (bienPhanTram === undefined) return "Biên lợi nhuận mục tiêu phải là số." as const;
-  if (bienPhanTram !== null && (bienPhanTram < 0 || bienPhanTram > 100)) {
-    return "Biên lợi nhuận mục tiêu phải nằm trong khoảng 0–100%." as const;
-  }
-
   const ngayBatDau = docNgay(fd, "ngayBatDau");
   const ngayKetThucKeHoach = docNgay(fd, "ngayKetThucKeHoach");
   if (ngayBatDau && ngayKetThucKeHoach && ngayKetThucKeHoach < ngayBatDau) {
@@ -118,10 +98,6 @@ function docTruongChung(fd: FormData) {
     chuDauTu: docChu(fd, "chuDauTu"),
     chiHuyTruong: docChu(fd, "chiHuyTruong"),
     diaDiem: docChu(fd, "diaDiem"),
-    googleSheetUrl: docChu(fd, "googleSheetUrl"),
-    giaTriHopDong,
-    // Giao diện nhập theo phần trăm cho dễ đọc; DB lưu tỷ lệ như các mã KPI khác.
-    bienLNMucTieu: bienPhanTram === null ? null : bienPhanTram / 100,
     ngayBatDau,
     ngayKetThucKeHoach,
     // Bỏ tích hoàn thành thì xoá luôn ngày, tránh để lại ngày nghiệm thu mồ côi.

@@ -182,22 +182,60 @@ export async function timCongTrinh(maCongTrinh: string): Promise<CongTrinh | und
 }
 
 // ------------------------------------------------------------ BOQ
+export interface GiamGiaBOQ {
+  id: string;
+  moTa: string;
+  /** Vị trí dòng đầu/cuối (1-based theo thứ tự BOQ = cột ID). */
+  tuStt: number;
+  denStt: number;
+  phanTram: number;
+}
+
+/**
+ * Giá trị của MỘT chiết khấu: %`phanTram` trên tổng thành tiền các dòng trong
+ * phạm vi [tuStt, denStt]. `tt` là mảng thành tiền từng dòng theo thứ tự (0-based).
+ * Cùng công thức này dùng cho cả TỔNG lẫn Bill từng tháng để không lệch làm tròn.
+ */
+export function giaTriMotGiamGia(
+  tt: number[],
+  g: { tuStt: number; denStt: number; phanTram: number }
+): number {
+  const a = Math.max(1, Math.min(g.tuStt, g.denStt));
+  const b = Math.min(tt.length, Math.max(g.tuStt, g.denStt));
+  let s = 0;
+  for (let i = a; i <= b; i++) s += tt[i - 1] ?? 0;
+  return Math.round((s * g.phanTram) / 100);
+}
+
 /**
  * Bill lấy từ BOQ, thay cho sổ giao dịch — CHỈ tháng đã xác nhận.
  *
  * Quy tắc: công trình ĐÃ CÓ BOQ thì doanh thu Bill không đọc từ bảng Transaction
  * nữa mà tính từ khối lượng thực hiện đã được xác nhận. Công trình chưa có BOQ
  * giữ nguyên cách cũ. Tháng chờ duyệt coi như CHƯA có doanh thu.
+ *
+ * Bill lấy theo giá ĐÃ giảm giá và CHƯA VAT: trừ chiết khấu (theo vị trí dòng)
+ * rồi mới chia (1+vat%) nếu đơn giá đã gồm VAT.
  */
 const billTuBOQ = cache(async () => {
   const lines = await db.bOQLine.findMany({
     select: { id: true, projectId: true, donGia: true },
+    orderBy: { thuTu: "asc" },
   });
   const duAnCoBOQ = new Set(lines.map((l) => l.projectId));
   const theoThang = new Map<string, number>(); // khóa `projectId|thang`
   if (!duAnCoBOQ.size) return { duAnCoBOQ, theoThang };
 
+  // Vị trí 1-based của mỗi dòng trong công trình + số dòng mỗi công trình.
+  const viTri = new Map<string, number>();
+  const soDong = new Map<string, number>();
+  for (const l of lines) {
+    const n = (soDong.get(l.projectId) ?? 0) + 1;
+    soDong.set(l.projectId, n);
+    viTri.set(l.id, n);
+  }
   const tra = new Map(lines.map((l) => [l.id, l]));
+
   const daXacNhan = new Set(
     (
       await db.billThang.findMany({
@@ -207,6 +245,8 @@ const billTuBOQ = cache(async () => {
     ).map((b) => `${b.projectId}|${b.thang}`)
   );
 
+  // Thành tiền TỪNG DÒNG (theo vị trí) cho mỗi `project|thang`.
+  const ttTheoThang = new Map<string, number[]>();
   const ds = await db.bOQThucHien.findMany({
     select: { boqLineId: true, thang: true, khoiLuong: true },
   });
@@ -215,20 +255,35 @@ const billTuBOQ = cache(async () => {
     if (!l) continue;
     const k = `${l.projectId}|${t.thang}`;
     if (!daXacNhan.has(k)) continue; // chờ duyệt thì không vào KPI
-    theoThang.set(k, (theoThang.get(k) ?? 0) + Math.round(t.khoiLuong * l.donGia));
+    let arr = ttTheoThang.get(k);
+    if (!arr) {
+      arr = new Array(soDong.get(l.projectId) ?? 0).fill(0);
+      ttTheoThang.set(k, arr);
+    }
+    arr[viTri.get(l.id)! - 1] += Math.round(t.khoiLuong * l.donGia);
   }
 
-  // Giá trị Bill (doanh thu) lấy theo CHƯA VAT: nếu đơn giá đã gồm VAT thì quy về
-  // chưa VAT = tổng / (1 + vat%). Áp hệ số theo từng công trình.
+  // Chiết khấu + hệ số VAT theo công trình.
+  const ggByProject = new Map<string, GiamGiaBOQ[]>();
+  for (const g of await db.bOQGiamGia.findMany({ orderBy: { thuTu: "asc" } })) {
+    const arr = ggByProject.get(g.projectId) ?? [];
+    arr.push({ id: g.id, moTa: g.moTa ?? "", tuStt: g.tuStt, denStt: g.denStt, phanTram: g.phanTram });
+    ggByProject.set(g.projectId, arr);
+  }
   const projs = await db.project.findMany({
     select: { id: true, donGiaGomVAT: true, vatPhanTram: true },
   });
   const heSo = new Map(
     projs.map((p) => [p.id, p.donGiaGomVAT ? 1 / (1 + (p.vatPhanTram || 0) / 100) : 1])
   );
-  for (const [k, v] of theoThang) {
-    const f = heSo.get(k.split("|")[0]) ?? 1;
-    if (f !== 1) theoThang.set(k, Math.round(v * f));
+
+  for (const [k, arr] of ttTheoThang) {
+    const pid = k.split("|")[0];
+    const gom = arr.reduce((a, b) => a + b, 0);
+    const giam = (ggByProject.get(pid) ?? []).reduce((a, g) => a + giaTriMotGiamGia(arr, g), 0);
+    const sauGiam = gom - giam;
+    const f = heSo.get(pid) ?? 1;
+    theoThang.set(k, f === 1 ? sauGiam : Math.round(sauGiam * f));
   }
   return { duAnCoBOQ, theoThang };
 });
@@ -299,9 +354,11 @@ export async function layBOQ(
   cots: CotBOQ[];
   donGiaGomVAT: boolean;
   vatPhanTram: number;
+  giamGia: GiamGiaBOQ[];
 }> {
   const ct = (await layCongTrinh()).find((c) => c.maCongTrinh === maCongTrinh);
-  if (!ct) return { thangs: [], dongs: [], cots: [], donGiaGomVAT: false, vatPhanTram: 10 };
+  if (!ct)
+    return { thangs: [], dongs: [], cots: [], donGiaGomVAT: false, vatPhanTram: 10, giamGia: [] };
 
   const ds = await db.bOQLine.findMany({
     where: { projectId: ct.id },
@@ -353,12 +410,23 @@ export async function layBOQ(
     select: { donGiaGomVAT: true, vatPhanTram: true },
   });
 
+  const giamGia: GiamGiaBOQ[] = (
+    await db.bOQGiamGia.findMany({ where: { projectId: ct.id }, orderBy: { thuTu: "asc" } })
+  ).map((g) => ({
+    id: g.id,
+    moTa: g.moTa ?? "",
+    tuStt: g.tuStt,
+    denStt: g.denStt,
+    phanTram: g.phanTram,
+  }));
+
   return {
     thangs,
     dongs,
     cots,
     donGiaGomVAT: vat?.donGiaGomVAT ?? false,
     vatPhanTram: vat?.vatPhanTram ?? 10,
+    giamGia,
   };
 }
 
@@ -366,9 +434,18 @@ export async function layBOQ(
  * Giá trị Bill của một tháng = tổng thành tiền khối lượng thực hiện tháng đó.
  * `heSoChuaVAT` < 1 khi đơn giá đã gồm VAT (Bill lấy chưa VAT); mặc định 1.
  */
-export function giaTriBillThang(dongs: DongBOQ[], thang: string, heSoChuaVAT = 1): number {
-  const gom = dongs.reduce((a, d) => a + Math.round((d.klTheoThang[thang] ?? 0) * d.donGia), 0);
-  return heSoChuaVAT === 1 ? gom : Math.round(gom * heSoChuaVAT);
+export function giaTriBillThang(
+  dongs: DongBOQ[],
+  thang: string,
+  heSoChuaVAT = 1,
+  giamGia: GiamGiaBOQ[] = []
+): number {
+  // `dongs` phải theo thứ tự BOQ (thuTu) để khớp vị trí chiết khấu — layBOQ đã sắp.
+  const tt = dongs.map((d) => Math.round((d.klTheoThang[thang] ?? 0) * d.donGia));
+  const gom = tt.reduce((a, b) => a + b, 0);
+  const giam = giamGia.reduce((a, g) => a + giaTriMotGiamGia(tt, g), 0);
+  const sauGiam = gom - giam;
+  return heSoChuaVAT === 1 ? sauGiam : Math.round(sauGiam * heSoChuaVAT);
 }
 
 // ------------------------------------------------------------ Giao dịch

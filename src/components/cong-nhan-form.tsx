@@ -207,7 +207,7 @@ export function FormCongNhan({
               <input
                 name="maCN"
                 defaultValue={suaCN.maCN}
-                className={`${O} w-full font-mono`}
+                className={`${O} w-full`}
                 placeholder="CN-001"
                 required
               />
@@ -435,7 +435,7 @@ export function FormThemNhieuCN({ duocSua, dsDoiDA }: { duocSua: boolean; dsDoiD
                         name="maCN"
                         data-r={i}
                         data-c={0}
-                        className={`${O} w-28 font-mono`}
+                        className={`${O} w-28`}
                         placeholder="CN-001"
                       />
                     </td>
@@ -671,7 +671,7 @@ export function QuanLyNgayLe({ ds, laAdmin }: { ds: ONgayLe[]; laAdmin: boolean 
             <tbody>
               {ds.map((n) => (
                 <tr key={n.id} className="hover:bg-nen">
-                  <Td className="font-mono text-xs whitespace-nowrap">
+                  <Td className="text-xs whitespace-nowrap">
                     {dd(n.ngay)}/{dd(n.thang)}
                   </Td>
                   <Td className="text-xs whitespace-nowrap">
@@ -914,7 +914,7 @@ export function MaTranPhanCong({
                   className="sticky left-0 z-10 border-b border-vien bg-the px-3 py-1.5 text-xs whitespace-nowrap"
                   title={c.hoTen}
                 >
-                  <span className="font-mono">{c.maCN}</span> — {c.hoTen}
+                  <span className="">{c.maCN}</span> — {c.hoTen}
                 </td>
                 {congTrinh.map((ct) => {
                   const k = `${c.id}:${ct.id}`;
@@ -1188,9 +1188,9 @@ export function BangChamCong({
               const khoaVang = ro || !coVang;
               return (
                 <tr key={k} className="align-top hover:bg-nen">
-                  <Td className="font-mono text-xs whitespace-nowrap">{d.maCN}</Td>
+                  <Td className="text-xs whitespace-nowrap">{d.maCN}</Td>
                   <Td className="text-xs font-medium whitespace-nowrap">{d.hoTen}</Td>
-                  <Td className="font-mono text-xs whitespace-nowrap" title={d.buoiPhanCong}>
+                  <Td className="text-xs whitespace-nowrap" title={d.buoiPhanCong}>
                     {d.maCongTrinh}
                   </Td>
                   {/* Ca làm + Vắng gộp một cột: mỗi ca chọn Công hoặc Vắng. Ô loại
@@ -1452,7 +1452,7 @@ export function BangChamCongDA({
               const khoaVang = ro || !coVang;
               return (
                 <tr key={k} className="align-top hover:bg-nen">
-                  <Td className="font-mono text-xs whitespace-nowrap">{d.maCN}</Td>
+                  <Td className="text-xs whitespace-nowrap">{d.maCN}</Td>
                   <Td className="text-xs font-medium whitespace-nowrap">{d.hoTen}</Td>
                   {/* Ô chọn công trình của dự án — quyết định nơi làm thực tế. */}
                   <Td className="text-xs">
@@ -1801,7 +1801,7 @@ export function DanhSachDoiTab({
                       </div>
                     </Td>
                   ) : null}
-                  <Td className="font-mono text-xs whitespace-nowrap">{c.maCN}</Td>
+                  <Td className="text-xs whitespace-nowrap">{c.maCN}</Td>
                   <Td className="text-xs font-medium">{c.hoTen}</Td>
                   <Td>
                     <Nhan bienThe={c.doi === "NOI_THANH" ? "nhan" : "trung_tinh"}>

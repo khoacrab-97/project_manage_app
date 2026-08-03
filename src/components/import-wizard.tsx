@@ -245,10 +245,10 @@ function KetQua({ kq }: { kq: KetQuaAPI }) {
                     <Td>
                       <Nhan bienThe={l.mucDo === "Error" ? "do" : "vang"}>{l.mucDo}</Nhan>
                     </Td>
-                    <Td className="font-mono text-xs">{ma}</Td>
+                    <Td className="text-xs">{ma}</Td>
                     <Td className="max-w-75 text-xs">{l.thongDiep}</Td>
                     <Td phai>{l.dong.length}</Td>
-                    <Td className="max-w-45 truncate font-mono text-[11px] text-chunhat">
+                    <Td className="max-w-45 truncate text-[11px] text-chunhat">
                       {l.dong.slice(0, 12).join(", ")}
                       {l.dong.length > 12 ? "…" : ""}
                     </Td>
@@ -289,7 +289,7 @@ function KetQua({ kq }: { kq: KetQuaAPI }) {
                     {d.dongExcel}
                   </Td>
                   <Td className="text-xs">{d.maCongTrinh ?? <Thieu />}</Td>
-                  <Td className="font-mono text-xs">{d.soHoaDon ?? <Thieu />}</Td>
+                  <Td className="text-xs">{d.soHoaDon ?? <Thieu />}</Td>
                   <Td className="text-xs whitespace-nowrap">
                     {d.ngayChungTu ? ngay(d.ngayChungTu) : <Thieu />}
                   </Td>
@@ -300,7 +300,7 @@ function KetQua({ kq }: { kq: KetQuaAPI }) {
                     {d.noiDungThanhToan ?? <Thieu />}
                   </Td>
                   <Td phai>{d.soTien !== null ? tien(d.soTien) : <Thieu />}</Td>
-                  <Td className="font-mono text-xs">{d.maDTCP ?? <Thieu />}</Td>
+                  <Td className="text-xs">{d.maDTCP ?? <Thieu />}</Td>
                 </tr>
               ))}
             </tbody>

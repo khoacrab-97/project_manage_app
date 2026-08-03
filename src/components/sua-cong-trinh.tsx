@@ -120,38 +120,6 @@ function OChung({ ct }: { ct?: CongTrinh }) {
         <span className="mb-0.5 block text-chunhat">Địa điểm</span>
         <input name="diaDiem" defaultValue={ct?.diaDiem} className={`${O} w-full`} />
       </label>
-
-      <label className="text-xs">
-        <span className="mb-0.5 block text-chunhat">Giá trị hợp đồng (đ)</span>
-        <input
-          name="giaTriHopDong"
-          inputMode="numeric"
-          defaultValue={ct?.giaTriHopDong != null ? String(ct.giaTriHopDong) : ""}
-          className={`${O} w-full`}
-          placeholder="0"
-        />
-      </label>
-
-      <label className="text-xs">
-        <span className="mb-0.5 block text-chunhat">Biên LN mục tiêu (%)</span>
-        <input
-          name="bienLNMucTieu"
-          inputMode="decimal"
-          defaultValue={ct?.bienLNMucTieu != null ? String(ct.bienLNMucTieu * 100) : ""}
-          className={`${O} w-full`}
-          placeholder="12"
-        />
-      </label>
-
-      <label className="text-xs sm:col-span-2">
-        <span className="mb-0.5 block text-chunhat">Link Google Sheet (tùy chọn)</span>
-        <input
-          name="googleSheetUrl"
-          defaultValue={ct?.googleSheetUrl}
-          className={`${O} w-full`}
-          placeholder="https://docs.google.com/..."
-        />
-      </label>
     </>
   );
 }
@@ -218,7 +186,7 @@ export function NutSuaCongTrinh({ ct }: { ct: CongTrinh }) {
         <div className="flex items-center justify-between border-b border-vien px-4 py-3">
           <div>
             <h2 className="text-sm font-semibold">Sửa công trình</h2>
-            <p className="mt-0.5 font-mono text-xs text-chunhat">{ct.maCongTrinh}</p>
+            <p className="mt-0.5 text-xs text-chunhat">{ct.maCongTrinh}</p>
           </div>
           <button
             type="button"
@@ -322,7 +290,7 @@ export function FormThemCongTrinh() {
           <span className="mb-0.5 block text-chunhat">Mã công trình</span>
           <input
             name="maCongTrinh"
-            className={`${O} w-full font-mono uppercase`}
+            className={`${O} w-full uppercase`}
             placeholder="HL-00250"
             required
           />

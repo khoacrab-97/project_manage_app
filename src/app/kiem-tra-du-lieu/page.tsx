@@ -137,7 +137,7 @@ export default async function TrangKiemTraDuLieu() {
                     <Td>
                       <Nhan bienThe={l.mucDo === "Error" ? "do" : "vang"}>{l.mucDo}</Nhan>
                     </Td>
-                    <Td className="font-mono text-[11px]">{l.maLoi}</Td>
+                    <Td className="text-[11px]">{l.maLoi}</Td>
                     <Td className="max-w-75 text-xs">{l.thongDiep}</Td>
                     <Td phai className="text-xs">
                       {gd ? tien(gd.soTien) : "—"}

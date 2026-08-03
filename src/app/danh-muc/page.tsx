@@ -93,12 +93,12 @@ export default async function TrangDanhMuc() {
                       <NutXoaMa ma={ma} soGiaoDich={soDong} soCon={soCon.get(ma.ma) ?? 0} />
                     </div>
                   </Td>
-                  <Td className={`font-mono text-xs ${con ? "pl-8" : "font-semibold"}`}>{ma.ma}</Td>
+                  <Td className={`text-xs ${con ? "pl-8" : "font-semibold"}`}>{ma.ma}</Td>
                   <Td className={`text-xs ${con ? "" : "font-semibold"}`}>{ma.ten}</Td>
                   <Td>
                     <Nhan bienThe={ma.loai === "Doanh thu" ? "nhan" : "trung_tinh"}>{ma.loai}</Nhan>
                   </Td>
-                  <Td className="font-mono text-xs text-chunhat">{ma.maCha ?? "—"}</Td>
+                  <Td className="text-xs text-chunhat">{ma.maCha ?? "—"}</Td>
                   <Td>
                     {ma.choPhepNhapTrucTiep ? (
                       <Nhan bienThe="xanh">Có</Nhan>

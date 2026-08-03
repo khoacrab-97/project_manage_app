@@ -172,7 +172,7 @@ export function LuoiKeHoach({
               {dsMa.map((m) => (
                 <tr key={m.ma} className={`border-b border-vien/60 ${m.laNhom ? "bg-nen/50" : ""}`}>
                   <td
-                    className={`px-3 py-1.5 font-mono text-xs whitespace-nowrap ${m.capCon ? "pl-8" : ""} ${m.laNhom ? "font-semibold" : ""}`}
+                    className={`px-3 py-1.5 text-xs whitespace-nowrap ${m.capCon ? "pl-8" : ""} ${m.laNhom ? "font-semibold" : ""}`}
                   >
                     {m.ma}
                   </td>

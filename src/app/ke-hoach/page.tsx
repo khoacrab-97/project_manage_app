@@ -156,7 +156,7 @@ export default async function TrangKeHoach({
           <tbody>
             {bangChiTiet.map((d) => (
               <tr key={d.ma} className={d.capCon ? "hover:bg-nen" : "bg-nen/60 hover:bg-nen"}>
-                <Td className={`font-mono text-xs ${d.capCon ? "pl-8" : "font-semibold"}`}>
+                <Td className={`text-xs ${d.capCon ? "pl-8" : "font-semibold"}`}>
                   {d.ma}
                 </Td>
                 <Td

@@ -37,7 +37,7 @@ function HopThoai({
         <div className="flex items-center justify-between border-b border-vien px-4 py-3">
           <div>
             <h2 className="text-sm font-semibold">{tieuDe}</h2>
-            <p className="mt-0.5 font-mono text-xs text-chunhat">{ma}</p>
+            <p className="mt-0.5 text-xs text-chunhat">{ma}</p>
           </div>
           <button
             type="button"
@@ -235,7 +235,7 @@ export function NutXoaMa({
       >
         <input type="hidden" name="ma" value={ma.ma} />
         <p className="text-xs leading-relaxed">
-          Xoá hẳn mã <strong className="font-mono">{ma.ma}</strong> — {ma.ten} ({ma.loai}) khỏi danh
+          Xoá hẳn mã <strong className="">{ma.ma}</strong> — {ma.ten} ({ma.loai}) khỏi danh
           mục. Thao tác này không hoàn tác được.
         </p>
         <p className="mt-2 text-[11px] leading-relaxed text-chunhat">
@@ -301,7 +301,7 @@ export function FormThemMa({ danhMuc }: { danhMuc: MaDTCP[] }) {
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
         <label className="text-xs">
           <span className="mb-0.5 block text-chunhat">Mã</span>
-          <input name="ma" className={`${O} w-full font-mono`} placeholder="CP-060" required />
+          <input name="ma" className={`${O} w-full`} placeholder="CP-060" required />
         </label>
         <label className="text-xs sm:col-span-2">
           <span className="mb-0.5 block text-chunhat">Tên mã</span>

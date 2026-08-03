@@ -7,8 +7,10 @@ import {
   luuKhoiLuong,
   luuThietLapVAT,
   themBillThang,
+  themGiamGiaBOQ,
   themNhieuDongBOQ,
   xacNhanBill,
+  xoaGiamGiaBOQ,
   type KetQuaBOQ,
 } from "@/app/cong-trinh/boq-actions";
 import { khoiLuong as dinhDangKL, tien } from "@/lib/format";
@@ -74,7 +76,7 @@ export function NutThemBill({
       <input type="hidden" name="maCongTrinh" value={maCongTrinh} />
       <label className="text-xs">
         <span className="mb-0.5 block text-chunhat">Tháng cần ra Bill</span>
-        <input name="thang" defaultValue={goiY} placeholder="2026-08" className={`${O} font-mono`} required />
+        <input name="thang" defaultValue={goiY} placeholder="2026-08" className={`${O}`} required />
       </label>
       <div className="mt-2 flex gap-2">
         <button
@@ -227,7 +229,7 @@ export function BoxNhapBOQ({
               <tbody>
                 {dongs.map((d) => (
                   <tr key={d.id} className={`border-b border-vien/60 ${xong[d.id] ? "bg-nen/50" : ""}`}>
-                    <td className="px-3 py-1.5 font-mono text-xs">{d.stt}</td>
+                    <td className="px-3 py-1.5 text-xs">{d.stt}</td>
                     <td className="max-w-75 truncate px-3 py-1.5 text-xs" title={d.noiDung}>
                       {d.noiDung}
                     </td>
@@ -400,7 +402,7 @@ export function LuoiNhapBOQ({
                 {Array.from({ length: soDong }).map((_, i) => (
                   <tr key={i}>
                     <td className="border-b border-vien px-1 py-1">
-                      <input name="stt" className={`${O} w-16 font-mono`} placeholder="1" />
+                      <input name="stt" className={`${O} w-16`} placeholder="1" />
                     </td>
                     <td className="border-b border-vien px-1 py-1">
                       <input name="noiDung" className={`${O} w-full min-w-55`} />
@@ -828,6 +830,137 @@ export function ThietLapVAT({
       </div>
       <ThongBao kq={kq} />
     </form>
+  );
+}
+
+export interface ODongGiamGia {
+  id: string;
+  moTa: string;
+  tuStt: number;
+  denStt: number;
+  phanTram: number;
+  /** Số tiền giảm đã tính sẵn ở server. */
+  giaTri: number;
+}
+
+/**
+ * Quản lý giảm giá BOQ: liệt kê các dòng giảm, xoá, và thêm dòng mới (giảm %/toàn
+ * bộ hoặc một phạm vi dòng). Giá trị hiển thị dưới TỔNG CỘNG ở bảng BOQ.
+ */
+export function GiamGiaBOQ({
+  maCongTrinh,
+  danhSach,
+  soDong,
+}: {
+  maCongTrinh: string;
+  danhSach: ODongGiamGia[];
+  soDong: number;
+}) {
+  const [mo, setMo] = useState(false);
+  const [toanBo, setToanBo] = useState(true);
+  const [kq, setKq] = useState<KetQuaBOQ | null>(null);
+  const [dangChay, batDau] = useTransition();
+
+  if (!mo) {
+    return (
+      <button
+        type="button"
+        onClick={() => setMo(true)}
+        className="inline-flex items-center gap-1 rounded-md border border-vien px-2.5 py-1 text-xs font-medium hover:bg-nen"
+      >
+        Giảm giá{danhSach.length ? ` (${danhSach.length})` : ""}
+      </button>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-lg rounded-lg border border-nhan bg-nhannhat p-3">
+      <p className="mb-2 text-xs font-semibold">Giảm giá BOQ (chiết khấu)</p>
+
+      {danhSach.length ? (
+        <ul className="mb-2 space-y-1">
+          {danhSach.map((g) => (
+            <li key={g.id} className="flex items-center justify-between gap-2 text-xs">
+              <span>
+                {g.moTa ? <span className="text-chunhat">{g.moTa} · </span> : null}
+                Giảm {g.phanTram}% (dòng {g.tuStt}–{g.denStt}) ={" "}
+                <strong className="text-rose-600 dark:text-rose-400">−{tien(g.giaTri)}</strong>
+              </span>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const fd = new FormData(e.currentTarget);
+                  batDau(async () => setKq(await xoaGiamGiaBOQ(fd)));
+                }}
+              >
+                <input type="hidden" name="maCongTrinh" value={maCongTrinh} />
+                <input type="hidden" name="id" value={g.id} />
+                <button type="submit" title="Xoá" className="rounded p-1 text-rose-600 hover:bg-nen dark:text-rose-400">
+                  <Trash2 className="size-3.5" />
+                </button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mb-2 text-xs text-chunhat">Chưa có dòng giảm giá.</p>
+      )}
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          batDau(async () => {
+            const r = await themGiamGiaBOQ(fd);
+            setKq(r);
+            if (r.ok) (e.target as HTMLFormElement).reset();
+          });
+        }}
+        className="flex flex-wrap items-end gap-2 border-t border-vien pt-2"
+      >
+        <input type="hidden" name="maCongTrinh" value={maCongTrinh} />
+        <input type="hidden" name="toanBo" value={toanBo ? "1" : ""} />
+        <label className="text-xs">
+          <span className="mb-0.5 block text-chunhat">% giảm</span>
+          <input name="phanTram" inputMode="decimal" required className={`${O} w-16 text-right`} placeholder="5" />
+        </label>
+        <label className="flex items-center gap-1 pb-1.5 text-xs">
+          <input type="checkbox" checked={toanBo} onChange={(e) => setToanBo(e.target.checked)} />
+          Toàn bộ BOQ
+        </label>
+        {!toanBo ? (
+          <>
+            <label className="text-xs">
+              <span className="mb-0.5 block text-chunhat">Từ dòng</span>
+              <input name="tuStt" inputMode="numeric" className={`${O} w-16 text-right`} placeholder="1" />
+            </label>
+            <label className="text-xs">
+              <span className="mb-0.5 block text-chunhat">Đến dòng</span>
+              <input name="denStt" inputMode="numeric" className={`${O} w-16 text-right`} placeholder={String(soDong)} />
+            </label>
+          </>
+        ) : null}
+        <label className="text-xs">
+          <span className="mb-0.5 block text-chunhat">Nhãn (tuỳ chọn)</span>
+          <input name="moTa" className={`${O} w-40`} placeholder="Chiết khấu…" />
+        </label>
+        <button
+          type="submit"
+          disabled={dangChay}
+          className="rounded-md bg-nhan px-3 py-1 text-xs font-medium text-white disabled:opacity-60"
+        >
+          {dangChay ? "…" : "Thêm"}
+        </button>
+      </form>
+
+      <p className="mt-1 text-[11px] text-chunhat">
+        Số dòng BOQ hiện tại: {soDong}. Dòng theo cột ID. Bill/doanh thu tính theo giá đã giảm.
+      </p>
+      <ThongBao kq={kq} />
+      <button type="button" onClick={() => setMo(false)} className="mt-2 rounded-md border border-vien px-3 py-1 text-xs">
+        Đóng
+      </button>
+    </div>
   );
 }
 

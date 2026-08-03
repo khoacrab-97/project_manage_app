@@ -98,8 +98,8 @@ export default async function TrangCongNhan({
       />
 
       <p className="mb-2 text-[11px] text-chunhat">
-        Máy chủ chạy từ: <span className="font-mono">{MAY_CHU_KHOI_DONG}</span> — nếu vừa chạy{" "}
-        <span className="font-mono">chay.cmd moi</span> mà mốc này không đổi sang giờ hiện tại thì
+        Máy chủ chạy từ: <span className="">{MAY_CHU_KHOI_DONG}</span> — nếu vừa chạy{" "}
+        <span className="">chay.cmd moi</span> mà mốc này không đổi sang giờ hiện tại thì
         bản cũ vẫn đang chạy.
       </p>
 
@@ -698,7 +698,7 @@ async function TongHopBang({ thang, view }: { thang: string; view: "cong-trinh" 
                   >
                     {r.hoTen}
                   </Link>
-                  <span className="ml-1 font-mono text-chunhat">{r.maCN}</span>
+                  <span className="ml-1 text-chunhat">{r.maCN}</span>
                 </Td>
                 <Td phai>{r.soCong ? soCong(r.soCong) : "—"}</Td>
                 <Td phai>{r.nghiPhep ? soCong(r.nghiPhep) : "—"}</Td>
@@ -834,10 +834,10 @@ async function DoiChieu({ thang: thangTho }: { thang?: string }) {
               {ds.map((d, i) => (
                 <tr key={`${d.ngay}-${d.maCN}-${d.loai}-${i}`} className="hover:bg-nen">
                   <Td className="text-xs whitespace-nowrap">{d.ngay}</Td>
-                  <Td className="font-mono text-xs whitespace-nowrap">{d.maCN}</Td>
+                  <Td className="text-xs whitespace-nowrap">{d.maCN}</Td>
                   <Td className="text-xs font-medium">{d.hoTen}</Td>
-                  <Td className="font-mono text-xs">{d.maCTPhanCong || "—"}</Td>
-                  <Td className="font-mono text-xs">{d.maCTThucTe || "—"}</Td>
+                  <Td className="text-xs">{d.maCTPhanCong || "—"}</Td>
+                  <Td className="text-xs">{d.maCTThucTe || "—"}</Td>
                   <Td phai>{d.soCong ? soCong(d.soCong) : "—"}</Td>
                   <Td>
                     <Nhan bienThe={d.loai === "KHONG_CHAM" ? "do" : "vang"}>

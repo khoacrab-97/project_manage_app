@@ -64,6 +64,7 @@ model Project {
   boqLines      BOQLine[]
   billThangs    BillThang[]
   boqCots       BOQCot[]
+  giamGiaBOQ    BOQGiamGia[]
 
   // Module Quản lý công nhân — quan hệ ngược, không đổi hành vi sẵn có.
   chamCongCT    CongTrinhChamCong?
@@ -124,6 +125,24 @@ model BOQGiaTriCot {
   line BOQLine @relation(fields: [boqLineId], references: [id], onDelete: Cascade)
 
   @@unique([cotId, boqLineId])
+}
+
+/// Chiết khấu / giảm giá BOQ dạng "công thức": giảm `phanTram`% trên tổng thành
+/// tiền các dòng từ vị trí `tuStt` đến `denStt` (1-based theo thứ tự BOQ = cột ID).
+/// Toàn BOQ = tuStt 1 đến số dòng cuối. Hiển thị thành dòng riêng dưới TỔNG CỘNG;
+/// giá trị Bill (doanh thu) tính theo giá đã trừ chiết khấu.
+model BOQGiamGia {
+  id        String  @id @default(cuid())
+  projectId String
+  moTa      String?
+  tuStt     Int
+  denStt    Int
+  phanTram  Float
+  thuTu     Int
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
 }
 
 /// Bill của một công trình trong một tháng, kèm trạng thái xác nhận.

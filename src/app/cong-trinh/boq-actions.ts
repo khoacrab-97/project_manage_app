@@ -453,6 +453,67 @@ export async function luuThietLapVAT(formData: FormData): Promise<KetQuaBOQ> {
   return { ok: true, thongDiep: "Đã lưu thiết lập VAT." };
 }
 
+/**
+ * Thêm một dòng chiết khấu (giảm giá) BOQ: giảm `phanTram`% trên tổng thành tiền
+ * các dòng từ `tuStt` đến `denStt` (1-based). Tích "Toàn bộ" = cả BOQ.
+ */
+export async function themGiamGiaBOQ(formData: FormData): Promise<KetQuaBOQ> {
+  batBuocQuyen(await nguoiDungHienTai(), "nhap_boq");
+
+  const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
+  const kq = await congTrinhChoGhi(maCongTrinh);
+  if ("loi" in kq) return { ok: false, thongDiep: kq.loi };
+  const ct = kq.ct;
+
+  const soDong = await db.bOQLine.count({ where: { projectId: ct.id } });
+  if (!soDong) return { ok: false, thongDiep: "Công trình chưa có BOQ." };
+
+  const moTa = String(formData.get("moTa") ?? "").trim() || null;
+  const phanTram = Number(String(formData.get("phanTram") ?? "").replace(",", "."));
+  if (!Number.isFinite(phanTram) || phanTram <= 0 || phanTram > 100) {
+    return { ok: false, thongDiep: "% giảm giá phải trong khoảng 0–100." };
+  }
+
+  let tuStt: number;
+  let denStt: number;
+  if (formData.get("toanBo") === "1") {
+    tuStt = 1;
+    denStt = soDong;
+  } else {
+    tuStt = parseInt(String(formData.get("tuStt") ?? ""), 10);
+    denStt = parseInt(String(formData.get("denStt") ?? ""), 10);
+    if (!Number.isFinite(tuStt) || !Number.isFinite(denStt) || tuStt < 1 || denStt < tuStt || denStt > soDong) {
+      return { ok: false, thongDiep: `Phạm vi dòng phải nằm trong 1–${soDong} và từ ≤ đến.` };
+    }
+  }
+
+  const max = await db.bOQGiamGia.aggregate({ where: { projectId: ct.id }, _max: { thuTu: true } });
+  await db.bOQGiamGia.create({
+    data: { projectId: ct.id, moTa, tuStt, denStt, phanTram, thuTu: (max._max.thuTu ?? -1) + 1 },
+  });
+
+  revalidatePath(`/cong-trinh/${maCongTrinh}`);
+  revalidatePath("/");
+  return { ok: true, thongDiep: `Đã thêm giảm giá ${phanTram}% (dòng ${tuStt}–${denStt}).` };
+}
+
+export async function xoaGiamGiaBOQ(formData: FormData): Promise<KetQuaBOQ> {
+  batBuocQuyen(await nguoiDungHienTai(), "nhap_boq");
+
+  const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
+  const id = String(formData.get("id") ?? "").trim();
+  const kq = await congTrinhChoGhi(maCongTrinh);
+  if ("loi" in kq) return { ok: false, thongDiep: kq.loi };
+
+  const g = await db.bOQGiamGia.findFirst({ where: { id, projectId: kq.ct.id } });
+  if (!g) return { ok: false, thongDiep: "Không tìm thấy dòng giảm giá." };
+
+  await db.bOQGiamGia.delete({ where: { id: g.id } });
+  revalidatePath(`/cong-trinh/${maCongTrinh}`);
+  revalidatePath("/");
+  return { ok: true, thongDiep: "Đã xoá dòng giảm giá." };
+}
+
 export async function xacNhanBill(formData: FormData): Promise<KetQuaBOQ> {
   const u = await nguoiDungHienTai();
   batBuocQuyen(u, "xac_nhan_bill");

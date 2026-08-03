@@ -29,6 +29,7 @@ import {
   layGiaoDich,
   layBOQ,
   giaTriBillThang,
+  giaTriMotGiamGia,
   layGiaoDichChoXuLy,
   layLoNhap,
   maTranTheoCongTrinh,
@@ -40,7 +41,7 @@ import { loaiCua, traMa } from "@/lib/data/repository";
 import { nguoiDungHienTai } from "@/lib/auth/phien";
 import { coQuyen } from "@/lib/auth/quyen";
 import { NGAY_HIEN_TAI } from "@/lib/thresholds";
-import { BoxNhapBOQ, ImportBOQ, LuoiNhapBOQ, NutThemBill, NutXacNhan, ThietLapVAT } from "@/components/nhap-boq";
+import { BoxNhapBOQ, GiamGiaBOQ, ImportBOQ, LuoiNhapBOQ, NutThemBill, NutXacNhan, ThietLapVAT } from "@/components/nhap-boq";
 import { NutThemCot, NutThemDong, ONhapCot, TieuDeCot } from "@/components/cot-boq";
 
 /**
@@ -179,7 +180,7 @@ export default async function TrangChiTietCongTrinh({
           <>
             {ct.tenRutGon ? (
               <>
-                <span className="font-mono">{maCongTrinh}</span> ·{" "}
+                <span className="">{maCongTrinh}</span> ·{" "}
               </>
             ) : null}
             {ct.tenCongTrinh} · {ct.chuDauTu}
@@ -391,9 +392,12 @@ async function BOQTab({
   /** Công trình đã nghiệm thu — đóng băng, chỉ được xem. */
   daHoanThanh: boolean;
 }) {
-  const { thangs, dongs, cots, donGiaGomVAT, vatPhanTram } = await layBOQ(maCongTrinh);
+  const { thangs, dongs, cots, donGiaGomVAT, vatPhanTram, giamGia } = await layBOQ(maCongTrinh);
   // Bill (doanh thu) lấy chưa VAT: nếu đơn giá đã gồm VAT thì chia (1+vat%).
   const heSoBill = donGiaGomVAT ? 1 / (1 + (vatPhanTram || 0) / 100) : 1;
+  // Chiết khấu: tính số tiền giảm từng dòng theo thành tiền hợp đồng (theo thứ tự BOQ).
+  const ttList = dongs.map((d) => d.ttHopDong);
+  const giamGiaTinh = giamGia.map((g) => ({ ...g, giaTri: giaTriMotGiamGia(ttList, g) }));
   const u = await nguoiDungHienTai();
   // Công trình hoàn thành thì ẩn hết lối sửa. Chốt chặn thật nằm ở Server Action
   // (`congTrinhChoGhi`); ẩn ở đây chỉ để không mời người dùng bấm vào ngõ cụt.
@@ -428,8 +432,8 @@ async function BOQTab({
   const ttLuyKe = dongs.reduce((a, d) => a + d.ttLuyKe, 0);
   const ttXacNhan = thangs
     .filter((t) => t.trangThai === "DA_XAC_NHAN")
-    .reduce((a, t) => a + giaTriBillThang(dongs, t.thang, heSoBill), 0);
-  const billKy = ky ? giaTriBillThang(dongs, ky.thang, heSoBill) : 0;
+    .reduce((a, t) => a + giaTriBillThang(dongs, t.thang, heSoBill, giamGia), 0);
+  const billKy = ky ? giaTriBillThang(dongs, ky.thang, heSoBill, giamGia) : 0;
   const soXong = dongs.filter((d) => d.hoanThanh).length;
 
   /** Luỹ kế khối lượng của các tháng TRƯỚC kỳ đang chọn. */
@@ -488,6 +492,7 @@ async function BOQTab({
           <ImportBOQ maCongTrinh={maCongTrinh} daCoBOQ />
           <NutThemCot maCongTrinh={maCongTrinh} />
           <ThietLapVAT maCongTrinh={maCongTrinh} donGiaGomVAT={donGiaGomVAT} vatPhanTram={vatPhanTram} />
+          <GiamGiaBOQ maCongTrinh={maCongTrinh} danhSach={giamGiaTinh} soDong={dongs.length} />
         </div>
       ) : null}
 
@@ -498,7 +503,13 @@ async function BOQTab({
           moTa={`${dongs.length} công tác · dạng bảng tính, chỉ xem`}
         />
         <div className="p-3">
-          <SpreadsheetBOQ dongs={dongs} tong={ttHopDong} donGiaGomVAT={donGiaGomVAT} vatPhanTram={vatPhanTram} />
+          <SpreadsheetBOQ
+            dongs={dongs}
+            tong={ttHopDong}
+            donGiaGomVAT={donGiaGomVAT}
+            vatPhanTram={vatPhanTram}
+            giamGia={giamGiaTinh}
+          />
         </div>
       </The>
 
@@ -589,7 +600,7 @@ async function BOQTab({
                   const kl = d.klTheoThang[ky.thang] ?? 0;
                   return (
                     <tr key={d.id} className="hover:bg-nen">
-                      <Td className="font-mono text-xs whitespace-nowrap">
+                      <Td className="text-xs whitespace-nowrap">
                         {d.stt}
                         {d.hoanThanh ? (
                           <span className="ml-1 text-emerald-600 dark:text-emerald-400" title="Đã thi công xong">
@@ -674,6 +685,7 @@ function SpreadsheetBOQ({
   tong,
   donGiaGomVAT,
   vatPhanTram,
+  giamGia,
 }: {
   dongs: {
     id: string;
@@ -688,16 +700,20 @@ function SpreadsheetBOQ({
   tong: number;
   donGiaGomVAT: boolean;
   vatPhanTram: number;
+  giamGia: { id: string; moTa: string; tuStt: number; denStt: number; phanTram: number; giaTri: number }[];
 }) {
   const oS = "border border-vien px-2 py-1 text-xs whitespace-nowrap";
   const oT = "border border-vien bg-nen px-2 py-1.5 text-xs font-semibold whitespace-nowrap";
 
-  // Hai dòng TỔNG theo VAT. `tong` là tổng theo đơn giá trong bảng: nếu đơn giá đã
-  // gồm VAT thì đó là "bao gồm VAT", ngược lại là "chưa VAT".
+  // Chiết khấu (nếu có) trừ trên TỔNG CỘNG → TỔNG SAU GIẢM; VAT tính trên tổng sau
+  // giảm. `tong` theo đơn giá: gồm VAT nếu donGiaGomVAT, ngược lại là chưa VAT.
+  const coGiam = giamGia.length > 0;
+  const tongSauGiam = tong - giamGia.reduce((a, g) => a + g.giaTri, 0);
   const v = (vatPhanTram || 0) / 100;
-  const nhanChinh = donGiaGomVAT ? "TỔNG (bao gồm VAT)" : "TỔNG (chưa VAT)";
-  const nhanPhu = donGiaGomVAT ? "TỔNG (chưa VAT)" : "TỔNG (bao gồm VAT)";
-  const giaPhu = donGiaGomVAT ? Math.round(tong / (1 + v)) : Math.round(tong * (1 + v));
+  const tenGoc = coGiam ? "TỔNG SAU GIẢM" : "TỔNG";
+  const nhanChinh = donGiaGomVAT ? `${tenGoc} (bao gồm VAT)` : `${tenGoc} (chưa VAT)`;
+  const nhanPhu = donGiaGomVAT ? `${tenGoc} (chưa VAT)` : `${tenGoc} (bao gồm VAT)`;
+  const giaPhu = donGiaGomVAT ? Math.round(tongSauGiam / (1 + v)) : Math.round(tongSauGiam * (1 + v));
 
   return (
     <div className="max-h-[65vh] overflow-auto rounded-lg border border-vien">
@@ -734,19 +750,39 @@ function SpreadsheetBOQ({
               <td className={`${oS} so text-right`}>{tien(d.ttHopDong)}</td>
             </tr>
           ))}
-          <tr className="sticky bottom-8">
+          {coGiam ? (
+            <>
+              <tr>
+                <td className={`${oT} sticky left-0 z-10 text-right`} colSpan={6}>
+                  TỔNG CỘNG
+                </td>
+                <td className={`${oT} so text-right`}>{tien(tong)}</td>
+              </tr>
+              {giamGia.map((g) => (
+                <tr key={g.id}>
+                  <td className={`${oT} sticky left-0 z-10 text-right font-normal text-chunhat`} colSpan={6}>
+                    {g.moTa ? `${g.moTa} · ` : ""}Giảm giá {g.phanTram}% (dòng {g.tuStt}–{g.denStt})
+                  </td>
+                  <td className={`${oT} so text-right text-rose-600 dark:text-rose-400`}>−{tien(g.giaTri)}</td>
+                </tr>
+              ))}
+            </>
+          ) : null}
+          <tr>
             <td className={`${oT} sticky left-0 z-10 text-right`} colSpan={6}>
               {nhanChinh}
             </td>
-            <td className={`${oT} so text-right`}>{tien(tong)}</td>
+            <td className={`${oT} so text-right`}>{tien(tongSauGiam)}</td>
           </tr>
-          <tr className="sticky bottom-0">
-            <td className={`${oT} sticky left-0 z-10 text-right`} colSpan={6}>
-              {nhanPhu}
-              {v > 0 ? <span className="ml-1 font-normal text-chunhat">· VAT {vatPhanTram}%</span> : null}
-            </td>
-            <td className={`${oT} so text-right`}>{tien(giaPhu)}</td>
-          </tr>
+          {v > 0 ? (
+            <tr>
+              <td className={`${oT} sticky left-0 z-10 text-right`} colSpan={6}>
+                {nhanPhu}
+                <span className="ml-1 font-normal text-chunhat">· VAT {vatPhanTram}%</span>
+              </td>
+              <td className={`${oT} so text-right`}>{tien(giaPhu)}</td>
+            </tr>
+          ) : null}
         </tbody>
       </table>
     </div>
@@ -792,7 +828,7 @@ async function DoanhThu({
           </thead>
           <tbody>
             <tr className="bg-nen/60">
-              <Td className="font-mono text-xs font-semibold">Bill</Td>
+              <Td className="text-xs font-semibold">Bill</Td>
               <Td className="text-xs font-semibold">
                 Giá trị thực hiện — doanh thu dự kiến, chưa nghiệm thu thanh toán
               </Td>
@@ -811,7 +847,7 @@ async function DoanhThu({
             </tr>
             {DONG_TIEN.map((ma) => (
               <tr key={ma} className="hover:bg-nen">
-                <Td className="font-mono text-xs">{ma}</Td>
+                <Td className="text-xs">{ma}</Td>
                 <Td className="text-xs">{tenTheoMa.get(ma) ?? ma}</Td>
                 <Td phai>
                   {theoMa.has(ma) ? (
@@ -947,7 +983,7 @@ async function ChiPhi({
             const cl = kh - th;
             return (
               <tr key={ma.ma} className={capCon ? "hover:bg-nen" : "bg-nen/60 hover:bg-nen"}>
-                <Td className={`font-mono text-xs ${capCon ? "pl-8" : "font-semibold"}`}>{ma.ma}</Td>
+                <Td className={`text-xs ${capCon ? "pl-8" : "font-semibold"}`}>{ma.ma}</Td>
                 <Td className={`text-xs ${capCon ? "" : "font-semibold"}`}>{ma.ten}</Td>
                 <Td phai>{kh ? tien(kh) : <span className="text-chunhat">—</span>}</Td>
                 <Td phai>
@@ -1073,7 +1109,7 @@ async function GiaoDichTab({
           <tbody>
             {ds.slice(0, GIOI_HAN_HIEN_THI).map((g) => (
               <tr key={g.id} className="hover:bg-nen">
-                <Td className="font-mono text-xs whitespace-nowrap">{g.soHoaDon ?? "—"}</Td>
+                <Td className="text-xs whitespace-nowrap">{g.soHoaDon ?? "—"}</Td>
                 <Td className="text-xs whitespace-nowrap">{ngay(g.ngayChungTu)}</Td>
                 <Td className="text-xs whitespace-nowrap">{nhanThang(g.thangThucHien)}</Td>
                 <Td phai className="text-xs">
@@ -1092,7 +1128,7 @@ async function GiaoDichTab({
                 <Td phai className="font-medium">
                   {tien(g.soTien)}
                 </Td>
-                <Td className="font-mono text-xs whitespace-nowrap">{g.maDTCP}</Td>
+                <Td className="text-xs whitespace-nowrap">{g.maDTCP}</Td>
                 <Td className="max-w-[200px] truncate text-[11px] text-chunhat" title={g.sourceFileName}>
                   {g.sourceFileName}
                 </Td>
@@ -1199,7 +1235,7 @@ async function BaoCaoTab({
               return (
                 <tr key={h.ma} className={nhomCha ? "bg-nen/60 hover:bg-nen" : "hover:bg-nen"}>
                   <Td
-                    className={`sticky left-0 z-10 font-mono text-xs whitespace-nowrap ${nhomCha ? "bg-nen/60 font-semibold" : "bg-the pl-7"}`}
+                    className={`sticky left-0 z-10 text-xs whitespace-nowrap ${nhomCha ? "bg-nen/60 font-semibold" : "bg-the pl-7"}`}
                   >
                     {h.ma}
                   </Td>

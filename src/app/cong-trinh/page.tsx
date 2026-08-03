@@ -96,7 +96,7 @@ export default async function TrangDanhMucCongTrinh() {
             <tbody>
               {dsNgung.map((c) => (
                 <tr key={c.maCongTrinh} className="text-chunhat hover:bg-nen">
-                  <Td className="font-mono whitespace-nowrap">{c.maCongTrinh}</Td>
+                  <Td className="whitespace-nowrap">{c.maCongTrinh}</Td>
                   <Td className="max-w-70 truncate text-xs" title={c.tenCongTrinh}>
                     {c.tenCongTrinh}
                   </Td>
