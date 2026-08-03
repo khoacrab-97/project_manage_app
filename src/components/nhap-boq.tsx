@@ -535,7 +535,11 @@ export function ImportBOQ({
     if (ghiDe) fd.append("ghiDe", "1");
     // Gửi GIÁ TRỊ THÔ; server so() đọc theo quy ước Việt. Ô số Excel đã được đọc
     // chính xác ở tầng parse ("0,444"), nên qua so() ra đúng 0.444.
-    for (const d of dongs) COT_BOQ.forEach((c) => fd.append(c.key, d[c.key]));
+    for (const d of dongs) {
+      COT_BOQ.forEach((c) => {
+        fd.append(c.key, d[c.key]);
+      });
+    }
     batDauLuu(async () => {
       const r = await themNhieuDongBOQ(fd);
       setKqLuu(r);

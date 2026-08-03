@@ -9,6 +9,16 @@ gặp: `params` và `searchParams` của page là `Promise`, phải `await`.
 Nếu dev server báo `Cannot find module '<gói đã cài>'`, gần như chắc chắn là chunk
 cache hỏng chứ không phải thiếu gói: `rm -rf .next` rồi chạy lại.
 
+## Package manager
+
+Repo này dùng **pnpm 11.18.0** theo `packageManager` trong `package.json`.
+Không dùng `npm`, `npx`, `yarn`, `package-lock.json` hoặc `yarn.lock`.
+
+- Cài dependency: `pnpm install`
+- Chạy lệnh package: `pnpm run <script>`
+- Chạy binary: `pnpm exec <binary>`
+- Thêm dependency: `pnpm add <package>` hoặc `pnpm add -D <package>`
+
 ## Quy tắc riêng của dự án
 
 1. **Không sửa `src/lib/data/source/source-data.json` bằng tay.** File này sinh ra
