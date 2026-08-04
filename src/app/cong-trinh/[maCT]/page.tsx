@@ -43,15 +43,8 @@ import { nguoiDungHienTai } from "@/lib/auth/phien";
 import { coQuyen } from "@/lib/auth/quyen";
 import { NGAY_HIEN_TAI } from "@/lib/thresholds";
 import { BoxNhapBOQ, GiamGiaBOQ, ImportBOQ, LuoiNhapBOQ, NutThemBill, NutXacNhan, ThietLapVAT } from "@/components/nhap-boq";
-import { NhapGiaoDich } from "@/components/nhap-giao-dich";
+import { BangGiaoDich } from "@/components/nhap-giao-dich";
 import { NutThemCot, NutThemDong, ONhapCot, TieuDeCot } from "@/components/cot-boq";
-
-/**
- * Số dòng giao dịch render trong một lần.
- * Chưa có phân trang phía máy chủ nên phải chặn ở đây: 300 dòng đẩy HTML lên
- * ~1,5 MB và thời gian tải 3 s, sát ngưỡng 5 s của §17.5.
- */
-const GIOI_HAN_HIEN_THI = 150;
 
 /** Dãy tháng liên tục "yyyy-MM" từ `tu` đến `den`, bao gồm cả hai đầu. */
 function dayThang(tu: string, den: string): string[] {
@@ -262,14 +255,7 @@ export default async function TrangChiTietCongTrinh({
       ) : tab === "chi-phi" ? (
         <ChiPhi maCongTrinh={maCongTrinh} danhMuc={danhMuc} base={base} an0={sp.an0 === "1"} />
       ) : tab === "giao-dich" ? (
-        <GiaoDichTab
-          maCongTrinh={maCongTrinh}
-          ma={sp.ma}
-          thang={sp.thang}
-          q={q}
-          thangs={thangs}
-          daHoanThanh={ct.trangThai === "Đã nghiệm thu"}
-        />
+        <GiaoDichTab maCongTrinh={maCongTrinh} daHoanThanh={ct.trangThai === "Đã nghiệm thu"} />
       ) : tab === "bao-cao" ? (
         <BaoCaoTab maCongTrinh={maCongTrinh} loai={sp.loai} ky={sp.ky} q={q} />
       ) : tab === "evm" ? (
@@ -1049,143 +1035,49 @@ async function ChiPhi({
 // ---------------------------------------------------------------- Giao dịch
 async function GiaoDichTab({
   maCongTrinh,
-  ma,
-  thang,
-  q,
-  thangs,
   daHoanThanh,
 }: {
   maCongTrinh: string;
-  ma?: string;
-  thang?: string;
-  q: (o: Record<string, string | undefined>) => string;
-  thangs: string[];
   daHoanThanh: boolean;
 }) {
   const u = await nguoiDungHienTai();
   const duocNhap = coQuyen(u, "nhap_du_lieu") && !daHoanThanh;
-  // Mã được ghi trực tiếp cho ô chọn Mã DT–CP của lưới nhập (bỏ mã nhóm).
+  // Mã được ghi trực tiếp cho ô chọn Mã DT–CP của bảng nhập (bỏ mã nhóm).
   const dsMaNhap = duocNhap
     ? (await layDanhMucMa())
         .filter((c) => c.choPhepNhapTrucTiep)
         .map((c) => ({ ma: c.ma, ten: c.ten, loai: c.loai }))
     : [];
 
-  let ds = await layGiaoDich({ maCongTrinh });
-  if (ma) ds = ds.filter((g) => g.maDTCP === ma);
-  if (thang) ds = ds.filter((g) => g.thangThucHien === thang);
-  ds = [...ds].sort((a, b) => (a.ngayChungTu ?? "").localeCompare(b.ngayChungTu ?? ""));
-
-  const tong = ds.reduce((a, g) => a + g.soTien, 0);
+  const ds = await layGiaoDich({ maCongTrinh });
+  const giaoDich = [...ds]
+    .sort((a, b) => (a.ngayChungTu ?? "").localeCompare(b.ngayChungTu ?? ""))
+    .map((g) => ({
+      id: g.id,
+      maBase: g.maBase,
+      soHoaDon: g.soHoaDon,
+      ngayChungTu: g.ngayChungTu,
+      noiDung: g.noiDungThanhToan,
+      dvt: g.dvt,
+      donGia: g.donGia,
+      soLuong: g.soLuong,
+      soTien: g.soTien,
+      maDTCP: g.maDTCP ?? "",
+      ghiChu: g.ghiChu,
+    }));
 
   return (
     <The>
       <TheDau
-        tieuDe={`Chi tiết giao dịch — ${ds.length.toLocaleString("vi-VN")} dòng`}
-        moTa={
-          <>
-            Tổng <strong className="so">{tien(tong)} đ</strong>
-            {ma ? (
-              <>
-                {" "}
-                · lọc theo mã <strong>{ma}</strong>
-              </>
-            ) : null}
-            {thang ? (
-              <>
-                {" "}
-                · lọc theo <strong>{nhanThang(thang)}</strong>
-              </>
-            ) : null}
-          </>
-        }
-        phai={
-          <div className="flex items-center gap-2">
-            {ma || thang ? (
-              <Link
-                href={q({ tab: "giao-dich" })}
-                className="text-xs font-medium text-nhan hover:underline"
-              >
-                Bỏ lọc
-              </Link>
-            ) : null}
-            {duocNhap ? <NhapGiaoDich maCongTrinh={maCongTrinh} dsMa={dsMaNhap} /> : null}
-          </div>
-        }
+        tieuDe="Giao dịch"
+        moTa="Bảng nhập giao dịch (doanh thu – chi phí) như Excel — nguồn số liệu cho tab Doanh thu và Chi phí."
       />
-
-      <div className="flex flex-wrap gap-1.5 border-b border-vien px-4 py-2.5">
-        <LocLink href={q({ tab: "giao-dich", ma })} dangChon={!thang}>
-          Tất cả tháng
-        </LocLink>
-        {thangs.map((t) => (
-          <LocLink key={t} href={q({ tab: "giao-dich", ma, thang: t })} dangChon={thang === t}>
-            {nhanThang(t)}
-          </LocLink>
-        ))}
-      </div>
-
-      {ds.length ? (
-        <Bang>
-          <thead>
-            <tr>
-              <Th>Số HĐ</Th>
-              <Th>Ngày CT</Th>
-              <Th>Tháng</Th>
-              <Th phai>Tuần</Th>
-              <Th>Nội dung thanh toán</Th>
-              <Th>ĐVT</Th>
-              <Th phai>Đơn giá</Th>
-              <Th phai>SL</Th>
-              <Th phai>Số tiền</Th>
-              <Th>Mã DT–CP</Th>
-              <Th>File nguồn</Th>
-              <Th>Trạng thái</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {ds.slice(0, GIOI_HAN_HIEN_THI).map((g) => (
-              <tr key={g.id} className="hover:bg-nen">
-                <Td className="text-xs whitespace-nowrap">{g.soHoaDon ?? "—"}</Td>
-                <Td className="text-xs whitespace-nowrap">{ngay(g.ngayChungTu)}</Td>
-                <Td className="text-xs whitespace-nowrap">{nhanThang(g.thangThucHien)}</Td>
-                <Td phai className="text-xs">
-                  {g.tuanThucHien ?? "—"}
-                </Td>
-                <Td className="max-w-[280px] truncate text-xs" title={g.noiDungThanhToan}>
-                  {g.noiDungThanhToan}
-                </Td>
-                <Td className="text-xs">{g.dvt ?? "—"}</Td>
-                <Td phai className="text-xs">
-                  {g.donGia !== null ? tien(g.donGia) : "—"}
-                </Td>
-                <Td phai className="text-xs">
-                  {g.soLuong ?? "—"}
-                </Td>
-                <Td phai className="font-medium">
-                  {tien(g.soTien)}
-                </Td>
-                <Td className="text-xs whitespace-nowrap">{g.maDTCP}</Td>
-                <Td className="max-w-[200px] truncate text-[11px] text-chunhat" title={g.sourceFileName}>
-                  {g.sourceFileName}
-                </Td>
-                <Td>
-                  <Nhan bienThe="xanh">Đã ghi sổ</Nhan>
-                </Td>
-              </tr>
-            ))}
-          </tbody>
-        </Bang>
-      ) : (
-        <Rong>Không có giao dịch khớp bộ lọc</Rong>
-      )}
-
-      {ds.length > GIOI_HAN_HIEN_THI ? (
-        <GhiChuNguon>
-          Đang hiển thị {GIOI_HAN_HIEN_THI} dòng đầu trong {ds.length.toLocaleString("vi-VN")} dòng —
-          dùng bộ lọc tháng hoặc mã ở trên để thu hẹp. Bản chính thức sẽ có phân trang phía máy chủ.
-        </GhiChuNguon>
-      ) : null}
+      <BangGiaoDich
+        maCongTrinh={maCongTrinh}
+        dsMa={dsMaNhap}
+        giaoDich={giaoDich}
+        duocNhap={duocNhap}
+      />
     </The>
   );
 }

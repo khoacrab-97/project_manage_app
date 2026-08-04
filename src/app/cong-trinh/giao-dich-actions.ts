@@ -1,12 +1,18 @@
 "use server";
 
 /**
- * Nhập giao dịch (doanh thu / chi phí) bằng lưới như Excel, ghi THẲNG vào sổ
- * chính thức (Transaction). Doanh thu và Chi phí ở chi tiết công trình đọc lại
- * từ đúng bảng này nên số hiện ngay.
+ * Lưu bảng giao dịch (doanh thu / chi phí) — bảng tính nhập như Excel là NGUỒN
+ * chính thức của công trình. Lưu = THAY TOÀN BỘ giao dịch của công trình bằng
+ * nội dung bảng (xoá hết rồi ghi lại), nên sửa ô / xoá dòng đều có hiệu lực thật.
+ * Doanh thu và Chi phí ở chi tiết công trình đọc lại từ đúng bảng này nên số
+ * hiện ngay.
  *
  * Tự kiểm quyền (`nhap_du_lieu`) và phạm vi công trình — không dựa vào việc giao
- * diện đã ẩn nút. Chống cộng trùng bằng rowHash (khớp @@unique[rowHash, projectId]).
+ * diện đã khoá bảng. Trùng dòng y hệt trong bảng bị bỏ (khớp @@unique[rowHash,
+ * projectId]).
+ *
+ * LƯU Ý: thay-toàn-bộ cũng xoá dữ liệu đã import Excel (nếu có) của công trình.
+ * Đúng với mô hình bảng-tính cho công trình nhập tay.
  */
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
@@ -26,7 +32,7 @@ const so = (t: string) => Number(String(t).replace(/\s/g, "").replace(/\./g, "")
 const LA_NGAY = /^\d{4}-\d{2}-\d{2}$/;
 const bam = (s: string) => createHash("sha1").update(s).digest("hex");
 
-export async function themNhieuGiaoDich(formData: FormData): Promise<KetQuaGiaoDich> {
+export async function luuGiaoDich(formData: FormData): Promise<KetQuaGiaoDich> {
   const u = await nguoiDungHienTai();
   batBuocQuyen(u, "nhap_du_lieu");
 
@@ -142,68 +148,61 @@ export async function themNhieuGiaoDich(formData: FormData): Promise<KetQuaGiaoD
     });
   }
 
-  if (!rows.length) {
-    return {
-      ok: false,
-      thongDiep: loi.length ? `Không có dòng hợp lệ. ${loi.join("; ")}.` : "Chưa nhập giao dịch nào.",
-    };
+  // Có lỗi validate mà không còn dòng hợp lệ nào -> KHÔNG lưu (tránh xoá trắng do nhầm).
+  if (!rows.length && loi.length) {
+    return { ok: false, thongDiep: `Không có dòng hợp lệ. ${loi.join("; ")}.` };
   }
 
-  // Chống trùng: bỏ dòng có rowHash đã tồn tại trong công trình, và trùng trong chính lô.
-  const daCo = new Set(
-    (
-      await db.transaction.findMany({
-        where: { projectId: ct.id, rowHash: { in: rows.map((r) => r.rowHash) } },
-        select: { rowHash: true },
-      })
-    ).map((t) => t.rowHash)
-  );
+  // Bỏ dòng trùng y hệt trong bảng (khớp @@unique[rowHash, projectId]).
   const trongLo = new Set<string>();
   const moi = rows.filter((r) => {
-    if (daCo.has(r.rowHash) || trongLo.has(r.rowHash)) return false;
+    if (trongLo.has(r.rowHash)) return false;
     trongLo.add(r.rowHash);
     return true;
   });
   const soTrung = rows.length - moi.length;
 
-  if (!moi.length) {
-    return { ok: false, thongDiep: `Tất cả ${rows.length} dòng đã có trong sổ (trùng) — không ghi thêm.` };
-  }
-
-  const lo = await db.importBatch.create({
-    data: {
-      tenFile: `Nhập tay ${maCongTrinh}`,
-      hashFile: bam(`thu-cong|${ct.id}|${moi.map((r) => r.rowHash).join(",")}`),
-      nguon: "thu-cong",
-      projectId: ct.id,
-      nguoiTai: u?.email ?? "không rõ",
-      soDong: moi.length,
-      soDongHopLe: moi.length,
-      trangThai: "POSTED",
-    },
-  });
-
-  await db.transaction.createMany({
-    data: moi.map((r, idx) => ({
-      sttNguon: idx + 1,
-      projectId: ct.id,
-      tenCongTrinhNguon: ct.tenCongTrinh,
-      maBase: r.maBase,
-      soHoaDon: r.soHoaDon,
-      ngayChungTu: r.ngayChungTu,
-      thangThucHien: r.thangThucHien,
-      noiDung: r.noiDung,
-      dvt: r.dvt,
-      donGia: r.donGia,
-      soLuong: r.soLuong,
-      soTien: r.soTien,
-      maDTCP: r.maDTCP,
-      ghiChu: r.ghiChu,
-      importBatchId: lo.id,
-      sourceFileName: `Nhập tay (${u?.email ?? "không rõ"})`,
-      trangThai: "CHINH_THUC",
-      rowHash: r.rowHash,
-    })),
+  // THAY TOÀN BỘ: xoá hết giao dịch của công trình rồi ghi lại theo bảng (một
+  // giao dịch DB để không có trạng thái nửa vời nếu lỗi giữa chừng).
+  await db.$transaction(async (tx) => {
+    await tx.transaction.deleteMany({ where: { projectId: ct.id } });
+    await tx.importBatch.deleteMany({ where: { projectId: ct.id, nguon: "thu-cong" } });
+    if (moi.length) {
+      const lo = await tx.importBatch.create({
+        data: {
+          tenFile: `Nhập tay ${maCongTrinh}`,
+          hashFile: bam(`thu-cong|${ct.id}|${moi.map((r) => r.rowHash).join(",")}`),
+          nguon: "thu-cong",
+          projectId: ct.id,
+          nguoiTai: u?.email ?? "không rõ",
+          soDong: moi.length,
+          soDongHopLe: moi.length,
+          trangThai: "POSTED",
+        },
+      });
+      await tx.transaction.createMany({
+        data: moi.map((r, idx) => ({
+          sttNguon: idx + 1,
+          projectId: ct.id,
+          tenCongTrinhNguon: ct.tenCongTrinh,
+          maBase: r.maBase,
+          soHoaDon: r.soHoaDon,
+          ngayChungTu: r.ngayChungTu,
+          thangThucHien: r.thangThucHien,
+          noiDung: r.noiDung,
+          dvt: r.dvt,
+          donGia: r.donGia,
+          soLuong: r.soLuong,
+          soTien: r.soTien,
+          maDTCP: r.maDTCP,
+          ghiChu: r.ghiChu,
+          importBatchId: lo.id,
+          sourceFileName: `Nhập tay (${u?.email ?? "không rõ"})`,
+          trangThai: "CHINH_THUC",
+          rowHash: r.rowHash,
+        })),
+      });
+    }
   });
 
   revalidatePath(`/cong-trinh/${maCongTrinh}`);
@@ -211,5 +210,10 @@ export async function themNhieuGiaoDich(formData: FormData): Promise<KetQuaGiaoD
   const phu = [soTrung ? `${soTrung} dòng trùng đã bỏ` : "", loi.length ? `Lỗi: ${loi.join("; ")}` : ""]
     .filter(Boolean)
     .join(". ");
-  return { ok: true, thongDiep: `Đã ghi ${moi.length} giao dịch vào sổ.${phu ? ` ${phu}.` : ""}` };
+  return {
+    ok: true,
+    thongDiep: moi.length
+      ? `Đã lưu ${moi.length} giao dịch.${phu ? ` ${phu}.` : ""}`
+      : "Đã lưu bảng trống — công trình chưa có giao dịch.",
+  };
 }
