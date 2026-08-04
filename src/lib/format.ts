@@ -17,6 +17,17 @@ export function tien(v: number | null | undefined): string {
   return nfFull.format(Math.round(v));
 }
 
+const nfTienLe = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 4 });
+
+/**
+ * Số tiền GIỮ số lẻ (không làm tròn): 24.666,42 · 55.000. Dùng cho cột Thành tiền
+ * BOQ khi công trình tắt làm tròn — số nguyên vẫn hiện gọn, số lẻ hiện đủ.
+ */
+export function tienLe(v: number | null | undefined): string {
+  if (v === null || v === undefined || Number.isNaN(v)) return "—";
+  return nfTienLe.format(v);
+}
+
 /** Số tiền kèm đơn vị: 2.653.083.252 đ */
 export function tienDon(v: number | null | undefined): string {
   if (v === null || v === undefined || Number.isNaN(v)) return "—";

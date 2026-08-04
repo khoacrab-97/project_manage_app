@@ -19,7 +19,7 @@ import {
   Th,
   ThanhTyLe,
 } from "@/components/ui";
-import { khoiLuong, ngay, nhanThang, phanTram, tien } from "@/lib/format";
+import { khoiLuong, ngay, nhanThang, phanTram, tien, tienLe } from "@/lib/format";
 import {
   cacThang,
   chiSoEVM,
@@ -30,6 +30,7 @@ import {
   layBOQ,
   giaTriBillThang,
   giaTriMotGiamGia,
+  ttThanhTien,
   layGiaoDichChoXuLy,
   layLoNhap,
   maTranTheoCongTrinh,
@@ -392,7 +393,8 @@ async function BOQTab({
   /** Công trình đã nghiệm thu — đóng băng, chỉ được xem. */
   daHoanThanh: boolean;
 }) {
-  const { thangs, dongs, cots, donGiaGomVAT, vatPhanTram, giamGia } = await layBOQ(maCongTrinh);
+  const { thangs, dongs, cots, donGiaGomVAT, vatPhanTram, lamTronThanhTien, giamGia } =
+    await layBOQ(maCongTrinh);
   // Bill (doanh thu) lấy chưa VAT: nếu đơn giá đã gồm VAT thì chia (1+vat%).
   const heSoBill = donGiaGomVAT ? 1 / (1 + (vatPhanTram || 0) / 100) : 1;
   // Chiết khấu: tính số tiền giảm từng dòng theo thành tiền hợp đồng (theo thứ tự BOQ).
@@ -432,8 +434,8 @@ async function BOQTab({
   const ttLuyKe = dongs.reduce((a, d) => a + d.ttLuyKe, 0);
   const ttXacNhan = thangs
     .filter((t) => t.trangThai === "DA_XAC_NHAN")
-    .reduce((a, t) => a + giaTriBillThang(dongs, t.thang, heSoBill, giamGia), 0);
-  const billKy = ky ? giaTriBillThang(dongs, ky.thang, heSoBill, giamGia) : 0;
+    .reduce((a, t) => a + giaTriBillThang(dongs, t.thang, heSoBill, giamGia, lamTronThanhTien), 0);
+  const billKy = ky ? giaTriBillThang(dongs, ky.thang, heSoBill, giamGia, lamTronThanhTien) : 0;
   const soXong = dongs.filter((d) => d.hoanThanh).length;
 
   /** Luỹ kế khối lượng của các tháng TRƯỚC kỳ đang chọn. */
@@ -491,7 +493,12 @@ async function BOQTab({
           <LuoiNhapBOQ maCongTrinh={maCongTrinh} />
           <ImportBOQ maCongTrinh={maCongTrinh} daCoBOQ />
           <NutThemCot maCongTrinh={maCongTrinh} />
-          <ThietLapVAT maCongTrinh={maCongTrinh} donGiaGomVAT={donGiaGomVAT} vatPhanTram={vatPhanTram} />
+          <ThietLapVAT
+            maCongTrinh={maCongTrinh}
+            donGiaGomVAT={donGiaGomVAT}
+            vatPhanTram={vatPhanTram}
+            lamTronThanhTien={lamTronThanhTien}
+          />
           <GiamGiaBOQ maCongTrinh={maCongTrinh} danhSach={giamGiaTinh} soDong={dongs.length} />
         </div>
       ) : null}
@@ -630,18 +637,22 @@ async function BOQTab({
                         {khoiLuong(d.klHopDong)}
                       </Td>
                       <Td phai className="text-xs">
-                        {tien(d.donGia)}
+                        {tienLe(d.donGia)}
                       </Td>
-                      <Td phai>{tien(d.ttHopDong)}</Td>
+                      <Td phai>{tienLe(d.ttHopDong)}</Td>
                       <Td phai className="text-xs">
                         {khoiLuong(d.klLuyKe)}
                       </Td>
-                      <Td phai>{tien(d.ttLuyKe)}</Td>
+                      <Td phai>{tienLe(d.ttLuyKe)}</Td>
                       <Td phai className="bg-nen text-xs">
                         {kl ? khoiLuong(kl) : <span className="text-chunhat">—</span>}
                       </Td>
                       <Td phai className="bg-nen font-medium">
-                        {kl ? tien(Math.round(kl * d.donGia)) : <span className="text-chunhat">—</span>}
+                        {kl ? (
+                          tienLe(ttThanhTien(kl, d.donGia, lamTronThanhTien))
+                        ) : (
+                          <span className="text-chunhat">—</span>
+                        )}
                       </Td>
                     </tr>
                   );
@@ -649,11 +660,11 @@ async function BOQTab({
                 <tr className="bg-nen font-semibold">
                   {/* 5 cột gốc (STT, Nội dung, ĐVT, KL HĐ, Đơn giá) + số cột tùy chỉnh */}
                   <Td colSpan={5 + cots.length}>TỔNG</Td>
-                  <Td phai>{tien(ttHopDong)}</Td>
+                  <Td phai>{tienLe(ttHopDong)}</Td>
                   <Td />
-                  <Td phai>{tien(ttLuyKe)}</Td>
+                  <Td phai>{tienLe(ttLuyKe)}</Td>
                   <Td />
-                  <Td phai>{tien(billKy)}</Td>
+                  <Td phai>{tienLe(billKy)}</Td>
                 </tr>
               </tbody>
             </Bang>
@@ -746,8 +757,8 @@ function SpreadsheetBOQ({
               </td>
               <td className={oS}>{d.dvt}</td>
               <td className={`${oS} so text-right`}>{khoiLuong(d.klHopDong)}</td>
-              <td className={`${oS} so text-right`}>{tien(d.donGia)}</td>
-              <td className={`${oS} so text-right`}>{tien(d.ttHopDong)}</td>
+              <td className={`${oS} so text-right`}>{tienLe(d.donGia)}</td>
+              <td className={`${oS} so text-right`}>{tienLe(d.ttHopDong)}</td>
             </tr>
           ))}
           {coGiam ? (
@@ -756,14 +767,14 @@ function SpreadsheetBOQ({
                 <td className={`${oT} sticky left-0 z-10 text-right`} colSpan={6}>
                   TỔNG CỘNG
                 </td>
-                <td className={`${oT} so text-right`}>{tien(tong)}</td>
+                <td className={`${oT} so text-right`}>{tienLe(tong)}</td>
               </tr>
               {giamGia.map((g) => (
                 <tr key={g.id}>
                   <td className={`${oT} sticky left-0 z-10 text-right font-normal text-chunhat`} colSpan={6}>
                     {g.moTa ? `${g.moTa} · ` : ""}Giảm giá {g.phanTram}% (dòng {g.tuStt}–{g.denStt})
                   </td>
-                  <td className={`${oT} so text-right text-rose-600 dark:text-rose-400`}>−{tien(g.giaTri)}</td>
+                  <td className={`${oT} so text-right text-rose-600 dark:text-rose-400`}>−{tienLe(g.giaTri)}</td>
                 </tr>
               ))}
             </>
@@ -772,7 +783,7 @@ function SpreadsheetBOQ({
             <td className={`${oT} sticky left-0 z-10 text-right`} colSpan={6}>
               {nhanChinh}
             </td>
-            <td className={`${oT} so text-right`}>{tien(tongSauGiam)}</td>
+            <td className={`${oT} so text-right`}>{tienLe(tongSauGiam)}</td>
           </tr>
           {v > 0 ? (
             <tr>
@@ -780,7 +791,7 @@ function SpreadsheetBOQ({
                 {nhanPhu}
                 <span className="ml-1 font-normal text-chunhat">· VAT {vatPhanTram}%</span>
               </td>
-              <td className={`${oT} so text-right`}>{tien(giaPhu)}</td>
+              <td className={`${oT} so text-right`}>{tienLe(giaPhu)}</td>
             </tr>
           ) : null}
         </tbody>

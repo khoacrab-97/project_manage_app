@@ -767,14 +767,17 @@ export function ThietLapVAT({
   maCongTrinh,
   donGiaGomVAT,
   vatPhanTram,
+  lamTronThanhTien,
 }: {
   maCongTrinh: string;
   donGiaGomVAT: boolean;
   vatPhanTram: number;
+  lamTronThanhTien: boolean;
 }) {
   const [mo, setMo] = useState(false);
   const [gom, setGom] = useState(donGiaGomVAT);
   const [vat, setVat] = useState(String(vatPhanTram));
+  const [lamTron, setLamTron] = useState(lamTronThanhTien);
   const [kq, setKq] = useState<KetQuaBOQ | null>(null);
   const [dangChay, batDau] = useTransition();
 
@@ -785,7 +788,7 @@ export function ThietLapVAT({
         onClick={() => setMo(true)}
         className="inline-flex items-center gap-1 rounded-md border border-vien px-2.5 py-1 text-xs font-medium hover:bg-nen"
       >
-        VAT: {donGiaGomVAT ? `gồm ${vatPhanTram}%` : "chưa gồm"}
+        Thiết lập BOQ
       </button>
     );
   }
@@ -804,8 +807,12 @@ export function ThietLapVAT({
       className="rounded-lg border border-nhan bg-nhannhat p-3"
     >
       <input type="hidden" name="maCongTrinh" value={maCongTrinh} />
-      <p className="mb-2 text-xs font-semibold">Thiết lập VAT</p>
+      <p className="mb-2 text-xs font-semibold">Thiết lập BOQ</p>
       <label className="flex items-center gap-1.5 text-xs">
+        <input type="checkbox" name="lamTronThanhTien" checked={lamTron} onChange={(e) => setLamTron(e.target.checked)} />
+        Làm tròn cột Thành tiền về đồng
+      </label>
+      <label className="mt-2 flex items-center gap-1.5 text-xs">
         <input type="checkbox" name="donGiaGomVAT" checked={gom} onChange={(e) => setGom(e.target.checked)} />
         Đơn giá trên đã bao gồm VAT
       </label>
@@ -819,7 +826,10 @@ export function ThietLapVAT({
           className={`${O} w-20 text-right`}
         />
       </label>
-      <p className="mt-1 text-[11px] text-chunhat">Giá trị Bill (doanh thu) luôn lấy theo giá CHƯA VAT.</p>
+      <p className="mt-1 text-[11px] text-chunhat">
+        Bỏ tích làm tròn = giữ nguyên số lẻ (khối lượng × đơn giá). Giá trị Bill (doanh thu) luôn lấy
+        theo giá CHƯA VAT.
+      </p>
       <div className="mt-2 flex gap-2">
         <button type="submit" disabled={dangChay} className="rounded-md bg-nhan px-3 py-1 text-xs font-medium text-white disabled:opacity-60">
           {dangChay ? "Đang lưu…" : "Lưu"}

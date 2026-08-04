@@ -196,6 +196,12 @@ export interface GiamGiaBOQ {
  * phạm vi [tuStt, denStt]. `tt` là mảng thành tiền từng dòng theo thứ tự (0-based).
  * Cùng công thức này dùng cho cả TỔNG lẫn Bill từng tháng để không lệch làm tròn.
  */
+/** Thành tiền một dòng = khối lượng × đơn giá; làm tròn về đồng nếu `lamTron`. */
+export function ttThanhTien(khoiLuong: number, donGia: number, lamTron: boolean): number {
+  const v = khoiLuong * donGia;
+  return lamTron ? Math.round(v) : v;
+}
+
 export function giaTriMotGiamGia(
   tt: number[],
   g: { tuStt: number; denStt: number; phanTram: number }
@@ -236,6 +242,15 @@ const billTuBOQ = cache(async () => {
   }
   const tra = new Map(lines.map((l) => [l.id, l]));
 
+  // Thiết lập theo công trình: hệ số quy chưa-VAT + có làm tròn thành tiền không.
+  const projs = await db.project.findMany({
+    select: { id: true, donGiaGomVAT: true, vatPhanTram: true, lamTronThanhTien: true },
+  });
+  const heSo = new Map(
+    projs.map((p) => [p.id, p.donGiaGomVAT ? 1 / (1 + (p.vatPhanTram || 0) / 100) : 1])
+  );
+  const lamTron = new Map(projs.map((p) => [p.id, p.lamTronThanhTien]));
+
   const daXacNhan = new Set(
     (
       await db.billThang.findMany({
@@ -260,22 +275,16 @@ const billTuBOQ = cache(async () => {
       arr = new Array(soDong.get(l.projectId) ?? 0).fill(0);
       ttTheoThang.set(k, arr);
     }
-    arr[viTri.get(l.id)! - 1] += Math.round(t.khoiLuong * l.donGia);
+    arr[viTri.get(l.id)! - 1] += ttThanhTien(t.khoiLuong, l.donGia, lamTron.get(l.projectId) ?? true);
   }
 
-  // Chiết khấu + hệ số VAT theo công trình.
+  // Chiết khấu theo công trình.
   const ggByProject = new Map<string, GiamGiaBOQ[]>();
   for (const g of await db.bOQGiamGia.findMany({ orderBy: { thuTu: "asc" } })) {
     const arr = ggByProject.get(g.projectId) ?? [];
     arr.push({ id: g.id, moTa: g.moTa ?? "", tuStt: g.tuStt, denStt: g.denStt, phanTram: g.phanTram });
     ggByProject.set(g.projectId, arr);
   }
-  const projs = await db.project.findMany({
-    select: { id: true, donGiaGomVAT: true, vatPhanTram: true },
-  });
-  const heSo = new Map(
-    projs.map((p) => [p.id, p.donGiaGomVAT ? 1 / (1 + (p.vatPhanTram || 0) / 100) : 1])
-  );
 
   for (const [k, arr] of ttTheoThang) {
     const pid = k.split("|")[0];
@@ -354,11 +363,26 @@ export async function layBOQ(
   cots: CotBOQ[];
   donGiaGomVAT: boolean;
   vatPhanTram: number;
+  lamTronThanhTien: boolean;
   giamGia: GiamGiaBOQ[];
 }> {
   const ct = (await layCongTrinh()).find((c) => c.maCongTrinh === maCongTrinh);
   if (!ct)
-    return { thangs: [], dongs: [], cots: [], donGiaGomVAT: false, vatPhanTram: 10, giamGia: [] };
+    return {
+      thangs: [],
+      dongs: [],
+      cots: [],
+      donGiaGomVAT: false,
+      vatPhanTram: 10,
+      lamTronThanhTien: true,
+      giamGia: [],
+    };
+
+  const tls = await db.project.findUnique({
+    where: { id: ct.id },
+    select: { donGiaGomVAT: true, vatPhanTram: true, lamTronThanhTien: true },
+  });
+  const lamTron = tls?.lamTronThanhTien ?? true;
 
   const ds = await db.bOQLine.findMany({
     where: { projectId: ct.id },
@@ -396,18 +420,13 @@ export async function layBOQ(
       dvt: l.dvt ?? "",
       klHopDong: l.khoiLuong,
       donGia: l.donGia,
-      ttHopDong: Math.round(l.khoiLuong * l.donGia),
+      ttHopDong: ttThanhTien(l.khoiLuong, l.donGia, lamTron),
       klTheoThang,
       klLuyKe,
-      ttLuyKe: Math.round(klLuyKe * l.donGia),
+      ttLuyKe: ttThanhTien(klLuyKe, l.donGia, lamTron),
       giaTriCot: Object.fromEntries(l.giaTriCot.map((g) => [g.cotId, g.giaTri])),
       hoanThanh: l.hoanThanh,
     };
-  });
-
-  const vat = await db.project.findUnique({
-    where: { id: ct.id },
-    select: { donGiaGomVAT: true, vatPhanTram: true },
   });
 
   const giamGia: GiamGiaBOQ[] = (
@@ -424,8 +443,9 @@ export async function layBOQ(
     thangs,
     dongs,
     cots,
-    donGiaGomVAT: vat?.donGiaGomVAT ?? false,
-    vatPhanTram: vat?.vatPhanTram ?? 10,
+    donGiaGomVAT: tls?.donGiaGomVAT ?? false,
+    vatPhanTram: tls?.vatPhanTram ?? 10,
+    lamTronThanhTien: lamTron,
     giamGia,
   };
 }
@@ -438,10 +458,11 @@ export function giaTriBillThang(
   dongs: DongBOQ[],
   thang: string,
   heSoChuaVAT = 1,
-  giamGia: GiamGiaBOQ[] = []
+  giamGia: GiamGiaBOQ[] = [],
+  lamTron = true
 ): number {
   // `dongs` phải theo thứ tự BOQ (thuTu) để khớp vị trí chiết khấu — layBOQ đã sắp.
-  const tt = dongs.map((d) => Math.round((d.klTheoThang[thang] ?? 0) * d.donGia));
+  const tt = dongs.map((d) => ttThanhTien(d.klTheoThang[thang] ?? 0, d.donGia, lamTron));
   const gom = tt.reduce((a, b) => a + b, 0);
   const giam = giamGia.reduce((a, g) => a + giaTriMotGiamGia(tt, g), 0);
   const sauGiam = gom - giam;

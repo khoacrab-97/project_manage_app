@@ -438,6 +438,7 @@ export async function luuThietLapVAT(formData: FormData): Promise<KetQuaBOQ> {
   if ("loi" in kq) return { ok: false, thongDiep: kq.loi };
 
   const donGiaGomVAT = formData.get("donGiaGomVAT") === "on";
+  const lamTronThanhTien = formData.get("lamTronThanhTien") === "on";
   const vat = Number(String(formData.get("vatPhanTram") ?? "").replace(",", "."));
   if (!Number.isFinite(vat) || vat < 0 || vat > 100) {
     return { ok: false, thongDiep: "VAT (%) phải là số từ 0 đến 100." };
@@ -445,12 +446,12 @@ export async function luuThietLapVAT(formData: FormData): Promise<KetQuaBOQ> {
 
   await db.project.update({
     where: { id: kq.ct.id },
-    data: { donGiaGomVAT, vatPhanTram: vat },
+    data: { donGiaGomVAT, vatPhanTram: vat, lamTronThanhTien },
   });
 
   revalidatePath(`/cong-trinh/${maCongTrinh}`);
   revalidatePath("/");
-  return { ok: true, thongDiep: "Đã lưu thiết lập VAT." };
+  return { ok: true, thongDiep: "Đã lưu thiết lập." };
 }
 
 /**

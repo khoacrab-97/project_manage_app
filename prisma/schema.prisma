@@ -49,6 +49,9 @@ model Project {
   donGiaGomVAT       Boolean   @default(false)
   /// Thuế suất VAT (%) áp cho BOQ của công trình này.
   vatPhanTram        Float     @default(10)
+  /// Có làm tròn cột Thành tiền (khối lượng × đơn giá) về đồng hay không. Admin
+  /// chỉnh theo từng công trình. false = giữ nguyên số lẻ, không làm tròn.
+  lamTronThanhTien   Boolean   @default(true)
   ngayCapNhatCuoi    DateTime?
   isActive           Boolean   @default(true)
 
