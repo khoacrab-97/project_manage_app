@@ -13,8 +13,10 @@ export default async function TrangDanhMuc() {
     if (c.maCha) soCon.set(c.maCha, (soCon.get(c.maCha) ?? 0) + 1);
   }
 
-  // Xếp theo cây: mã gốc rồi tới mã con của nó.
-  const goc = danhMuc.filter((c) => !c.maCha);
+  // Xếp theo cây: mã gốc rồi tới mã con của nó. Nhóm Doanh thu xếp trên, Chi phí xếp dưới.
+  const goc = danhMuc
+    .filter((c) => !c.maCha)
+    .sort((a, b) => (a.loai === b.loai ? 0 : a.loai === "Doanh thu" ? -1 : 1));
   const hang: { ma: (typeof danhMuc)[number]; con: boolean }[] = [];
   for (const g of goc) {
     hang.push({ ma: g, con: false });

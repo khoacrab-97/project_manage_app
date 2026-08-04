@@ -43,6 +43,7 @@ import { nguoiDungHienTai } from "@/lib/auth/phien";
 import { coQuyen } from "@/lib/auth/quyen";
 import { NGAY_HIEN_TAI } from "@/lib/thresholds";
 import { BoxNhapBOQ, GiamGiaBOQ, ImportBOQ, LuoiNhapBOQ, NutThemBill, NutXacNhan, ThietLapVAT } from "@/components/nhap-boq";
+import { NhapGiaoDich } from "@/components/nhap-giao-dich";
 import { NutThemCot, NutThemDong, ONhapCot, TieuDeCot } from "@/components/cot-boq";
 
 /**
@@ -261,7 +262,14 @@ export default async function TrangChiTietCongTrinh({
       ) : tab === "chi-phi" ? (
         <ChiPhi maCongTrinh={maCongTrinh} danhMuc={danhMuc} base={base} an0={sp.an0 === "1"} />
       ) : tab === "giao-dich" ? (
-        <GiaoDichTab maCongTrinh={maCongTrinh} ma={sp.ma} thang={sp.thang} q={q} thangs={thangs} />
+        <GiaoDichTab
+          maCongTrinh={maCongTrinh}
+          ma={sp.ma}
+          thang={sp.thang}
+          q={q}
+          thangs={thangs}
+          daHoanThanh={ct.trangThai === "Đã nghiệm thu"}
+        />
       ) : tab === "bao-cao" ? (
         <BaoCaoTab maCongTrinh={maCongTrinh} loai={sp.loai} ky={sp.ky} q={q} />
       ) : tab === "evm" ? (
@@ -814,13 +822,17 @@ async function DoanhThu({
     if (!g.maDTCP) continue;
     theoMa.set(g.maDTCP, (theoMa.get(g.maDTCP) ?? 0) + g.soTien);
   }
-  const tenTheoMa = new Map((await layDanhMucMa()).map((c) => [c.ma, c.ten]));
+  const danhMuc = await layDanhMucMa();
+  const tenTheoMa = new Map(danhMuc.map((c) => [c.ma, c.ten]));
 
   const thangTrong = chuoi.filter((c) => c.doanhThu === 0).map((c) => c.thang);
 
-  // Bill và các mã dòng tiền tách bạch: Bill là giá trị khối lượng thực hiện đã
-  // được chỉ huy trưởng xác nhận (doanh thu dự kiến), TƯ/TT/QT là tiền thực thu.
-  const DONG_TIEN = ["TDATU", "TDATT1", "TDAQT"];
+  // Dòng tiền thu = mọi mã Doanh thu nhập trực tiếp trong danh mục (trừ Bill —
+  // Bill là giá trị khối lượng thực hiện, tách riêng ở dòng trên). Mã Doanh thu
+  // mới thêm trong Danh mục tự động hiện ở đây, không cần sửa code.
+  const DONG_TIEN = danhMuc
+    .filter((c) => c.loai === "Doanh thu" && c.choPhepNhapTrucTiep && c.ma !== "Bill")
+    .map((c) => c.ma);
 
   return (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
@@ -1041,13 +1053,24 @@ async function GiaoDichTab({
   thang,
   q,
   thangs,
+  daHoanThanh,
 }: {
   maCongTrinh: string;
   ma?: string;
   thang?: string;
   q: (o: Record<string, string | undefined>) => string;
   thangs: string[];
+  daHoanThanh: boolean;
 }) {
+  const u = await nguoiDungHienTai();
+  const duocNhap = coQuyen(u, "nhap_du_lieu") && !daHoanThanh;
+  // Mã được ghi trực tiếp cho ô chọn Mã DT–CP của lưới nhập (bỏ mã nhóm).
+  const dsMaNhap = duocNhap
+    ? (await layDanhMucMa())
+        .filter((c) => c.choPhepNhapTrucTiep)
+        .map((c) => ({ ma: c.ma, ten: c.ten, loai: c.loai }))
+    : [];
+
   let ds = await layGiaoDich({ maCongTrinh });
   if (ma) ds = ds.filter((g) => g.maDTCP === ma);
   if (thang) ds = ds.filter((g) => g.thangThucHien === thang);
@@ -1077,14 +1100,17 @@ async function GiaoDichTab({
           </>
         }
         phai={
-          ma || thang ? (
-            <Link
-              href={q({ tab: "giao-dich" })}
-              className="text-xs font-medium text-nhan hover:underline"
-            >
-              Bỏ lọc
-            </Link>
-          ) : null
+          <div className="flex items-center gap-2">
+            {ma || thang ? (
+              <Link
+                href={q({ tab: "giao-dich" })}
+                className="text-xs font-medium text-nhan hover:underline"
+              >
+                Bỏ lọc
+              </Link>
+            ) : null}
+            {duocNhap ? <NhapGiaoDich maCongTrinh={maCongTrinh} dsMa={dsMaNhap} /> : null}
+          </div>
         }
       />
 
