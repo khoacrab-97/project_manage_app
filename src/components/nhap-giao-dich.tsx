@@ -306,7 +306,7 @@ export function BangGiaoDich({
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10 bg-the">
                 <tr>
-                  <th className="sticky left-0 z-20 border border-vien bg-nen px-2 py-1.5 text-xs font-semibold text-chunhat">
+                  <th className="sticky top-0 left-0 z-30 border border-vien bg-nen px-2 py-1.5 text-xs font-semibold text-chunhat">
                     #
                   </th>
                   {["Mã Base", "Số HĐ", "Ngày CT", "Tháng", "Nội dung", "ĐVT", "Đơn giá", "SL", "Số tiền", "Mã DT–CP", "Ghi chú"].map(
@@ -373,18 +373,30 @@ export function BangGiaoDich({
         <table className="w-full border-collapse text-sm">
           <thead className="sticky top-0 z-10 bg-the">
             <tr>
-              <th className="sticky left-0 z-20 border border-vien bg-nen px-2 py-1.5 text-xs font-semibold text-chunhat">
+              <th className="sticky top-0 left-0 z-30 border border-vien bg-nen px-2 py-1.5 text-xs font-semibold text-chunhat">
                 #
               </th>
-              {COT.map((c) => (
-                <th
-                  key={c.key}
-                  className={`border border-vien bg-nen px-2 py-1.5 text-xs font-semibold whitespace-nowrap text-chunhat ${c.so ? "text-right" : "text-left"}`}
-                >
-                  {c.nhan}
-                </th>
-              ))}
-              {/* Cột Tháng TH chèn sau Ngày chứng từ bằng thứ tự hiển thị dưới. */}
+              {/* Chèn "Tháng TH" ngay sau Ngày chứng từ để khớp đúng cột ở thân bảng. */}
+              {COT.flatMap((c) => {
+                const th = (
+                  <th
+                    key={c.key}
+                    className={`border border-vien bg-nen px-2 py-1.5 text-xs font-semibold whitespace-nowrap text-chunhat ${c.so ? "text-right" : "text-left"}`}
+                  >
+                    {c.nhan}
+                  </th>
+                );
+                if (c.key !== "ngayChungTu") return [th];
+                return [
+                  th,
+                  <th
+                    key="thangTH"
+                    className="border border-vien bg-nen px-2 py-1.5 text-left text-xs font-semibold whitespace-nowrap text-chunhat"
+                  >
+                    Tháng TH
+                  </th>,
+                ];
+              })}
             </tr>
           </thead>
           <tbody ref={luoiRef}>
