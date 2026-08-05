@@ -160,6 +160,45 @@ export async function luuKhoiLuong(formData: FormData): Promise<KetQuaBOQ> {
   return { ok: true, thongDiep: `Đã lưu Bill tháng ${thang}.` };
 }
 
+/**
+ * Đổi THÁNG của một Bill: dời cả bản ghi BillThang lẫn toàn bộ khối lượng thực
+ * hiện (BOQThucHien) của tháng đó sang tháng mới. Chặn nếu tháng mới đã có Bill.
+ */
+export async function doiThangBill(formData: FormData): Promise<KetQuaBOQ> {
+  const u = await nguoiDungHienTai();
+  batBuocQuyen(u, "nhap_boq");
+
+  const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
+  const thangCu = String(formData.get("thangCu") ?? "").trim();
+  const thangMoi = String(formData.get("thangMoi") ?? "").trim();
+  if (!LA_THANG.test(thangMoi)) return { ok: false, thongDiep: "Tháng mới không hợp lệ (dạng yyyy-MM)." };
+  if (thangMoi === thangCu) return { ok: false, thongDiep: "Tháng mới trùng tháng hiện tại." };
+
+  const kq = await congTrinhChoGhi(maCongTrinh);
+  if ("loi" in kq) return { ok: false, thongDiep: kq.loi };
+  const ct = kq.ct;
+
+  const bill = await db.billThang.findUnique({
+    where: { projectId_thang: { projectId: ct.id, thang: thangCu } },
+  });
+  if (!bill) return { ok: false, thongDiep: `Chưa có Bill tháng ${thangCu}.` };
+  if (await db.billThang.findUnique({ where: { projectId_thang: { projectId: ct.id, thang: thangMoi } } })) {
+    return { ok: false, thongDiep: `Bill tháng ${thangMoi} đã tồn tại — không thể đổi trùng.` };
+  }
+
+  const ids = (
+    await db.bOQLine.findMany({ where: { projectId: ct.id }, select: { id: true } })
+  ).map((l) => l.id);
+  await db.$transaction([
+    db.bOQThucHien.updateMany({ where: { boqLineId: { in: ids }, thang: thangCu }, data: { thang: thangMoi } }),
+    db.billThang.update({ where: { id: bill.id }, data: { thang: thangMoi } }),
+  ]);
+
+  revalidatePath(`/cong-trinh/${maCongTrinh}`);
+  revalidatePath("/");
+  return { ok: true, thongDiep: `Đã đổi Bill tháng ${thangCu} → ${thangMoi}.` };
+}
+
 // ------------------------------------------------------------ Cột tùy chỉnh
 export async function themCot(formData: FormData): Promise<KetQuaBOQ> {
   batBuocQuyen(await nguoiDungHienTai(), "nhap_boq");

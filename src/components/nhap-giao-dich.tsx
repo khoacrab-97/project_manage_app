@@ -6,8 +6,6 @@ import { luuGiaoDich, type KetQuaGiaoDich } from "@/app/cong-trinh/giao-dich-act
 import { docSoVN } from "@/lib/so-vn";
 import { nhanThang, ngay as dinhDangNgay, tien } from "@/lib/format";
 
-const O = "rounded-md border border-vien bg-the px-2 py-1 text-xs";
-
 interface MaChon {
   ma: string;
   ten: string;
@@ -301,7 +299,7 @@ export function BangGiaoDich({
               onClick={suaLai}
               className="inline-flex items-center gap-1.5 rounded-lg bg-nhan px-3 py-1.5 text-xs font-medium text-white"
             >
-              <Pencil className="size-3.5" /> Sửa
+              <Pencil className="size-3.5" /> Cập nhật
             </button>
           ) : null}
         </div>
@@ -428,10 +426,17 @@ export function BangGiaoDich({
                     const loiSo = so && d[c.key].trim() !== "" && kq === null;
                     const laMa = c.key === "maDTCP";
                     const laNgay = c.key === "ngayChungTu";
+                    // Số tiền để trống mà tự tính được thì gợi ý kết quả ngay trong ô
+                    // (placeholder) — không thêm dòng phụ dưới ô, giữ lưới đều như Excel.
+                    const goiY = laNgay
+                      ? "dd/mm/yyyy"
+                      : c.key === "soTien" && st.tuTinh && st.giaTri !== null
+                        ? `= ${st.giaTri.toLocaleString("vi-VN", { maximumFractionDigits: 2 })}`
+                        : "";
                     return (
                       <td
                         key={c.key}
-                        className={`border border-vien px-1 py-1 align-top ${so ? "text-right" : ""}`}
+                        className={`border border-vien p-0 ${so ? "text-right" : ""}`}
                       >
                         <input
                           data-r={i}
@@ -441,20 +446,10 @@ export function BangGiaoDich({
                           onKeyDown={diChuyen}
                           inputMode={so ? "decimal" : undefined}
                           list={laMa ? "dsMaGiaoDich" : undefined}
-                          placeholder={laNgay ? "dd/mm/yyyy" : c.key === "soTien" && st.tuTinh ? "tự tính" : ""}
-                          className={`${O} ${c.w} ${so ? "text-right" : ""} ${loiSo || (laNgay && loiNgay) ? "border-rose-400" : ""}`}
+                          placeholder={goiY}
+                          title={loiSo ? "Không đọc được số" : undefined}
+                          className={`w-full bg-transparent px-2 py-1 text-xs outline-none focus:bg-nhannhat/40 ${so ? "text-right" : ""} ${loiSo || (laNgay && loiNgay) ? "bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300" : ""}`}
                         />
-                        {c.key === "soTien" && st.tuTinh && st.giaTri !== null ? (
-                          <span className="mt-0.5 block text-right text-[10px] text-chunhat">
-                            = {st.giaTri.toLocaleString("vi-VN", { maximumFractionDigits: 2 })}
-                          </span>
-                        ) : null}
-                        {loiSo ? (
-                          <span className="mt-0.5 block text-right text-[10px] text-rose-600 dark:text-rose-400">
-                            không đọc được
-                          </span>
-                        ) : null}
-                        {/* Chèn cột Tháng TH ngay sau Ngày chứng từ. */}
                       </td>
                     );
                   }).flatMap((cell, ci) => {

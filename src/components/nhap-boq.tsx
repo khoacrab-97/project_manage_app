@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, Download, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
 import {
   docFileBOQ,
+  doiThangBill,
   luuKhoiLuong,
   luuThietLapVAT,
   themBillThang,
@@ -160,6 +161,21 @@ export function HopThoaiBill({
   // Mở ra là chế độ XEM; bấm "Sửa" mới cập nhật được.
   const [khoa, setKhoa] = useState(true);
   const capNhat = duocNhap && !khoa;
+  // Đổi tháng của Bill (dời cả khối lượng đã nhập sang tháng mới).
+  const [thangMoi, setThangMoi] = useState(thang);
+  const [dangDoi, doiTransition] = useTransition();
+
+  const doiThang = () => {
+    const fd = new FormData();
+    fd.set("maCongTrinh", maCongTrinh);
+    fd.set("thangCu", thang);
+    fd.set("thangMoi", thangMoi.trim());
+    doiTransition(async () => {
+      const r = await doiThangBill(fd);
+      setKq(r);
+      if (r.ok) router.push(`${base}?tab=boq&bq=${thangMoi.trim()}`);
+    });
+  };
 
   const datLaiTuProps = () => {
     setKl(Object.fromEntries(dongs.map((d) => [d.id, d.klHienTai ? String(d.klHienTai) : ""])));
@@ -254,6 +270,27 @@ export function HopThoaiBill({
             <X className="size-4" />
           </button>
         </div>
+
+        {capNhat ? (
+          <div className="flex flex-wrap items-center gap-2 border-b border-vien bg-nhannhat/50 px-4 py-2 text-xs">
+            <span className="text-chunhat">Đổi tháng Bill:</span>
+            <input
+              value={thangMoi}
+              onChange={(e) => setThangMoi(e.target.value)}
+              placeholder="2026-08"
+              className={`${O} w-28`}
+            />
+            <button
+              type="button"
+              onClick={doiThang}
+              disabled={dangDoi || thangMoi.trim() === thang}
+              className="rounded-md border border-nhan px-2.5 py-1 text-xs font-medium text-nhan disabled:opacity-40"
+            >
+              {dangDoi ? "Đang đổi…" : "Đổi tháng"}
+            </button>
+            <span className="text-[11px] text-chunhat">Dời toàn bộ khối lượng đã nhập sang tháng mới.</span>
+          </div>
+        ) : null}
 
         <div className="max-h-[60vh] overflow-auto" onPaste={dan}>
           <table className="w-full border-collapse text-sm">

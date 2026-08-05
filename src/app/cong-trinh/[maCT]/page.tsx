@@ -28,6 +28,7 @@ import {
   layDanhMucMa,
   layGiaoDich,
   layBOQ,
+  billDoanhThuTheoThang,
   giaTriBillThang,
   giaTriMotGiamGia,
   ttThanhTien,
@@ -112,21 +113,24 @@ export default async function TrangChiTietCongTrinh({
 
   const dong = (await danhMucSucKhoe()).find((d) => d.congTrinh.maCongTrinh === maCongTrinh)!;
   const tatCa = await layGiaoDich({ maCongTrinh });
-  const thangs = await cacThang();
   const danhMuc = await layDanhMucMa();
+  // Doanh thu Bill lấy CÙNG nguồn với KPI: BOQ nếu có BOQ, ngược lại mã Bill trên sổ.
+  const billThang = await billDoanhThuTheoThang(maCongTrinh);
+  // Dải tháng = tháng có giao dịch (toàn app) ∪ tháng đã ra Bill của công trình.
+  const thangs = [...new Set([...(await cacThang()), ...billThang.keys()])].sort();
 
   // Tra loại một lần rồi mới gộp — tránh gọi bất đồng bộ trong vòng lặp.
   const loaiTheoMa = new Map(danhMuc.map((c) => [c.ma, c.loai]));
 
-  // Chuỗi theo tháng của riêng công trình này.
+  // Chuỗi theo tháng của riêng công trình này. Doanh thu = Bill (BOQ/sổ), chi phí
+  // = tổng mã chi phí trên sổ giao dịch của tháng.
   const chuoi = thangs.map((t) => {
     const ds = tatCa.filter((g) => g.thangThucHien === t);
-    let dt = 0;
     let cp = 0;
     for (const g of ds) {
-      if (g.maDTCP === "Bill") dt += g.soTien;
-      else if (loaiTheoMa.get(g.maDTCP ?? "") === "Chi phí") cp += g.soTien;
+      if (loaiTheoMa.get(g.maDTCP ?? "") === "Chi phí") cp += g.soTien;
     }
+    const dt = billThang.get(t) ?? 0;
     return { thang: t, doanhThu: dt, chiPhi: cp, loiNhuan: dt - cp };
   });
 
@@ -665,6 +669,9 @@ async function DoanhThu({
   const danhMuc = await layDanhMucMa();
   const tenTheoMa = new Map(danhMuc.map((c) => [c.ma, c.ten]));
 
+  // Tổng Bill lấy từ chuỗi doanh thu (BOQ nếu có BOQ) — CÙNG nguồn với KPI, không
+  // cộng riêng mã "Bill" trên sổ giao dịch nữa.
+  const billTong = chuoi.reduce((a, c) => a + c.doanhThu, 0);
   const thangTrong = chuoi.filter((c) => c.doanhThu === 0).map((c) => c.thang);
 
   // Dòng tiền thu = mọi mã Doanh thu nhập trực tiếp trong danh mục (trừ Bill —
@@ -696,8 +703,8 @@ async function DoanhThu({
                 Giá trị thực hiện — doanh thu dự kiến, chưa nghiệm thu thanh toán
               </Td>
               <Td phai>
-                {theoMa.has("Bill") ? (
-                  tien(theoMa.get("Bill"))
+                {billTong ? (
+                  tien(billTong)
                 ) : (
                   <span className="text-chunhat">chưa phát sinh</span>
                 )}
