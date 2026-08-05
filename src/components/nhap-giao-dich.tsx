@@ -42,18 +42,27 @@ interface Dong {
 
 // Cột nhập (data-c = vị trí trong mảng này). Cột "Tháng TH" là hiển thị, KHÔNG
 // nằm ở đây — dán dữ liệu bỏ qua nó vì Tháng tự tính theo Ngày chứng từ.
-const COT: { key: keyof Dong; nhan: string; w: string; so?: boolean }[] = [
-  { key: "maBase", nhan: "Mã Base", w: "w-24" },
-  { key: "soHoaDon", nhan: "Số hóa đơn", w: "w-24" },
-  { key: "ngayChungTu", nhan: "Ngày chứng từ", w: "w-28" },
-  { key: "noiDung", nhan: "Nội dung thanh toán", w: "w-full min-w-55" },
-  { key: "dvt", nhan: "ĐVT", w: "w-16" },
-  { key: "donGia", nhan: "Đơn giá", w: "w-28", so: true },
-  { key: "soLuong", nhan: "Số lượng", w: "w-20", so: true },
-  { key: "soTien", nhan: "Số tiền", w: "w-32", so: true },
-  { key: "maDTCP", nhan: "Mã DT–CP", w: "w-40" },
-  { key: "ghiChu", nhan: "Ghi chú", w: "w-40" },
+// `px` = độ rộng mặc định (kéo dãn được, lưu trong phiên qua state `rong`).
+const COT: { key: keyof Dong; nhan: string; px: number; so?: boolean }[] = [
+  { key: "maBase", nhan: "Mã Base", px: 96 },
+  { key: "soHoaDon", nhan: "Số hóa đơn", px: 96 },
+  { key: "ngayChungTu", nhan: "Ngày chứng từ", px: 112 },
+  { key: "noiDung", nhan: "Nội dung thanh toán", px: 300 },
+  { key: "dvt", nhan: "ĐVT", px: 64 },
+  { key: "donGia", nhan: "Đơn giá", px: 112, so: true },
+  { key: "soLuong", nhan: "Số lượng", px: 84, so: true },
+  { key: "soTien", nhan: "Số tiền", px: 128, so: true },
+  { key: "maDTCP", nhan: "Mã DT–CP", px: 150 },
+  { key: "ghiChu", nhan: "Ghi chú", px: 150 },
 ];
+
+const RONG_STT = 44; // cột "#"
+const RONG_THANG = 96; // cột hiển thị "Tháng TH"
+
+interface O {
+  r: number;
+  c: number;
+}
 
 const DONG_RONG: Dong = {
   maBase: "",
@@ -155,32 +164,45 @@ export function BangGiaoDich({
   const [chonDong, setChonDong] = useState<number | null>(null);
   const [kq, setKq] = useState<KetQuaGiaoDich | null>(null);
   const [dangLuu, batDau] = useTransition();
-  const luoiRef = useRef<HTMLTableSectionElement>(null);
+  // Mô hình chọn ô kiểu Excel: `neo` là ô neo, `cuoi` là ô góc kia của vùng chọn;
+  // `sua` là ô đang gõ (chỉ khi double-click / F2 / gõ ký tự). Bấm một lần chỉ chọn.
+  const [neo, setNeo] = useState<O | null>(null);
+  const [cuoi, setCuoi] = useState<O | null>(null);
+  const [sua, setSua] = useState<O | null>(null);
+  const [rong, setRong] = useState<Record<string, number>>(
+    () => Object.fromEntries(COT.map((c) => [c.key, c.px]))
+  );
+  const keoRef = useRef(false); // đang kéo chọn vùng bằng chuột
+  const boxRef = useRef<HTMLDivElement>(null); // khung cuộn, nhận phím
+  const suaRef = useRef<HTMLTextAreaElement | HTMLInputElement | null>(null);
+  const lanBamRef = useRef<{ r: number; c: number; t: number } | null>(null); // nhận double-click
 
-  // Insert / Delete theo dòng đang chọn — chỉ khi KHÔNG đang gõ trong ô.
+  // Kết thúc kéo chọn vùng khi thả chuột ở bất cứ đâu.
   useEffect(() => {
-    if (khoa) return;
-    const onKey = (e: KeyboardEvent) => {
-      const ae = document.activeElement;
-      if (ae && (ae.tagName === "INPUT" || ae.tagName === "SELECT" || ae.tagName === "TEXTAREA")) return;
-      if (chonDong === null) return;
-      if (e.key === "Delete") {
-        e.preventDefault();
-        setDongs((prev) => (prev.length > 1 ? prev.filter((_, j) => j !== chonDong) : prev));
-        setChonDong(null);
-      } else if (e.key === "Insert") {
-        e.preventDefault();
-        setDongs((prev) => {
-          const n = [...prev];
-          n.splice(chonDong + 1, 0, { ...DONG_RONG });
-          return n;
-        });
-        setChonDong((c) => (c === null ? null : c + 1));
-      }
+    const up = () => {
+      keoRef.current = false;
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [khoa, chonDong]);
+    window.addEventListener("mouseup", up);
+    return () => window.removeEventListener("mouseup", up);
+  }, []);
+
+  // Vào chế độ sửa: focus ô nhập, đưa con trỏ về cuối, và co giãn cao theo nội dung.
+  useEffect(() => {
+    if (!sua) return;
+    const el = suaRef.current;
+    if (!el) return;
+    el.focus();
+    const n = el.value.length;
+    try {
+      el.setSelectionRange(n, n);
+    } catch {
+      /* input số không hỗ trợ selectionRange */
+    }
+    if (el instanceof HTMLTextAreaElement) {
+      el.style.height = "0px";
+      el.style.height = `${el.scrollHeight}px`;
+    }
+  }, [sua]);
 
   const suaO = (i: number, k: keyof Dong, v: string) =>
     setDongs((s) => s.map((d, j) => (j === i ? { ...d, [k]: v } : d)));
@@ -190,39 +212,217 @@ export function BangGiaoDich({
     setDongs((s) => (s.length > 1 ? s.filter((_, j) => j !== i) : s));
     setChonDong(null);
   };
+  const chenDongDuoi = (i: number) => {
+    setDongs((s) => {
+      const n = [...s];
+      n.splice(i + 1, 0, { ...DONG_RONG });
+      return n;
+    });
+    setChonDong((c) => (c === null ? null : c + 1));
+  };
   const chonDongNhap = (i: number) => {
     setChonDong(i);
-    (document.activeElement as HTMLElement | null)?.blur?.();
+    setNeo(null);
+    setCuoi(null);
+    setSua(null);
+    boxRef.current?.focus();
   };
 
-  // Di chuyển giữa các ô bằng phím mũi tên / Enter như bảng tính.
-  const diChuyen = (e: React.KeyboardEvent) => {
-    const inp = e.target as HTMLInputElement;
-    const r = Number(inp.dataset.r);
-    const c = Number(inp.dataset.c);
-    if (Number.isNaN(r) || Number.isNaN(c)) return;
-    const den = (rr: number, cc: number) => {
-      const t = luoiRef.current?.querySelector<HTMLElement>(`[data-r="${rr}"][data-c="${cc}"]`);
-      if (t) {
+  // Co giãn chiều cao textarea theo nội dung (wrap + ngắt dòng đẩy dòng cao lên).
+  const capNhatCao = (el: HTMLTextAreaElement) => {
+    el.style.height = "0px";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
+  const trongVung = (i: number, ci: number) => {
+    if (!neo || !cuoi) return false;
+    return (
+      i >= Math.min(neo.r, cuoi.r) &&
+      i <= Math.max(neo.r, cuoi.r) &&
+      ci >= Math.min(neo.c, cuoi.c) &&
+      ci <= Math.max(neo.c, cuoi.c)
+    );
+  };
+  const laNeo = (i: number, ci: number) => neo?.r === i && neo?.c === ci;
+  const laSua = (i: number, ci: number) => sua?.r === i && sua?.c === ci;
+
+  // Xoá dữ liệu toàn bộ ô trong vùng đang chọn (Delete/Backspace).
+  const xoaVung = () => {
+    if (!neo || !cuoi) return;
+    const r0 = Math.min(neo.r, cuoi.r);
+    const r1 = Math.max(neo.r, cuoi.r);
+    const c0 = Math.min(neo.c, cuoi.c);
+    const c1 = Math.max(neo.c, cuoi.c);
+    setDongs((prev) =>
+      prev.map((d, ri) => {
+        if (ri < r0 || ri > r1) return d;
+        const nd = { ...d };
+        for (let ci = c0; ci <= c1; ci++) nd[COT[ci].key] = "";
+        return nd;
+      })
+    );
+  };
+
+  // Chuột: bấm chọn ô (không hiện con trỏ), kéo để chọn vùng, bấm 2 lần để sửa.
+  // Nhận double-click bằng THỜI GIAN trong chính mousedown thay vì sự kiện dblclick:
+  // lần bấm đầu làm bảng render lại (đổi ô chọn) nên trình duyệt bỏ qua dblclick.
+  // Ô hiển thị là <div> nên không có con trỏ nhấp nháy; bôi đen chữ khi kéo vùng đã
+  // chặn bằng `select-none` trên ô — không cần preventDefault (nó lại chặn dblclick).
+  const onXuongO = (e: React.MouseEvent, i: number, ci: number) => {
+    if (laSua(i, ci)) return; // đang sửa chính ô này -> để chọn chữ trong ô
+    const now = Date.now();
+    const last = lanBamRef.current;
+    if (!e.shiftKey && last && last.r === i && last.c === ci && now - last.t < 400) {
+      lanBamRef.current = null;
+      batDauSua(i, ci);
+      return;
+    }
+    lanBamRef.current = { r: i, c: ci, t: now };
+    setSua(null);
+    setChonDong(null);
+    if (e.shiftKey && neo) setCuoi({ r: i, c: ci });
+    else {
+      setNeo({ r: i, c: ci });
+      setCuoi({ r: i, c: ci });
+    }
+    keoRef.current = true;
+    boxRef.current?.focus();
+  };
+  const onVaoO = (i: number, ci: number) => {
+    if (keoRef.current) setCuoi({ r: i, c: ci });
+  };
+  const batDauSua = (i: number, ci: number) => {
+    setNeo({ r: i, c: ci });
+    setCuoi({ r: i, c: ci });
+    setChonDong(null);
+    setSua({ r: i, c: ci });
+  };
+
+  // Phím tắt trên KHUNG (khi KHÔNG gõ trong ô).
+  const onPhim = (e: React.KeyboardEvent) => {
+    if (sua) return; // đang sửa -> để ô nhập tự xử lý (Enter, Alt+Enter, Esc…)
+    // Thao tác theo DÒNG khi đang chọn dòng qua cột "#".
+    if (chonDong !== null) {
+      if (e.key === "Delete") {
         e.preventDefault();
-        t.focus();
+        xoaDong(chonDong);
+        return;
+      }
+      if (e.key === "Insert") {
+        e.preventDefault();
+        chenDongDuoi(chonDong);
+        return;
+      }
+    }
+    if (!neo) return;
+    const { r, c } = neo;
+    const gR = (x: number) => Math.max(0, Math.min(dongs.length - 1, x));
+    const gC = (x: number) => Math.max(0, Math.min(COT.length - 1, x));
+    const di = (nr: number, nc: number, giuNeo = false) => {
+      e.preventDefault();
+      const p = { r: gR(nr), c: gC(nc) };
+      if (giuNeo) setCuoi(p);
+      else {
+        setNeo(p);
+        setCuoi(p);
       }
     };
-    const dauO = inp.selectionStart === 0 && inp.selectionEnd === 0;
-    const cuoiO = inp.selectionStart === inp.value.length && inp.selectionEnd === inp.value.length;
-    if (e.key === "ArrowDown" || e.key === "Enter") den(r + 1, c);
-    else if (e.key === "ArrowUp") den(r - 1, c);
-    else if (e.key === "ArrowLeft" && dauO) den(r, c - 1);
-    else if (e.key === "ArrowRight" && cuoiO) den(r, c + 1);
+    switch (e.key) {
+      case "ArrowDown":
+        return di(r + 1, c, e.shiftKey);
+      case "ArrowUp":
+        return di(r - 1, c, e.shiftKey);
+      case "ArrowLeft":
+        return di(r, c - 1, e.shiftKey);
+      case "ArrowRight":
+        return di(r, c + 1, e.shiftKey);
+      case "Tab":
+        return di(r, c + 1);
+      case "Enter":
+        return di(r + 1, c);
+      case "F2":
+        e.preventDefault();
+        return batDauSua(r, c);
+      case "Delete":
+      case "Backspace":
+        e.preventDefault();
+        return xoaVung();
+      case "Escape":
+        e.preventDefault();
+        setNeo(null);
+        setCuoi(null);
+        return;
+    }
+    // Gõ một ký tự in được -> vào chế độ sửa, thay nội dung ô bằng ký tự đó.
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      suaO(r, COT[c].key, e.key);
+      setSua({ r, c });
+    }
   };
 
-  // Dán vùng dữ liệu từ Excel / Google Sheets bắt đầu từ ô đang chọn.
+  // Phím trong ô đang SỬA: Alt+Enter ngắt dòng (CHAR 10); Enter/Tab lưu & rời ô.
+  const onPhimSua = (i: number, ci: number) => (e: React.KeyboardEvent) => {
+    const el = e.currentTarget as HTMLTextAreaElement | HTMLInputElement;
+    if (e.key === "Enter" && e.altKey && el instanceof HTMLTextAreaElement) {
+      e.preventDefault();
+      const s = el.selectionStart ?? el.value.length;
+      const en = el.selectionEnd ?? el.value.length;
+      suaO(i, COT[ci].key, `${el.value.slice(0, s)}\n${el.value.slice(en)}`);
+      requestAnimationFrame(() => {
+        try {
+          el.setSelectionRange(s + 1, s + 1);
+        } catch {
+          /* noop */
+        }
+        capNhatCao(el);
+      });
+      return;
+    }
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      setSua(null);
+      const nr = Math.min(dongs.length - 1, i + 1);
+      setNeo({ r: nr, c: ci });
+      setCuoi({ r: nr, c: ci });
+      boxRef.current?.focus();
+      return;
+    }
+    if (e.key === "Tab") {
+      e.preventDefault();
+      setSua(null);
+      const nc = Math.min(COT.length - 1, ci + 1);
+      setNeo({ r: i, c: nc });
+      setCuoi({ r: i, c: nc });
+      boxRef.current?.focus();
+      return;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setSua(null);
+      boxRef.current?.focus();
+    }
+  };
+
+  // Kéo dãn cột: rê cạnh phải tiêu đề. Lưu trong phiên (không ghi vào DB).
+  const batDauKeoCot = (e: React.MouseEvent, key: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const x0 = e.clientX;
+    const w0 = rong[key] ?? 100;
+    const move = (ev: MouseEvent) => setRong((r) => ({ ...r, [key]: Math.max(48, w0 + ev.clientX - x0) }));
+    const up = () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+  };
+
+  // Dán vùng dữ liệu từ Excel / Google Sheets bắt đầu từ ô neo (hoặc ô đang sửa).
   const dan = (e: React.ClipboardEvent) => {
-    const t = e.target as HTMLElement;
-    if (!(t instanceof HTMLInputElement)) return;
-    const r0 = Number(t.dataset.r);
-    const c0 = Number(t.dataset.c);
-    if (Number.isNaN(r0) || Number.isNaN(c0)) return;
+    const goc = sua ?? neo;
+    if (!goc) return;
     const text = e.clipboardData.getData("text/plain");
     if (!text || (!text.includes("\t") && !text.includes("\n"))) return; // 1 ô -> để mặc định
     e.preventDefault();
@@ -231,6 +431,7 @@ export function BangGiaoDich({
       .replace(/\n$/, "")
       .split("\n")
       .map((l) => l.split("\t"));
+    const { r: r0, c: c0 } = goc;
     setDongs((prev) => {
       const next = prev.map((d) => ({ ...d }));
       while (next.length < r0 + matrix.length) next.push({ ...DONG_RONG });
@@ -242,6 +443,7 @@ export function BangGiaoDich({
       });
       return next;
     });
+    setSua(null);
   };
 
   const luu = () => {
@@ -264,21 +466,28 @@ export function BangGiaoDich({
       setKq(r);
       if (r.ok) {
         setKhoa(true);
-        setChonDong(null);
+        datLaiChon();
       }
     });
   };
 
+  const datLaiChon = () => {
+    setChonDong(null);
+    setNeo(null);
+    setCuoi(null);
+    setSua(null);
+  };
+
   const suaLai = () => {
     setDongs(giaoDich.length ? giaoDich.map(tuGiaoDich) : Array.from({ length: SO_DONG_MOI }, () => ({ ...DONG_RONG })));
-    setChonDong(null);
+    datLaiChon();
     setKq(null);
     setKhoa(false);
   };
 
   const huy = () => {
     setDongs(giaoDich.length ? giaoDich.map(tuGiaoDich) : Array.from({ length: SO_DONG_MOI }, () => ({ ...DONG_RONG })));
-    setChonDong(null);
+    datLaiChon();
     setKq(null);
     if (giaoDich.length) setKhoa(true);
   };
@@ -353,14 +562,16 @@ export function BangGiaoDich({
   }
 
   // ---------------- SỬA: bảng tính ----------------
+  const tongRong = RONG_STT + RONG_THANG + COT.reduce((a, c) => a + (rong[c.key] ?? c.px), 0);
   return (
     <div>
       <div className="border-b border-vien bg-nhannhat px-4 py-2 text-[11px] text-chunhat">
-        Thao tác như Excel: gõ trực tiếp, di chuyển bằng phím mũi tên, <strong>dán (Ctrl+V)</strong> vùng
-        dữ liệu từ Excel/Google Sheets. Bấm ô <strong>#</strong> đầu dòng để chọn dòng rồi{" "}
-        <strong>Insert</strong> thêm dòng / <strong>Delete</strong> xoá dòng. Tháng thực hiện tự theo
-        Ngày chứng từ. Số tiền để trống mà có Đơn giá + Số lượng thì tự tính. Số kiểu Việt (dấu{" "}
-        <strong>,</strong> thập phân, <strong>.</strong> ngăn nghìn).
+        Thao tác như Excel: <strong>bấm</strong> chọn ô (kéo/Shift để chọn vùng),{" "}
+        <strong>double-click</strong> hoặc gõ để sửa. <strong>Delete</strong> xoá dữ liệu vùng đang
+        chọn, <strong>Alt+Enter</strong> ngắt dòng trong ô, <strong>dán (Ctrl+V)</strong> vùng từ
+        Excel/Sheets. Rê cạnh phải tiêu đề để <strong>kéo dãn cột</strong>. Bấm ô <strong>#</strong>{" "}
+        đầu dòng rồi <strong>Insert</strong>/<strong>Delete</strong> để thêm/xoá dòng. Số kiểu Việt
+        (dấu <strong>,</strong> thập phân, <strong>.</strong> ngăn nghìn).
       </div>
 
       <datalist id="dsMaGiaoDich">
@@ -371,8 +582,19 @@ export function BangGiaoDich({
         ))}
       </datalist>
 
-      <div className="max-h-[60vh] overflow-auto" onPaste={dan}>
-        <table className="w-full border-collapse text-sm">
+      {/* Vùng bảng tính có phím tắt riêng (chọn ô, sửa, xoá vùng) nên cần nhận focus. */}
+      {/* biome-ignore lint/a11y/noNoninteractiveTabindex: widget bảng tính tự xử lý bàn phím */}
+      <div ref={boxRef} role="application" tabIndex={0} onKeyDown={onPhim} onPaste={dan} className="max-h-[60vh] overflow-auto outline-none">
+        <table className="border-collapse text-sm" style={{ tableLayout: "fixed", width: tongRong }}>
+          <colgroup>
+            <col style={{ width: RONG_STT }} />
+            {COT.flatMap((c) => {
+              const col = <col key={c.key} style={{ width: rong[c.key] ?? c.px }} />;
+              return c.key === "ngayChungTu"
+                ? [col, <col key="thangTH" style={{ width: RONG_THANG }} />]
+                : [col];
+            })}
+          </colgroup>
           <thead className="sticky top-0 z-10 bg-the">
             <tr>
               <th className="sticky top-0 left-0 z-30 border border-vien bg-nen px-2 py-1.5 text-xs font-semibold text-chunhat">
@@ -383,9 +605,14 @@ export function BangGiaoDich({
                 const th = (
                   <th
                     key={c.key}
-                    className={`border border-vien bg-nen px-2 py-1.5 text-xs font-semibold whitespace-nowrap text-chunhat ${c.so ? "text-right" : "text-left"}`}
+                    className={`relative border border-vien bg-nen px-2 py-1.5 text-xs font-semibold whitespace-nowrap text-chunhat ${c.so ? "text-right" : "text-left"}`}
                   >
                     {c.nhan}
+                    {/* Tay kéo dãn cột ở cạnh phải tiêu đề. */}
+                    <span
+                      onMouseDown={(e) => batDauKeoCot(e, c.key)}
+                      className="absolute top-0 right-0 z-10 h-full w-1.5 cursor-col-resize hover:bg-nhan/50"
+                    />
                   </th>
                 );
                 if (c.key !== "ngayChungTu") return [th];
@@ -401,7 +628,7 @@ export function BangGiaoDich({
               })}
             </tr>
           </thead>
-          <tbody ref={luoiRef}>
+          <tbody>
             {dongs.map((d, i) => {
               const st = soTienDuKien(d);
               const isoNgay = docNgay(d.ngayChungTu);
@@ -422,34 +649,64 @@ export function BangGiaoDich({
                   </td>
                   {COT.map((c, ci) => {
                     const so = !!c.so;
-                    const kq = so ? docSo(d[c.key]) : null;
-                    const loiSo = so && d[c.key].trim() !== "" && kq === null;
+                    const kqSo = so ? docSo(d[c.key]) : null;
+                    const loiSo = so && d[c.key].trim() !== "" && kqSo === null;
                     const laMa = c.key === "maDTCP";
                     const laNgay = c.key === "ngayChungTu";
-                    // Số tiền để trống mà tự tính được thì gợi ý kết quả ngay trong ô
-                    // (placeholder) — không thêm dòng phụ dưới ô, giữ lưới đều như Excel.
-                    const goiY = laNgay
-                      ? "dd/mm/yyyy"
-                      : c.key === "soTien" && st.tuTinh && st.giaTri !== null
-                        ? `= ${st.giaTri.toLocaleString("vi-VN", { maximumFractionDigits: 2 })}`
-                        : "";
+                    const loi = loiSo || (laNgay && loiNgay);
+                    // Ô trống mà số tiền tự tính được thì hiện gợi ý mờ trong ô.
+                    const goiY =
+                      laNgay
+                        ? "dd/mm/yyyy"
+                        : c.key === "soTien" && st.tuTinh && st.giaTri !== null
+                          ? `= ${st.giaTri.toLocaleString("vi-VN", { maximumFractionDigits: 2 })}`
+                          : "";
+                    const dangSua = laSua(i, ci);
                     return (
                       <td
                         key={c.key}
-                        className={`border border-vien p-0 ${so ? "text-right" : ""}`}
+                        onMouseDown={(e) => onXuongO(e, i, ci)}
+                        onMouseEnter={() => onVaoO(i, ci)}
+                        className={`border border-vien p-0 align-top ${so ? "text-right" : ""} ${
+                          trongVung(i, ci) && !dangSua ? "bg-nhan/10 dark:bg-nhan/25" : ""
+                        }`}
                       >
-                        <input
-                          data-r={i}
-                          data-c={ci}
-                          value={d[c.key]}
-                          onChange={(e) => suaO(i, c.key, e.target.value)}
-                          onKeyDown={diChuyen}
-                          inputMode={so ? "decimal" : undefined}
-                          list={laMa ? "dsMaGiaoDich" : undefined}
-                          placeholder={goiY}
-                          title={loiSo ? "Không đọc được số" : undefined}
-                          className={`w-full bg-transparent px-2 py-1 text-xs outline-none focus:bg-nhannhat/40 ${so ? "text-right" : ""} ${loiSo || (laNgay && loiNgay) ? "bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300" : ""}`}
-                        />
+                        {dangSua ? (
+                          laMa ? (
+                            <input
+                              ref={suaRef as React.RefObject<HTMLInputElement>}
+                              value={d[c.key]}
+                              onChange={(e) => suaO(i, c.key, e.target.value)}
+                              onKeyDown={onPhimSua(i, ci)}
+                              list="dsMaGiaoDich"
+                              className="w-full bg-white px-2 py-1 text-xs ring-2 ring-nhan outline-none ring-inset dark:bg-black/50"
+                            />
+                          ) : (
+                            <textarea
+                              ref={suaRef as React.RefObject<HTMLTextAreaElement>}
+                              rows={1}
+                              value={d[c.key]}
+                              onChange={(e) => suaO(i, c.key, e.target.value)}
+                              onInput={(e) => capNhatCao(e.currentTarget)}
+                              onKeyDown={onPhimSua(i, ci)}
+                              inputMode={so ? "decimal" : undefined}
+                              className={`w-full resize-none overflow-hidden bg-white px-2 py-1 text-xs whitespace-pre-wrap ring-2 ring-nhan outline-none ring-inset dark:bg-black/50 ${so ? "text-right" : ""}`}
+                            />
+                          )
+                        ) : (
+                          <div
+                            className={`min-h-[1.75rem] px-2 py-1 text-xs break-words whitespace-pre-wrap select-none ${so ? "text-right" : ""} ${
+                              laNeo(i, ci) ? "ring-2 ring-nhan ring-inset" : ""
+                            } ${loi ? "bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300" : ""}`}
+                            title={loiSo ? "Không đọc được số" : undefined}
+                          >
+                            {d[c.key] !== "" ? (
+                              d[c.key]
+                            ) : goiY ? (
+                              <span className="text-chunhat/50">{goiY}</span>
+                            ) : null}
+                          </div>
+                        )}
                       </td>
                     );
                   }).flatMap((cell, ci) => {
