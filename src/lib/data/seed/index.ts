@@ -16,7 +16,7 @@
  */
 import sourceData from "../source/source-data.json";
 import { anhXa, bangAnhXa } from "../../crosswalk";
-import { MA_DOANH_THU_DIEU_HANH, NAM_BAO_CAO, NGAY_HIEN_TAI, NGUONG } from "../../thresholds";
+import { MA_DOANH_THU_DIEU_HANH, NAM_BAO_CAO, NGAY_HIEN_TAI } from "../../thresholds";
 import type {
   AnhXaMa,
   CanhBao,
@@ -192,14 +192,14 @@ export function taoBoDuLieu(): BoDuLieu {
       maBase: null,
       chuDauTu: chuDauTuCua(ma),
       chiHuyTruong: chonTheoMa(ma, DS_HO_TEN),
-      phongPhuTrach: chonTheoMa(ma + "p", DS_PHONG),
+      phongPhuTrach: chonTheoMa(`${ma}p`, DS_PHONG),
       ngayBatDau: `${namBatDau}-${String(thangBatDau).padStart(2, "0")}-01`,
       ngayKetThucKeHoach: `${NAM_BAO_CAO + 1}-${String(1 + ((i + 5) % 12)).padStart(2, "0")}-28`,
       trangThai: i % 13 === 7 ? "Đã nghiệm thu" : "Đang thi công",
       // Ngày nghiệm thu chỉ có ở công trình đã hoàn thành; lấy mốc "hôm nay" của
       // bộ dữ liệu để biểu đồ có mốc cuối hợp lệ.
       ngayHoanThanh: i % 13 === 7 ? NGAY_HIEN_TAI : "",
-      diaDiem: chonTheoMa(ma + "d", DS_DIA_DIEM),
+      diaDiem: chonTheoMa(`${ma}d`, DS_DIA_DIEM),
       // Biên mục tiêu thực tế ngành 6–14%; toàn công ty đang ở 11,2% nên đặt
       // một dải quanh mức đó để danh mục có cả công trình đạt và chưa đạt.
       bienLNMucTieu: Math.round((0.06 + (i % 9) * 0.01) * 100) / 100,

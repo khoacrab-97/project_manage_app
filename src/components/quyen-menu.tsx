@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { luuQuyenMenu, type KetQuaMenu } from "@/app/quan-tri/nguoi-dung/menu-actions";
 import { Bang, Nhan, Td, The, TheDau, Th } from "@/components/ui";
-import { DS_VAI_TRO, VAI_TRO, type VaiTro } from "@/lib/auth/quyen";
+import { DS_VAI_TRO, VAI_TRO } from "@/lib/auth/quyen";
 import { MENU } from "@/lib/menu";
 
 /**

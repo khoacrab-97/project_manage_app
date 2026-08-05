@@ -25,7 +25,7 @@ export async function bamMatKhau(matKhau: string): Promise<string> {
 }
 
 export async function kiemTraMatKhau(matKhau: string, luuTru: string): Promise<boolean> {
-  if (!luuTru || !luuTru.includes(":")) return false;
+  if (!luuTru?.includes(":")) return false;
   const [muoiHex, bamHex] = luuTru.split(":");
   const muoi = Buffer.from(muoiHex, "hex");
   const mongDoi = Buffer.from(bamHex, "hex");

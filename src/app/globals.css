@@ -87,6 +87,7 @@ body {
 
 @media print {
   .khong-in {
+    /* biome-ignore lint/complexity/noImportantStyles: print utility must override display classes. */
     display: none !important;
   }
 }

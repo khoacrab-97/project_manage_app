@@ -27,6 +27,7 @@ import { nguoiDungHienTai } from "@/lib/auth/phien";
 import { thaoTacTabCongNhan, xemTabCongNhan } from "@/lib/auth/quyen";
 import { MAY_CHU_KHOI_DONG } from "@/lib/build-time";
 import { nhanThang } from "@/lib/format";
+import { motGiaTri } from "@/lib/search-params";
 import { NGAY_HIEN_TAI } from "@/lib/thresholds";
 import {
   BangChamCong,
@@ -65,21 +66,16 @@ function nhanNgay(ngay: string) {
   return `${d}/${m}/${y}`;
 }
 
-export default async function TrangCongNhan({
-  searchParams,
-}: {
-  searchParams: Promise<{
-    muc?: string;
-    ngay?: string;
-    thang?: string;
-    che?: string;
-    view?: string;
-    cn?: string;
-    ct?: string;
-    da?: string;
-  }>;
-}) {
+export default async function TrangCongNhan({ searchParams }: PageProps<"/cong-nhan">) {
   const sp = await searchParams;
+  const mucParam = motGiaTri(sp.muc);
+  const ngayParam = motGiaTri(sp.ngay);
+  const thangParam = motGiaTri(sp.thang);
+  const cheParam = motGiaTri(sp.che);
+  const viewParam = motGiaTri(sp.view);
+  const cnParam = motGiaTri(sp.cn);
+  const ctParam = motGiaTri(sp.ct);
+  const daParam = motGiaTri(sp.da);
   const u = await nguoiDungHienTai();
   const laAdmin = u?.vaiTro === "ADMIN";
   // "Cán bộ quản lý CN" = được cử qua cột Người quản lý; mở khoá Hồ sơ + Phân công.
@@ -88,7 +84,8 @@ export default async function TrangCongNhan({
   // Chỉ hiện những tab vai trò được XEM; tab yêu cầu ngoài quyền thì lùi về tab
   // đầu tiên thấy được. (Vai trò không có tab nào đã bị layout chặn từ trước.)
   const mucThay = MUC.filter((m) => xemTabCongNhan(u, m.id, laCanBoQL));
-  const muc = mucThay.some((m) => m.id === sp.muc) ? sp.muc! : (mucThay[0]?.id ?? "ho-so");
+  const muc =
+    mucParam && mucThay.some((m) => m.id === mucParam) ? mucParam : (mucThay[0]?.id ?? "ho-so");
 
   return (
     <>
@@ -124,22 +121,22 @@ export default async function TrangCongNhan({
         <HoSo duocSua={thaoTacTabCongNhan(u, "ho-so", laCanBoQL)} laAdmin={laAdmin} />
       ) : muc === "phan-cong" ? (
         <PhanCong
-          ngay={sp.ngay}
-          che={sp.che ?? ""}
+          ngay={ngayParam}
+          che={cheParam ?? ""}
           duocSua={thaoTacTabCongNhan(u, "phan-cong", laCanBoQL)}
           laAdmin={laAdmin}
         />
       ) : muc === "cham-cong" ? (
         <ChamCong
-          ngay={sp.ngay}
-          ct={sp.ct}
-          da={sp.da}
+          ngay={ngayParam}
+          ct={ctParam}
+          da={daParam}
           duocSua={thaoTacTabCongNhan(u, "cham-cong", laCanBoQL)}
         />
       ) : muc === "tong-hop" ? (
-        <TongHop thang={sp.thang} view={sp.view ?? ""} cn={sp.cn} />
+        <TongHop thang={thangParam} view={viewParam ?? ""} cn={cnParam} />
       ) : (
-        <DoiChieu thang={sp.thang} />
+        <DoiChieu thang={thangParam} />
       )}
     </>
   );

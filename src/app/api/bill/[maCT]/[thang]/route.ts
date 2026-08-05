@@ -18,10 +18,7 @@ import { giaTriBillThang, layBOQ, layCongTrinh } from "@/lib/data/repository";
 
 const TEN_SHEET = "1.1 BILL";
 
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ maCT: string; thang: string }> }
-) {
+export async function GET(_req: Request, { params }: RouteContext<"/api/bill/[maCT]/[thang]">) {
   const { maCT, thang } = await params;
   const maCongTrinh = decodeURIComponent(maCT);
 

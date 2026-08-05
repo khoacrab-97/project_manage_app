@@ -37,5 +37,5 @@ export function timMucMenu(duongDan: string): MucMenu | undefined {
   return [...MENU]
     .filter((m) => m.href !== "/")
     .sort((a, b) => b.href.length - a.href.length)
-    .find((m) => sach === m.href || sach.startsWith(m.href + "/"));
+    .find((m) => sach === m.href || sach.startsWith(`${m.href}/`));
 }

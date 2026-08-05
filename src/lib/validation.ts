@@ -10,7 +10,7 @@
  *   Information -> chỉ thông báo.
  */
 import type { MucDoLoi } from "./types";
-import { COT_CHUAN, type DongThô, type KetQuaDoc, type TenCot } from "./excel/parse-chitiet-th";
+import { COT_CHUAN, type KetQuaDoc, type TenCot } from "./excel/parse-chitiet-th";
 
 export interface LoiDong {
   dongExcel: number;
@@ -68,7 +68,7 @@ function soTien(v: unknown): number | null {
   // Chấp nhận "1.234.567", "1,234,567", "1 234 567", và dấu "-" nghĩa là 0.
   const s = String(v).trim();
   if (s === "-" || s === "—") return 0;
-  const sach = s.replace(/[^\d,.\-]/g, "");
+  const sach = s.replace(/[^\d,.-]/g, "");
   if (!sach) return null;
   // Kiểu VN: dấu chấm phân nhóm nghìn, dấu phẩy phần thập phân.
   const n = Number(sach.replace(/\./g, "").replace(",", "."));
@@ -235,7 +235,7 @@ export function kiemTra(doc: KetQuaDoc, nc: NguCanh): KetQuaKiemTra {
       thangThucHien: ky,
       tuanThucHien: tuanRaw !== null ? Math.round(tuanRaw) : null,
       noiDungThanhToan: nd,
-      dvt: chuoi(g["ĐVT"]),
+      dvt: chuoi(g.ĐVT),
       donGia: dg,
       soLuong: sl,
       soTien: tien,

@@ -166,5 +166,5 @@ console.log("Hàng ma trận có số liệu:", out.maTranNam.length, "/", matri
 console.log("Ô có số liệu:", out.maTranNam.reduce((a, m) => a + Object.keys(m.byProject).length, 0));
 console.log("Tổng toàn bộ ma trận:", out.maTranNam.reduce((a, m) => a + Object.values(m.byProject).reduce((x, y) => x + y, 0), 0).toLocaleString("vi-VN"));
 console.log("Kế hoạch (hệ DA*):", plan.length, "dòng");
-console.log("Kiểm chứng TH_THANG Bill =", checks["Bill"]?.toLocaleString("vi-VN"), "| CP =", checks["CP"]?.toLocaleString("vi-VN"));
+console.log("Kiểm chứng TH_THANG Bill =", checks.Bill?.toLocaleString("vi-VN"), "| CP =", checks.CP?.toLocaleString("vi-VN"));
 console.log("->", OUT);

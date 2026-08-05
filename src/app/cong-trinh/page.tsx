@@ -50,11 +50,11 @@ export default async function TrangDanhMucCongTrinh() {
         tieuDe="Danh mục công trình"
         moTa="So sánh toàn bộ công trình trên cùng một bảng theo §4.2. Bấm mã công trình để xem chi tiết và truy vết xuống từng giao dịch."
         phai={
-          <>
-            <Nhan bienThe="xanh">Xanh {dem.Xanh}</Nhan>
-            <Nhan bienThe="vang">Vàng {dem["Vàng"]}</Nhan>
-            <Nhan bienThe="do">Đỏ {dem["Đỏ"]}</Nhan>
-          </>
+            <>
+              <Nhan bienThe="xanh">Xanh {dem.Xanh}</Nhan>
+              <Nhan bienThe="vang">Vàng {dem.Vàng}</Nhan>
+              <Nhan bienThe="do">Đỏ {dem.Đỏ}</Nhan>
+            </>
         }
       />
 

@@ -32,7 +32,7 @@ export async function doiMatKhauCuaToi(formData: FormData): Promise<KetQuaDoiMat
   if (moi !== nhapLai) return { ok: false, thongDiep: "Hai lần nhập mật khẩu mới không khớp." };
 
   const u = await db.user.findUnique({ where: { id: toi.id } });
-  if (!u || !u.matKhauHash) return { ok: false, thongDiep: "Không tìm thấy tài khoản." };
+  if (!u?.matKhauHash) return { ok: false, thongDiep: "Không tìm thấy tài khoản." };
   if (!(await kiemTraMatKhau(hienTai, u.matKhauHash))) {
     return { ok: false, thongDiep: "Mật khẩu hiện tại không đúng." };
   }

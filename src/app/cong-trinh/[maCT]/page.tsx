@@ -35,12 +35,11 @@ import {
   layLoNhap,
   maTranTheoCongTrinh,
   timCongTrinh,
-  tongQuanCongTy,
   type KyBaoCao,
 } from "@/lib/data/repository";
-import { loaiCua, traMa } from "@/lib/data/repository";
 import { nguoiDungHienTai } from "@/lib/auth/phien";
 import { coQuyen } from "@/lib/auth/quyen";
+import { motGiaTri } from "@/lib/search-params";
 import { NGAY_HIEN_TAI } from "@/lib/thresholds";
 import { BoxNhapBOQ, GiamGiaBOQ, ImportBOQ, LuoiNhapBOQ, NutThemBill, NutXacNhan, ThietLapVAT } from "@/components/nhap-boq";
 import { BangGiaoDich } from "@/components/nhap-giao-dich";
@@ -90,26 +89,20 @@ function nhanKyBaoCao(loai: KyBaoCao, ky: string) {
 export default async function TrangChiTietCongTrinh({
   params,
   searchParams,
-}: {
-  params: Promise<{ maCT: string }>;
-  searchParams: Promise<{
-    tab?: string;
-    ma?: string;
-    thang?: string;
-    an0?: string;
-    bq?: string;
-    nhap?: string;
-    loai?: string;
-    ky?: string;
-  }>;
-}) {
+}: PageProps<"/cong-trinh/[maCT]">) {
   const { maCT } = await params;
   const sp = await searchParams;
+  const tabParam = motGiaTri(sp.tab);
+  const an0Param = motGiaTri(sp.an0);
+  const bqParam = motGiaTri(sp.bq);
+  const nhapParam = motGiaTri(sp.nhap);
+  const loaiParam = motGiaTri(sp.loai);
+  const kyParam = motGiaTri(sp.ky);
   const maCongTrinh = decodeURIComponent(maCT);
   const ct = await timCongTrinh(maCongTrinh);
   if (!ct) notFound();
 
-  const tab = TABS.some((t) => t.id === sp.tab) ? sp.tab! : "tong-quan";
+  const tab = tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : "tong-quan";
   const base = `/cong-trinh/${encodeURIComponent(maCongTrinh)}`;
   const q = (o: Record<string, string | undefined>) => {
     const u = new URLSearchParams();
@@ -246,18 +239,18 @@ export default async function TrangChiTietCongTrinh({
       ) : tab === "boq" ? (
         <BOQTab
           maCongTrinh={maCongTrinh}
-          thangChon={sp.bq}
-          moBoxNhap={sp.nhap === "1"}
+          thangChon={bqParam}
+          moBoxNhap={nhapParam === "1"}
           daHoanThanh={ct.trangThai === "Đã nghiệm thu"}
         />
       ) : tab === "doanh-thu" ? (
         <DoanhThu maCongTrinh={maCongTrinh} chuoi={chuoi} />
       ) : tab === "chi-phi" ? (
-        <ChiPhi maCongTrinh={maCongTrinh} danhMuc={danhMuc} base={base} an0={sp.an0 === "1"} />
+        <ChiPhi maCongTrinh={maCongTrinh} danhMuc={danhMuc} base={base} an0={an0Param === "1"} />
       ) : tab === "giao-dich" ? (
         <GiaoDichTab maCongTrinh={maCongTrinh} daHoanThanh={ct.trangThai === "Đã nghiệm thu"} />
       ) : tab === "bao-cao" ? (
-        <BaoCaoTab maCongTrinh={maCongTrinh} loai={sp.loai} ky={sp.ky} q={q} />
+        <BaoCaoTab maCongTrinh={maCongTrinh} loai={loaiParam} ky={kyParam} q={q} />
       ) : tab === "evm" ? (
         <EVMTab maCongTrinh={maCongTrinh} />
       ) : (
@@ -515,8 +508,7 @@ async function BOQTab({
       </The>
 
       {ky ? (
-        <>
-          <The className="mt-3">
+        <The className="mt-3">
             <TheDau
               tieuDe={`Bill ${nhanThang(ky.thang)} — ${tien(billKy)} đ`}
               moTa={
@@ -668,8 +660,7 @@ async function BOQTab({
               <strong>đã xác nhận</strong> mới được tính vào KPI của tháng đó.
               {duocNhap ? " Ô cột tùy chỉnh sửa trực tiếp tại chỗ, rời ô là lưu." : ""}
             </GhiChuNguon>
-          </The>
-        </>
+        </The>
       ) : (
         <The className="mt-3">
           <Rong>Chưa có kỳ Bill nào. Bấm “Thêm Bill tháng” để bắt đầu.</Rong>

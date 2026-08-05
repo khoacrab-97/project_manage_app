@@ -3,16 +3,14 @@ import { db } from "@/lib/db";
 import { kiemTraMatKhau } from "@/lib/auth/mat-khau";
 import { donPhienHetHan, nguoiDungHienTai, taoPhien } from "@/lib/auth/phien";
 import { NutDangNhap } from "@/components/nut-dang-nhap";
+import { motGiaTri } from "@/lib/search-params";
 
 export const metadata = { title: "Đăng nhập" };
 
-export default async function TrangDangNhap({
-  searchParams,
-}: {
-  searchParams: Promise<{ loi?: string; tiep?: string }>;
-}) {
+export default async function TrangDangNhap({ searchParams }: PageProps<"/dang-nhap">) {
   const sp = await searchParams;
-  if (await nguoiDungHienTai()) redirect(sp.tiep || "/");
+  const tiepSauDangNhap = motGiaTri(sp.tiep) || "/";
+  if (await nguoiDungHienTai()) redirect(tiepSauDangNhap);
 
   async function dangNhap(formData: FormData) {
     "use server";
@@ -24,13 +22,15 @@ export default async function TrangDangNhap({
 
     // Thông báo giống hệt nhau cho mọi trường hợp sai: không tiết lộ email nào
     // có tồn tại trong hệ thống.
-    const sai = () => redirect(`/dang-nhap?loi=1${tiep !== "/" ? `&tiep=${encodeURIComponent(tiep)}` : ""}`);
+    const sai = (): never =>
+      redirect(`/dang-nhap?loi=1${tiep !== "/" ? `&tiep=${encodeURIComponent(tiep)}` : ""}`);
 
-    if (!u || !u.isActive || !u.matKhauHash) sai();
-    if (!(await kiemTraMatKhau(matKhau, u!.matKhauHash))) sai();
+    if (!u) return sai();
+    if (!u.isActive || !u.matKhauHash) return sai();
+    if (!(await kiemTraMatKhau(matKhau, u.matKhauHash))) return sai();
 
     await donPhienHetHan();
-    await taoPhien(u!.id);
+    await taoPhien(u.id);
     redirect(tiep);
   }
 
@@ -48,7 +48,7 @@ export default async function TrangDangNhap({
         action={dangNhap}
         className="rounded-xl border border-vien bg-the p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
       >
-        <input type="hidden" name="tiep" value={sp.tiep ?? "/"} />
+        <input type="hidden" name="tiep" value={tiepSauDangNhap} />
 
         <label className="block text-sm">
           <span className="mb-1 block text-xs font-medium text-chunhat">Email</span>
@@ -73,7 +73,7 @@ export default async function TrangDangNhap({
           />
         </label>
 
-        {sp.loi ? (
+        {motGiaTri(sp.loi) ? (
           <p className="mt-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
             Email hoặc mật khẩu không đúng.
           </p>

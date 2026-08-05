@@ -37,7 +37,7 @@ const BIEU_TUONG: Record<string, LucideIcon> = {
 
 function dangChon(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
-  return pathname === href || pathname.startsWith(href + "/");
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export function Sidebar({ menuDuocThay }: { menuDuocThay: string[] }) {

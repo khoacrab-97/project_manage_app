@@ -19,7 +19,7 @@ export default async function TrangKiemTraDuLieu() {
     layGiaoDichChoXuLy(),
     layLoNhap(),
   ]);
-  const traGD = new Map(cho.map((g) => [g.importBatchId + "|" + (g.sttNguon + 2), g]));
+  const traGD = new Map(cho.map((g) => [`${g.importBatchId}|${g.sttNguon + 2}`, g]));
   const loLoi = loNhap.filter((l) => l.trangThai === "ERROR");
 
   const tongLoiNghiemTrong = chiTieu.filter((c) => c.nghiemTrong).reduce((a, c) => a + c.soLuong, 0);
@@ -115,7 +115,7 @@ export default async function TrangKiemTraDuLieu() {
             </thead>
             <tbody>
               {loi.map((l) => {
-                const gd = traGD.get(l.importBatchId + "|" + l.dong);
+                const gd = traGD.get(`${l.importBatchId}|${l.dong}`);
                 return (
                   <tr key={l.id} className="hover:bg-nen">
                     <Td className="text-xs font-medium whitespace-nowrap">

@@ -8,19 +8,17 @@ import {
   layDanhMucMa,
   tongQuanCongTy,
 } from "@/lib/data/repository";
+import { motGiaTri } from "@/lib/search-params";
 import { NGUONG } from "@/lib/thresholds";
 import { CayChiPhi } from "@/components/cay-chi-phi";
 
 export const metadata = { title: "Cơ cấu chi phí" };
 
-export default async function TrangCoCauChiPhi({
-  searchParams,
-}: {
-  searchParams: Promise<{ thang?: string }>;
-}) {
+export default async function TrangCoCauChiPhi({ searchParams }: PageProps<"/chi-phi">) {
   const sp = await searchParams;
   const thangs = await cacThang();
-  const thang = thangs.includes(sp.thang ?? "") ? sp.thang : undefined;
+  const thangParam = motGiaTri(sp.thang);
+  const thang = thangParam && thangs.includes(thangParam) ? thangParam : undefined;
 
   const loc = thang ? { thang } : {};
   // So sánh với tháng liền trước để thấy mã nào tăng bất thường.
@@ -33,9 +31,7 @@ export default async function TrangCoCauChiPhi({
     layDanhMucMa(),
     thangTruoc ? coCauChiPhi({ thang: thangTruoc }) : Promise.resolve([]),
   ]);
-  const truoc = new Map(
-    chiTietTruoc.map((c) => [c.ma, c.soTien])
-  );
+  const truoc = new Map(chiTietTruoc.map((c) => [c.ma, c.soTien]));
 
   const top8 = nhom.slice(0, 8);
   const duoi = nhom.slice(8);

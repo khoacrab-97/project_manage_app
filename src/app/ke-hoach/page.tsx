@@ -21,6 +21,7 @@ import {
 } from "@/lib/data/repository";
 import { nguoiDungHienTai } from "@/lib/auth/phien";
 import { coQuyen } from "@/lib/auth/quyen";
+import { motGiaTri } from "@/lib/search-params";
 import { MA_DOANH_THU_DIEU_HANH } from "@/lib/thresholds";
 import { LuoiKeHoach } from "@/components/luoi-ke-hoach";
 import type { CongTrinh } from "@/lib/types";
@@ -34,14 +35,11 @@ export const metadata = { title: "Kế hoạch – Ngân sách" };
  * khâu dịch từ hệ mã cũ DA* nữa. Số liệu không đổi vì mỗi dòng kế hoạch đã lưu
  * sẵn mã mới trong `PlanLine.maDTCP` từ lúc nạp dữ liệu.
  */
-export default async function TrangKeHoach({
-  searchParams,
-}: {
-  searchParams: Promise<{ ct?: string }>;
-}) {
+export default async function TrangKeHoach({ searchParams }: PageProps<"/ke-hoach">) {
   const sp = await searchParams;
   const dsCongTrinh = await layCongTrinh();
-  const ctChon = dsCongTrinh.find((c) => c.maCongTrinh === sp.ct);
+  const ctParam = motGiaTri(sp.ct);
+  const ctChon = dsCongTrinh.find((c) => c.maCongTrinh === ctParam);
   const duocSua = coQuyen(await nguoiDungHienTai(), "sua_ke_hoach");
 
   // Chọn công trình thì MỌI thứ bên dưới (thẻ tổng, biểu đồ, bảng chi tiết) đều
@@ -81,7 +79,7 @@ export default async function TrangKeHoach({
     });
 
   const chartData = chiPhi.slice(0, 12).map((d) => ({
-    ten: d.ten.length > 32 ? d.ten.slice(0, 30) + "…" : d.ten,
+    ten: d.ten.length > 32 ? `${d.ten.slice(0, 30)}…` : d.ten,
     keHoach: d.keHoach,
     thucHien: d.thucHien,
   }));

@@ -137,7 +137,7 @@ async function locProjectId() {
 export async function congTrinhTrongPhamVi(projectId: string) {
   const pv = await phamViHienTai();
   const p = await db.project.findUnique({ where: { id: projectId } });
-  if (!p || !p.isActive) return null;
+  if (!p?.isActive) return null;
   if (pv !== null && !pv.includes(p.maCongTrinh)) return null;
   return p;
 }

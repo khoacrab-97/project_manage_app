@@ -36,16 +36,13 @@ import {
   topRuiRo,
 } from "@/lib/data/repository";
 import { bienDong } from "@/lib/kpi";
+import { motGiaTri } from "@/lib/search-params";
 import { MA_DOANH_THU_DIEU_HANH } from "@/lib/thresholds";
 
-export default async function TrangTongQuan({
-  searchParams,
-}: {
-  searchParams: Promise<{ ky?: string }>;
-}) {
+export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
   const sp = await searchParams;
   /** Xu hướng xem theo tháng hay gộp theo quý. Mặc định tháng. */
-  const kyXem: "thang" | "quy" = sp.ky === "quy" ? "quy" : "thang";
+  const kyXem: "thang" | "quy" = motGiaTri(sp.ky) === "quy" ? "quy" : "thang";
 
   const [
     luyKe,

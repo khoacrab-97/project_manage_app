@@ -131,7 +131,7 @@ writeFileSync(
     "export NODE_ENV=production",
     `export HOSTNAME=${DIA_CHI}`,
     `export PORT="\${PORT:-${CONG}}"`,
-    'if [ -z "${DATABASE_URL:-}" ]; then',
+    `if [ -z "\${DATABASE_URL:-}" ]; then`,
     '  echo "Chưa cấu hình DATABASE_URL Postgres."',
     "  exit 1",
     "fi",
