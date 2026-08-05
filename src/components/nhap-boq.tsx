@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Check, Download, Pencil, Plus, ShieldCheck, Trash2, Upload, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Check, Download, Plus, ShieldCheck, Trash2, Upload, X } from "lucide-react";
 import {
   docFileBOQ,
   luuKhoiLuong,
@@ -13,7 +14,8 @@ import {
   xoaGiamGiaBOQ,
   type KetQuaBOQ,
 } from "@/app/cong-trinh/boq-actions";
-import { khoiLuong as dinhDangKL, tien } from "@/lib/format";
+import { ONhapCot, TieuDeCot } from "./cot-boq";
+import { khoiLuong as dinhDangKL, tien, tienLe } from "@/lib/format";
 import { docSoVN } from "@/lib/so-vn";
 
 const O = "rounded-md border border-vien bg-the px-2 py-1 text-xs";
@@ -102,43 +104,57 @@ export function NutThemBill({
   );
 }
 
-export interface DongNhap {
+export interface DongBill {
   id: string;
   stt: string;
   noiDung: string;
   dvt: string;
   donGia: number;
-  /** Luỹ kế khối lượng của các tháng TRƯỚC kỳ đang nhập. */
+  /** Luỹ kế khối lượng của các tháng TRƯỚC kỳ đang xem. */
   klKyTruoc: number;
   klHienTai: number;
   hoanThanh: boolean;
+  /** Giá trị các cột tùy chỉnh, theo cotId. */
+  giaTriCot: Record<string, string>;
 }
 
 /**
- * Box nhập khối lượng của MỘT tháng, mở dạng hộp nổi.
+ * Hộp thoại Bill của MỘT tháng — GỘP xem + cập nhật. Mở khi bấm một tháng ở dải
+ * "Kỳ Bill" (điều khiển qua URL `?bq=<thang>`), đóng thì về `?tab=boq`.
  *
- * Cố ý chỉ có 5 cột (STT, nội dung, ĐVT, luỹ kế kỳ trước, khối lượng kỳ này) cộng
- * ô tích hoàn thành — người ngoài công trường chỉ cần bấy nhiêu để ghi khối lượng.
- * Đơn giá và thành tiền từng dòng KHÔNG hiện ở đây; chỉ giữ tổng giá trị Bill ở
- * chân box vì đó là con số phải thấy trước khi lưu.
+ * Bảng dạng lưới gridlines như Excel: ô "Khối lượng kỳ này" và "Xong" sửa trực
+ * tiếp, di chuyển bằng phím mũi tên, DÁN được một cột khối lượng từ Excel. Cột
+ * tùy chỉnh (nếu có) vẫn sửa tại chỗ như cũ. Thành tiền tháng tính ngay bên phải.
  */
-export function BoxNhapBOQ({
+export function HopThoaiBill({
   maCongTrinh,
   thang,
-  nhanThang,
+  nhan,
+  base,
+  trangThai,
+  nguoiNhap,
+  nguoiXacNhan,
   dongs,
+  cots,
+  duocNhap,
   duocXacNhan,
-  moSan,
+  lamTronThanhTien,
 }: {
   maCongTrinh: string;
   thang: string;
-  nhanThang: string;
-  dongs: DongNhap[];
+  nhan: string;
+  base: string;
+  trangThai: string;
+  nguoiNhap: string;
+  nguoiXacNhan: string;
+  dongs: DongBill[];
+  cots: { id: string; ten: string }[];
+  duocNhap: boolean;
   duocXacNhan: boolean;
-  /** Mở sẵn ngay khi vào trang (sau khi vừa tạo Bill tháng). */
-  moSan: boolean;
+  lamTronThanhTien: boolean;
 }) {
-  const [mo, setMo] = useState(moSan);
+  const router = useRouter();
+  const dong = () => router.push(`${base}?tab=boq`);
   const [kl, setKl] = useState<Record<string, string>>(
     Object.fromEntries(dongs.map((d) => [d.id, d.klHienTai ? String(d.klHienTai) : ""]))
   );
@@ -147,153 +163,251 @@ export function BoxNhapBOQ({
   );
   const [kq, setKq] = useState<KetQuaBOQ | null>(null);
   const [dangChay, batDau] = useTransition();
+  const luoiRef = useRef<HTMLTableSectionElement>(null);
+  const daXacNhan = trangThai === "DA_XAC_NHAN";
 
-  // Đóng bằng phím Esc — hộp nổi mà không thoát được bằng bàn phím thì rất bí.
   useEffect(() => {
-    if (!mo) return;
     const f = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMo(false);
+      if (e.key === "Escape") dong();
     };
     window.addEventListener("keydown", f);
     return () => window.removeEventListener("keydown", f);
-  }, [mo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const soCua = (v: string) => {
     const n = Number(v.replace(/\s/g, "").replace(",", "."));
     return Number.isFinite(n) && n > 0 ? n : 0;
   };
-  const tongTien = dongs.reduce((a, d) => a + Math.round(soCua(kl[d.id] ?? "") * d.donGia), 0);
+  const ttThang = (d: DongBill) => {
+    const v = soCua(kl[d.id] ?? "") * d.donGia;
+    return lamTronThanhTien ? Math.round(v) : v;
+  };
+  const tongTien = dongs.reduce((a, d) => a + ttThang(d), 0);
 
-  if (!mo) {
-    return (
-      <button
-        type="button"
-        onClick={() => setMo(true)}
-        className="inline-flex items-center gap-1 rounded-md border border-vien px-2.5 py-1 text-xs font-medium hover:bg-nen"
-      >
-        <Pencil className="size-3.5" /> Cập nhật khối lượng
-      </button>
-    );
-  }
+  // Di chuyển dọc cột Khối lượng bằng mũi tên / Enter.
+  const diChuyen = (e: React.KeyboardEvent) => {
+    const inp = e.target as HTMLInputElement;
+    const r = Number(inp.dataset.r);
+    if (Number.isNaN(r)) return;
+    const den = (rr: number) => {
+      const t = luoiRef.current?.querySelector<HTMLElement>(`input[data-r="${rr}"][data-kl]`);
+      if (t) {
+        e.preventDefault();
+        t.focus();
+      }
+    };
+    if (e.key === "ArrowDown" || e.key === "Enter") den(r + 1);
+    else if (e.key === "ArrowUp") den(r - 1);
+  };
+
+  // Dán một cột khối lượng từ Excel/Sheets, điền xuống từ dòng đang chọn.
+  const dan = (e: React.ClipboardEvent) => {
+    const t = e.target as HTMLElement;
+    if (!(t instanceof HTMLInputElement) || t.dataset.kl === undefined) return;
+    const r0 = Number(t.dataset.r);
+    const text = e.clipboardData.getData("text/plain");
+    if (!text || !text.includes("\n")) return; // 1 ô -> để mặc định
+    e.preventDefault();
+    const cot = text
+      .replace(/\r/g, "")
+      .replace(/\n$/, "")
+      .split("\n")
+      .map((l) => l.split("\t")[0].trim());
+    setKl((prev) => {
+      const next = { ...prev };
+      cot.forEach((v, i) => {
+        const d = dongs[r0 + i];
+        if (d) next[d.id] = v;
+      });
+      return next;
+    });
+  };
+
+  const luu = () => {
+    const fd = new FormData();
+    fd.set("maCongTrinh", maCongTrinh);
+    fd.set("thang", thang);
+    for (const d of dongs) {
+      fd.set(`kl_${d.id}`, kl[d.id] ?? "");
+      if (xong[d.id]) fd.set(`xong_${d.id}`, "on");
+    }
+    batDau(async () => {
+      const r = await luuKhoiLuong(fd);
+      setKq(r);
+      if (r.ok) setTimeout(dong, 700);
+    });
+  };
+
+  const oTh = "border border-vien bg-nen px-2 py-1.5 text-xs font-semibold whitespace-nowrap text-chunhat";
+  const oTd = "border border-vien px-2 py-1 text-xs";
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
-      <div className="my-6 w-full max-w-4xl rounded-xl border border-vien bg-the shadow-xl">
+      <div className="my-6 w-full max-w-6xl rounded-xl border border-vien bg-the shadow-xl">
         <div className="flex items-center justify-between border-b border-vien px-4 py-3">
-          <div>
-            <h2 className="text-sm font-semibold">Cập nhật khối lượng {nhanThang}</h2>
-            <p className="mt-0.5 text-xs text-chunhat">
-              Nhập khối lượng thực hiện trong kỳ. Tích “Xong” khi công tác đã thi công hoàn tất.
-            </p>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold">Bill {nhan}</h2>
+            <span
+              className={`rounded-md border px-2 py-0.5 text-xs font-medium ${
+                daXacNhan
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300"
+                  : "border-orange-400 bg-orange-500 text-white dark:border-orange-500 dark:bg-orange-600"
+              }`}
+            >
+              {daXacNhan ? "Đã xác nhận" : "Chưa xác nhận"}
+            </span>
+            <span className="text-xs text-chunhat">
+              {daXacNhan ? `Duyệt bởi ${nguoiXacNhan || "—"}` : `Người nhập ${nguoiNhap || "—"}`}
+            </span>
           </div>
-          <button
-            type="button"
-            onClick={() => setMo(false)}
-            className="rounded-md border border-vien p-1.5"
-            title="Đóng (Esc)"
-          >
+          <button type="button" onClick={dong} className="rounded-md border border-vien p-1.5" title="Đóng (Esc)">
             <X className="size-4" />
           </button>
         </div>
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const fd = new FormData(e.currentTarget);
-            batDau(async () => {
-              const r = await luuKhoiLuong(fd);
-              setKq(r);
-              if (r.ok) setTimeout(() => setMo(false), 800);
-            });
-          }}
-        >
-          <input type="hidden" name="maCongTrinh" value={maCongTrinh} />
-          <input type="hidden" name="thang" value={thang} />
-
-          <div className="max-h-[60vh] overflow-y-auto">
-            <table className="w-full border-collapse text-sm">
-              <thead className="sticky top-0 bg-the">
-                <tr className="border-b border-vien text-left">
-                  <th className="px-3 py-2 text-xs font-medium text-chunhat">STT</th>
-                  <th className="px-3 py-2 text-xs font-medium text-chunhat">Nội dung công việc</th>
-                  <th className="px-3 py-2 text-xs font-medium text-chunhat">ĐVT</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium text-chunhat">
-                    Lũy kế đến kỳ trước
+        <div className="max-h-[60vh] overflow-auto" onPaste={dan}>
+          <table className="w-full border-collapse text-sm">
+            <thead className="sticky top-0 z-10 bg-the">
+              <tr>
+                <th className={oTh}>STT</th>
+                <th className={`${oTh} text-left`}>Nội dung công việc</th>
+                <th className={oTh}>ĐVT</th>
+                {cots.map((c, i) => (
+                  <th key={c.id} className={oTh}>
+                    {duocNhap ? (
+                      <TieuDeCot
+                        maCongTrinh={maCongTrinh}
+                        cotId={c.id}
+                        ten={c.ten}
+                        dauTien={i === 0}
+                        cuoiCung={i === cots.length - 1}
+                      />
+                    ) : (
+                      c.ten
+                    )}
                   </th>
-                  <th className="px-3 py-2 text-right text-xs font-medium text-chunhat">
-                    Khối lượng kỳ này
-                  </th>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-chunhat">Xong</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dongs.map((d) => (
-                  <tr key={d.id} className={`border-b border-vien/60 ${xong[d.id] ? "bg-nen/50" : ""}`}>
-                    <td className="px-3 py-1.5 text-xs">{d.stt}</td>
-                    <td className="max-w-75 truncate px-3 py-1.5 text-xs" title={d.noiDung}>
-                      {d.noiDung}
+                ))}
+                <th className={`${oTh} text-right`}>Đơn giá</th>
+                <th className={`${oTh} text-right`}>Lũy kế kỳ trước</th>
+                <th className={`${oTh} bg-nhannhat text-right`}>KL {nhan}</th>
+                <th className={oTh}>Xong</th>
+                <th className={`${oTh} bg-nhannhat text-right`}>Thành tiền {nhan}</th>
+              </tr>
+            </thead>
+            <tbody ref={luoiRef}>
+              {dongs.map((d, i) => (
+                <tr key={d.id} className={xong[d.id] ? "bg-nen/50" : ""}>
+                  <td className={`${oTd} whitespace-nowrap`}>
+                    {d.stt}
+                    {d.hoanThanh ? <span className="ml-1 text-emerald-600 dark:text-emerald-400">✓</span> : null}
+                  </td>
+                  <td className={`${oTd} max-w-[260px] truncate`} title={d.noiDung}>
+                    {d.noiDung}
+                  </td>
+                  <td className={`${oTd} whitespace-nowrap`}>{d.dvt}</td>
+                  {cots.map((c) => (
+                    <td key={c.id} className={oTd}>
+                      {duocNhap ? (
+                        <ONhapCot maCongTrinh={maCongTrinh} cotId={c.id} boqLineId={d.id} giaTri={d.giaTriCot[c.id] ?? ""} />
+                      ) : (
+                        d.giaTriCot[c.id] || <span className="text-chunhat">—</span>
+                      )}
                     </td>
-                    <td className="px-3 py-1.5 text-xs whitespace-nowrap">{d.dvt}</td>
-                    <td className="px-3 py-1.5 text-right text-xs text-chunhat">
-                      {d.klKyTruoc ? dinhDangKL(d.klKyTruoc) : "—"}
-                    </td>
-                    <td className="px-3 py-1.5 text-right">
+                  ))}
+                  <td className={`${oTd} text-right`}>{tienLe(d.donGia)}</td>
+                  <td className={`${oTd} text-right text-chunhat`}>
+                    {d.klKyTruoc ? dinhDangKL(d.klKyTruoc) : "—"}
+                  </td>
+                  <td className={`${oTd} bg-nhannhat/40 text-right`}>
+                    {duocNhap ? (
                       <input
-                        name={`kl_${d.id}`}
+                        data-r={i}
+                        data-kl=""
                         value={kl[d.id] ?? ""}
                         onChange={(e) => setKl({ ...kl, [d.id]: e.target.value })}
+                        onKeyDown={diChuyen}
                         inputMode="decimal"
                         placeholder="0"
-                        className={`${O} w-28 text-right`}
+                        className={`${O} w-24 text-right`}
                       />
-                    </td>
-                    <td className="px-3 py-1.5 text-center">
+                    ) : (
+                      <span>{kl[d.id] ? dinhDangKL(soCua(kl[d.id])) : "—"}</span>
+                    )}
+                  </td>
+                  <td className={`${oTd} text-center`}>
+                    {duocNhap ? (
                       <input
                         type="checkbox"
-                        name={`xong_${d.id}`}
                         checked={xong[d.id] ?? false}
                         onChange={(e) => setXong({ ...xong, [d.id]: e.target.checked })}
                         title="Công tác đã thi công xong"
                       />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    ) : d.hoanThanh ? (
+                      "✓"
+                    ) : (
+                      <span className="text-chunhat">—</span>
+                    )}
+                  </td>
+                  <td className={`${oTd} bg-nhannhat/40 text-right font-medium`}>
+                    {kl[d.id] ? tienLe(ttThang(d)) : <span className="text-chunhat">—</span>}
+                  </td>
+                </tr>
+              ))}
+              <tr className="bg-nen font-semibold">
+                <td className={oTd} colSpan={3 + cots.length + 3}>
+                  TỔNG
+                </td>
+                <td className={`${oTd} text-right`}>{tienLe(tongTien)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-vien px-4 py-3">
-            <p className="text-xs">
-              <span className="text-chunhat">Giá trị Bill {nhanThang}: </span>
-              <strong className="so text-sm">{tien(tongTien)} đ</strong>
-            </p>
-            <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-vien px-4 py-3">
+          <p className="text-xs">
+            <span className="text-chunhat">Giá trị Bill {nhan}: </span>
+            <strong className="so text-sm">{tien(tongTien)} đ</strong>
+            {duocNhap ? (
+              <span className="ml-2 text-[11px] text-chunhat">
+                Sửa ô Khối lượng như Excel · dán được một cột từ ngoài vào.
+              </span>
+            ) : null}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {daXacNhan ? (
+              <a
+                href={`/api/bill/${encodeURIComponent(maCongTrinh)}/${thang}`}
+                className="inline-flex items-center gap-1 rounded-md border border-vien px-2.5 py-1.5 text-xs font-medium hover:bg-nen"
+              >
+                <Download className="size-3.5" /> Xuất Bill .xlsx
+              </a>
+            ) : null}
+            <button type="button" onClick={dong} className="rounded-md border border-vien px-3 py-1.5 text-xs">
+              Đóng
+            </button>
+            {duocXacNhan && !daXacNhan ? <NutXacNhan maCongTrinh={maCongTrinh} thang={thang} /> : null}
+            {duocNhap ? (
               <button
                 type="button"
-                onClick={() => setMo(false)}
-                className="rounded-md border border-vien px-3 py-1.5 text-xs"
-              >
-                Hủy
-              </button>
-              <button
-                type="submit"
+                onClick={luu}
                 disabled={dangChay}
                 className="inline-flex items-center gap-1 rounded-md bg-nhan px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
               >
                 <Check className="size-3.5" />
                 {dangChay ? "Đang lưu…" : duocXacNhan ? "Lưu và xác nhận" : "Lưu (chờ xác nhận)"}
               </button>
-            </div>
+            ) : null}
           </div>
-          {!duocXacNhan ? (
-            <p className="px-4 pb-3 text-[11px] text-chunhat">
-              Bạn không có quyền xác nhận — chỉ huy trưởng duyệt thì số liệu mới vào KPI.
-            </p>
-          ) : null}
-          <div className="px-4 pb-3">
-            <ThongBao kq={kq} />
-          </div>
-        </form>
+        </div>
+        {duocNhap && !duocXacNhan ? (
+          <p className="px-4 pb-2 text-[11px] text-chunhat">
+            Bạn không có quyền xác nhận — chỉ huy trưởng duyệt thì số liệu mới vào KPI.
+          </p>
+        ) : null}
+        <div className="px-4 pb-3">
+          <ThongBao kq={kq} />
+        </div>
       </div>
     </div>
   );

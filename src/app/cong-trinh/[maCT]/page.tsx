@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { TheKPI } from "@/components/kpi-card";
 import { BieuDoXuHuong } from "@/components/charts";
 import {
@@ -41,9 +41,9 @@ import { nguoiDungHienTai } from "@/lib/auth/phien";
 import { coQuyen } from "@/lib/auth/quyen";
 import { motGiaTri } from "@/lib/search-params";
 import { NGAY_HIEN_TAI } from "@/lib/thresholds";
-import { BoxNhapBOQ, GiamGiaBOQ, ImportBOQ, LuoiNhapBOQ, NutThemBill, NutXacNhan, ThietLapVAT } from "@/components/nhap-boq";
+import { GiamGiaBOQ, HopThoaiBill, ImportBOQ, LuoiNhapBOQ, NutThemBill, ThietLapVAT } from "@/components/nhap-boq";
 import { BangGiaoDich } from "@/components/nhap-giao-dich";
-import { NutThemCot, NutThemDong, ONhapCot, TieuDeCot } from "@/components/cot-boq";
+import { NutThemCot, NutThemDong } from "@/components/cot-boq";
 
 /** Dãy tháng liên tục "yyyy-MM" từ `tu` đến `den`, bao gồm cả hai đầu. */
 function dayThang(tu: string, den: string): string[] {
@@ -95,7 +95,6 @@ export default async function TrangChiTietCongTrinh({
   const tabParam = motGiaTri(sp.tab);
   const an0Param = motGiaTri(sp.an0);
   const bqParam = motGiaTri(sp.bq);
-  const nhapParam = motGiaTri(sp.nhap);
   const loaiParam = motGiaTri(sp.loai);
   const kyParam = motGiaTri(sp.ky);
   const maCongTrinh = decodeURIComponent(maCT);
@@ -240,7 +239,6 @@ export default async function TrangChiTietCongTrinh({
         <BOQTab
           maCongTrinh={maCongTrinh}
           thangChon={bqParam}
-          moBoxNhap={nhapParam === "1"}
           daHoanThanh={ct.trangThai === "Đã nghiệm thu"}
         />
       ) : tab === "doanh-thu" ? (
@@ -370,13 +368,10 @@ function thangKe(thang: string | undefined): string {
 async function BOQTab({
   maCongTrinh,
   thangChon,
-  moBoxNhap,
   daHoanThanh,
 }: {
   maCongTrinh: string;
   thangChon?: string;
-  /** Vừa tạo Bill tháng xong thì mở sẵn box nhập. */
-  moBoxNhap: boolean;
   /** Công trình đã nghiệm thu — đóng băng, chỉ được xem. */
   daHoanThanh: boolean;
 }) {
@@ -413,7 +408,10 @@ async function BOQTab({
     );
   }
 
-  const ky = thangs.find((t) => t.thang === thangChon) ?? thangs.at(-1);
+  // Tháng đang MỞ hộp thoại Bill: chỉ khi người dùng bấm chọn (?bq=...). KPI vẫn
+  // mặc định tháng cuối để luôn có số hiển thị.
+  const kyChon = thangChon ? thangs.find((t) => t.thang === thangChon) ?? null : null;
+  const ky = kyChon ?? thangs.at(-1);
   const base = `/cong-trinh/${encodeURIComponent(maCongTrinh)}`;
 
   const ttHopDong = dongs.reduce((a, d) => a + d.ttHopDong, 0);
@@ -459,15 +457,27 @@ async function BOQTab({
         />
       </div>
 
-      {/* ---- Chọn tháng + các nút chỉnh sửa BOQ ---- */}
+      {/* ---- Chọn tháng: bấm để mở hộp thoại Bill. Cam đậm = chưa xác nhận, xanh = đã duyệt. ---- */}
       <div className="mt-4 flex flex-wrap items-center gap-1.5">
         <span className="mr-1 text-xs font-medium text-chunhat">Kỳ Bill:</span>
-        {thangs.map((t) => (
-          <LocLink key={t.thang} href={`${base}?tab=boq&bq=${t.thang}`} dangChon={ky?.thang === t.thang}>
-            {nhanThang(t.thang)}
-            {t.trangThai === "DA_XAC_NHAN" ? " ✓" : " ⏳"}
-          </LocLink>
-        ))}
+        {thangs.map((t) => {
+          const xn = t.trangThai === "DA_XAC_NHAN";
+          return (
+            <Link
+              key={t.thang}
+              href={`${base}?tab=boq&bq=${t.thang}`}
+              scroll={false}
+              className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                xn
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300"
+                  : "border-orange-500 bg-orange-500 text-white hover:bg-orange-600 dark:border-orange-600 dark:bg-orange-600"
+              } ${kyChon?.thang === t.thang ? "ring-2 ring-nhan ring-offset-1 ring-offset-nen" : ""}`}
+            >
+              {nhanThang(t.thang)} {xn ? "✓" : "⏳"}
+            </Link>
+          );
+        })}
+        {thangs.length === 0 ? <span className="text-xs text-chunhat">Chưa có kỳ Bill nào.</span> : null}
       </div>
 
       {duocNhap ? (
@@ -507,165 +517,32 @@ async function BOQTab({
         </div>
       </The>
 
-      {ky ? (
-        <The className="mt-3">
-            <TheDau
-              tieuDe={`Bill ${nhanThang(ky.thang)} — ${tien(billKy)} đ`}
-              moTa={
-                ky.trangThai === "DA_XAC_NHAN"
-                  ? `Đã xác nhận bởi ${ky.nguoiXacNhan || "—"} · số liệu đang được tính vào KPI`
-                  : `Người nhập ${ky.nguoiNhap || "—"} · CHƯA vào KPI cho tới khi được xác nhận`
-              }
-              phai={
-                <div className="flex flex-wrap items-center gap-2">
-                  <Nhan bienThe={ky.trangThai === "DA_XAC_NHAN" ? "xanh" : "vang"}>
-                    {ky.trangThai === "DA_XAC_NHAN" ? "Đã xác nhận" : "Chờ xác nhận"}
-                  </Nhan>
-                  {duocNhap ? (
-                    <BoxNhapBOQ
-                      maCongTrinh={maCongTrinh}
-                      thang={ky.thang}
-                      nhanThang={nhanThang(ky.thang)}
-                      duocXacNhan={duocXacNhan}
-                      moSan={moBoxNhap}
-                      dongs={dongs.map((d) => ({
-                        id: d.id,
-                        stt: d.stt,
-                        noiDung: d.noiDung,
-                        dvt: d.dvt,
-                        donGia: d.donGia,
-                        klKyTruoc: klKyTruoc(d),
-                        klHienTai: d.klTheoThang[ky.thang] ?? 0,
-                        hoanThanh: d.hoanThanh,
-                      }))}
-                    />
-                  ) : null}
-                  {duocXacNhan && ky.trangThai !== "DA_XAC_NHAN" ? (
-                    <NutXacNhan maCongTrinh={maCongTrinh} thang={ky.thang} />
-                  ) : null}
-                  {ky.trangThai === "DA_XAC_NHAN" ? (
-                    <a
-                      href={`/api/bill/${encodeURIComponent(maCongTrinh)}/${ky.thang}`}
-                      className="inline-flex items-center gap-1 rounded-md border border-vien px-2.5 py-1 text-xs font-medium hover:bg-nen"
-                    >
-                      <Download className="size-3.5" /> Xuất Bill .xlsx
-                    </a>
-                  ) : null}
-                </div>
-              }
-            />
-            <Bang>
-              <thead>
-                <tr>
-                  <Th>STT</Th>
-                  <Th>Nội dung công việc</Th>
-                  <Th>ĐVT</Th>
-                  {cots.map((c, i) => (
-                    <Th key={c.id}>
-                      {duocNhap ? (
-                        <TieuDeCot
-                          maCongTrinh={maCongTrinh}
-                          cotId={c.id}
-                          ten={c.ten}
-                          dauTien={i === 0}
-                          cuoiCung={i === cots.length - 1}
-                        />
-                      ) : (
-                        c.ten
-                      )}
-                    </Th>
-                  ))}
-                  <Th phai>KL hợp đồng</Th>
-                  <Th phai>Đơn giá</Th>
-                  <Th phai>Thành tiền HĐ</Th>
-                  <Th phai>Lũy kế KL</Th>
-                  <Th phai>Lũy kế thành tiền</Th>
-                  <Th phai className="bg-nen">
-                    KL {nhanThang(ky.thang)}
-                  </Th>
-                  <Th phai className="bg-nen">
-                    Thành tiền {nhanThang(ky.thang)}
-                  </Th>
-                </tr>
-              </thead>
-              <tbody>
-                {dongs.map((d) => {
-                  const kl = d.klTheoThang[ky.thang] ?? 0;
-                  return (
-                    <tr key={d.id} className="hover:bg-nen">
-                      <Td className="text-xs whitespace-nowrap">
-                        {d.stt}
-                        {d.hoanThanh ? (
-                          <span className="ml-1 text-emerald-600 dark:text-emerald-400" title="Đã thi công xong">
-                            ✓
-                          </span>
-                        ) : null}
-                      </Td>
-                      <Td className="max-w-[260px] truncate text-xs" title={d.noiDung}>
-                        {d.noiDung}
-                      </Td>
-                      <Td className="text-xs whitespace-nowrap">{d.dvt}</Td>
-                      {cots.map((c) => (
-                        <Td key={c.id} className="text-xs">
-                          {duocNhap ? (
-                            <ONhapCot
-                              maCongTrinh={maCongTrinh}
-                              cotId={c.id}
-                              boqLineId={d.id}
-                              giaTri={d.giaTriCot[c.id] ?? ""}
-                            />
-                          ) : (
-                            d.giaTriCot[c.id] || <span className="text-chunhat">—</span>
-                          )}
-                        </Td>
-                      ))}
-                      <Td phai className="text-xs">
-                        {khoiLuong(d.klHopDong)}
-                      </Td>
-                      <Td phai className="text-xs">
-                        {tienLe(d.donGia)}
-                      </Td>
-                      <Td phai>{tienLe(d.ttHopDong)}</Td>
-                      <Td phai className="text-xs">
-                        {khoiLuong(d.klLuyKe)}
-                      </Td>
-                      <Td phai>{tienLe(d.ttLuyKe)}</Td>
-                      <Td phai className="bg-nen text-xs">
-                        {kl ? khoiLuong(kl) : <span className="text-chunhat">—</span>}
-                      </Td>
-                      <Td phai className="bg-nen font-medium">
-                        {kl ? (
-                          tienLe(ttThanhTien(kl, d.donGia, lamTronThanhTien))
-                        ) : (
-                          <span className="text-chunhat">—</span>
-                        )}
-                      </Td>
-                    </tr>
-                  );
-                })}
-                <tr className="bg-nen font-semibold">
-                  {/* 5 cột gốc (STT, Nội dung, ĐVT, KL HĐ, Đơn giá) + số cột tùy chỉnh */}
-                  <Td colSpan={5 + cots.length}>TỔNG</Td>
-                  <Td phai>{tienLe(ttHopDong)}</Td>
-                  <Td />
-                  <Td phai>{tienLe(ttLuyKe)}</Td>
-                  <Td />
-                  <Td phai>{tienLe(billKy)}</Td>
-                </tr>
-              </tbody>
-            </Bang>
-            <GhiChuNguon>
-              Cột khối lượng và thành tiền của tháng để tách rời nhau. Thành tiền = Khối lượng ×
-              Đơn giá, làm tròn về đồng. Dấu ✓ cạnh STT là công tác đã thi công xong. Chỉ Bill{" "}
-              <strong>đã xác nhận</strong> mới được tính vào KPI của tháng đó.
-              {duocNhap ? " Ô cột tùy chỉnh sửa trực tiếp tại chỗ, rời ô là lưu." : ""}
-            </GhiChuNguon>
-        </The>
-      ) : (
-        <The className="mt-3">
-          <Rong>Chưa có kỳ Bill nào. Bấm “Thêm Bill tháng” để bắt đầu.</Rong>
-        </The>
-      )}
+      {kyChon ? (
+        <HopThoaiBill
+          maCongTrinh={maCongTrinh}
+          thang={kyChon.thang}
+          nhan={nhanThang(kyChon.thang)}
+          base={base}
+          trangThai={kyChon.trangThai}
+          nguoiNhap={kyChon.nguoiNhap || ""}
+          nguoiXacNhan={kyChon.nguoiXacNhan || ""}
+          duocNhap={duocNhap}
+          duocXacNhan={duocXacNhan}
+          lamTronThanhTien={lamTronThanhTien}
+          cots={cots.map((c) => ({ id: c.id, ten: c.ten }))}
+          dongs={dongs.map((d) => ({
+            id: d.id,
+            stt: d.stt,
+            noiDung: d.noiDung,
+            dvt: d.dvt,
+            donGia: d.donGia,
+            klKyTruoc: klKyTruoc(d),
+            klHienTai: d.klTheoThang[kyChon.thang] ?? 0,
+            hoanThanh: d.hoanThanh,
+            giaTriCot: d.giaTriCot,
+          }))}
+        />
+      ) : null}
     </>
   );
 }
