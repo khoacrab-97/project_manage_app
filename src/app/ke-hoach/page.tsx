@@ -158,7 +158,7 @@ export default async function TrangKeHoach({ searchParams }: PageProps<"/ke-hoac
                   {d.ma}
                 </Td>
                 <Td
-                  className={`max-w-[280px] truncate text-xs ${d.capCon ? "" : "font-semibold"}`}
+                  className={`max-w-70 truncate text-xs ${d.capCon ? "" : "font-semibold"}`}
                   title={d.ten}
                 >
                   {d.ten}

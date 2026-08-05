@@ -600,7 +600,7 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
                     href={`/cong-trinh/${encodeURIComponent(r.congTrinh.maCongTrinh)}`}
                   />
                 </Td>
-                <Td className="max-w-[320px] truncate text-xs" title={r.congTrinh.tenCongTrinh}>
+                <Td className="max-w-80 truncate text-xs" title={r.congTrinh.tenCongTrinh}>
                   {r.congTrinh.tenCongTrinh}
                 </Td>
                 <Td className="text-xs whitespace-nowrap">{r.congTrinh.chiHuyTruong}</Td>

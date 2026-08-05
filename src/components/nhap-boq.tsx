@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Download, Plus, Trash2, Upload, X } from "lucide-react";
 import {
@@ -147,7 +147,7 @@ export function HopThoaiBill({
   lamTronThanhTien: boolean;
 }) {
   const router = useRouter();
-  const dong = () => router.push(`${base}?tab=boq`);
+  const dong = useCallback(() => router.push(`${base}?tab=boq`), [base, router]);
   const [kl, setKl] = useState<Record<string, string>>(
     Object.fromEntries(dongs.map((d) => [d.id, d.klHienTai ? String(d.klHienTai) : ""]))
   );
@@ -164,8 +164,7 @@ export function HopThoaiBill({
     };
     window.addEventListener("keydown", f);
     return () => window.removeEventListener("keydown", f);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [dong]);
 
   const soCua = (v: string) => {
     const n = Number(v.replace(/\s/g, "").replace(",", "."));
@@ -199,7 +198,7 @@ export function HopThoaiBill({
     if (!(t instanceof HTMLInputElement) || t.dataset.kl === undefined) return;
     const r0 = Number(t.dataset.r);
     const text = e.clipboardData.getData("text/plain");
-    if (!text || !text.includes("\n")) return; // 1 ô -> để mặc định
+    if (!text?.includes("\n")) return; // 1 ô -> để mặc định
     e.preventDefault();
     const cot = text
       .replace(/\r/g, "")
@@ -283,7 +282,7 @@ export function HopThoaiBill({
                     {d.stt}
                     {d.hoanThanh ? <span className="ml-1 text-emerald-600 dark:text-emerald-400">✓</span> : null}
                   </td>
-                  <td className={`${oTd} max-w-[260px] truncate`} title={d.noiDung}>
+                  <td className={`${oTd} max-w-65 truncate`} title={d.noiDung}>
                     {d.noiDung}
                   </td>
                   <td className={`${oTd} whitespace-nowrap`}>{d.dvt}</td>
@@ -772,7 +771,7 @@ export function ImportBOQ({
                           const loiSo = !!kq?.loi;
                           const rong =
                             c.key === "noiDung"
-                              ? "w-full min-w-[220px]"
+                              ? "w-full min-w-55"
                               : c.key === "stt"
                                 ? "w-16"
                                 : c.key === "dvt"
@@ -1060,4 +1059,3 @@ export function GiamGiaBOQ({
     </div>
   );
 }
-

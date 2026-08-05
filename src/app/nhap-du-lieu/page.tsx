@@ -75,7 +75,7 @@ export default async function TrangNhapDuLieu() {
               <tr key={l.id} className="hover:bg-nen">
                 <Td className="text-xs font-medium whitespace-nowrap">{l.maCongTrinh}</Td>
                 <Td className="text-xs whitespace-nowrap">{nhanThang(l.kyDuLieu)}</Td>
-                <Td className="max-w-[340px] truncate text-xs" title={l.tenFile}>
+                <Td className="max-w-85 truncate text-xs" title={l.tenFile}>
                   {l.tenFile}
                 </Td>
                 <Td className="text-xs whitespace-nowrap">{l.nguoiTai}</Td>

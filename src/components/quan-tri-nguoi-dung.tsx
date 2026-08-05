@@ -191,7 +191,7 @@ export function QuanTriNguoiDung({
                       {VAI_TRO[u.vaiTro as VaiTro] ?? u.vaiTro}
                     </Nhan>
                   </Td>
-                  <Td className="max-w-[280px] text-xs text-chunhat">
+                  <Td className="max-w-70 text-xs text-chunhat">
                     {tatCaCongTrinh ? (
                       <span className="text-chu">Tất cả công trình</span>
                     ) : u.phamVi.length ? (

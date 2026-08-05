@@ -113,7 +113,7 @@ export function CayChiPhi({
                     )}
                     {n.ma}
                   </Td>
-                  <Td className="max-w-[280px] truncate text-xs font-semibold" title={n.ten}>
+                  <Td className="max-w-70 truncate text-xs font-semibold" title={n.ten}>
                     {n.ten}
                     {n.con.length ? (
                       <span className="ml-1.5 font-normal text-chunhat">({n.con.length} mã)</span>
@@ -135,7 +135,7 @@ export function CayChiPhi({
                   ? n.con.map((c) => (
                       <tr key={c.ma} className="hover:bg-nen">
                         <Td className="pl-8 text-xs whitespace-nowrap">{c.ma}</Td>
-                        <Td className="max-w-[280px] truncate text-xs" title={c.ten}>
+                        <Td className="max-w-70 truncate text-xs" title={c.ten}>
                           {c.ten}
                         </Td>
                         <Td phai>{tien(c.soTien)}</Td>

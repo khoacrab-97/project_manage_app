@@ -48,7 +48,7 @@ const COT: { key: keyof Dong; nhan: string; w: string; so?: boolean }[] = [
   { key: "maBase", nhan: "Mã Base", w: "w-24" },
   { key: "soHoaDon", nhan: "Số hóa đơn", w: "w-24" },
   { key: "ngayChungTu", nhan: "Ngày chứng từ", w: "w-28" },
-  { key: "noiDung", nhan: "Nội dung thanh toán", w: "w-full min-w-[220px]" },
+  { key: "noiDung", nhan: "Nội dung thanh toán", w: "w-full min-w-55" },
   { key: "dvt", nhan: "ĐVT", w: "w-16" },
   { key: "donGia", nhan: "Đơn giá", w: "w-28", so: true },
   { key: "soLuong", nhan: "Số lượng", w: "w-20", so: true },

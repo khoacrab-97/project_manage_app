@@ -30,7 +30,6 @@ import {
   layBOQ,
   giaTriBillThang,
   giaTriMotGiamGia,
-  ttThanhTien,
   layGiaoDichChoXuLy,
   layLoNhap,
   maTranTheoCongTrinh,
@@ -429,8 +428,8 @@ async function BOQTab({
     !ky
       ? 0
       : Object.entries(d.klTheoThang)
-          .filter(([t]) => t < ky.thang)
-          .reduce((a, [, v]) => a + v, 0);
+        .filter(([t]) => t < ky.thang)
+        .reduce((a, [, v]) => a + v, 0);
 
   return (
     <>
@@ -899,8 +898,8 @@ async function GiaoDichTab({
   // Mã được ghi trực tiếp cho ô chọn Mã DT–CP của bảng nhập (bỏ mã nhóm).
   const dsMaNhap = duocNhap
     ? (await layDanhMucMa())
-        .filter((c) => c.choPhepNhapTrucTiep)
-        .map((c) => ({ ma: c.ma, ten: c.ten, loai: c.loai }))
+      .filter((c) => c.choPhepNhapTrucTiep)
+      .map((c) => ({ ma: c.ma, ten: c.ten, loai: c.loai }))
     : [];
 
   const ds = await layGiaoDich({ maCongTrinh });
@@ -968,7 +967,7 @@ async function BaoCaoTab({
     <>
       <div className="mb-4 divide-y divide-vien rounded-xl border border-vien bg-the px-3 py-0.5">
         <div className="flex items-start gap-2 py-1.5">
-          <span className="w-[76px] shrink-0 pt-1 text-xs font-medium text-chunhat">Kỳ</span>
+          <span className="w-19 shrink-0 pt-1 text-xs font-medium text-chunhat">Kỳ</span>
           <div className="flex flex-wrap gap-1">
             {LOAI_KY.map((l) => (
               <LocLink key={l.id} href={q({ tab: "bao-cao", loai: l.id })} dangChon={loai === l.id}>
@@ -978,8 +977,8 @@ async function BaoCaoTab({
           </div>
         </div>
         <div className="flex items-start gap-2 py-1.5">
-          <span className="w-[76px] shrink-0 pt-1 text-xs font-medium text-chunhat">Thời điểm</span>
-          <div className="flex max-h-[4.75rem] flex-wrap gap-1 overflow-y-auto">
+          <span className="w-19 shrink-0 pt-1 text-xs font-medium text-chunhat">Thời điểm</span>
+          <div className="flex max-h-19 flex-wrap gap-1 overflow-y-auto">
             <LocLink href={q({ tab: "bao-cao", loai })} dangChon={!ky}>
               Tất cả
             </LocLink>
@@ -1000,13 +999,13 @@ async function BaoCaoTab({
         <Bang>
           <thead>
             <tr>
-              <Th className="sticky left-0 z-20 min-w-[90px]">Mã</Th>
-              <Th className="sticky left-[90px] z-20 min-w-[220px]">Nội dung</Th>
-              <Th phai className="min-w-[130px] bg-nen">
+              <Th className="sticky left-0 z-20 min-w-22.5">Mã</Th>
+              <Th className="sticky left-22.5 z-20 min-w-55">Nội dung</Th>
+              <Th phai className="min-w-32.5 bg-nen">
                 Tổng
               </Th>
               {chiSo.map(({ c }) => (
-                <Th key={c} phai className="min-w-[120px]">
+                <Th key={c} phai className="min-w-30">
                   {nhanKyBaoCao(loai, c)}
                 </Th>
               ))}
@@ -1023,7 +1022,7 @@ async function BaoCaoTab({
                     {h.ma}
                   </Td>
                   <Td
-                    className={`sticky left-[90px] z-10 max-w-[220px] truncate text-xs ${nhomCha ? "bg-nen/60 font-semibold" : "bg-the"}`}
+                    className={`sticky left-22.5 z-10 max-w-55 truncate text-xs ${nhomCha ? "bg-nen/60 font-semibold" : "bg-the"}`}
                     title={h.ten}
                   >
                     {h.loai === "Doanh thu" ? <span className="text-nhan">{h.ten}</span> : h.ten}
@@ -1041,7 +1040,7 @@ async function BaoCaoTab({
             })}
             <tr className="bg-nen font-semibold">
               <Td className="sticky left-0 z-10 bg-nen">TỔNG</Td>
-              <Td className="sticky left-[90px] z-10 bg-nen" />
+              <Td className="sticky left-22.5 z-10 bg-nen" />
               <Td phai>{tien(tongChung)}</Td>
               {tongCot.map((t, i) => (
                 <Td key={i} phai>
@@ -1133,8 +1132,8 @@ async function EVMTab({ maCongTrinh }: { maCongTrinh: string }) {
         <Bang>
           <thead>
             <tr>
-              <Th className="min-w-[220px]">Chỉ tiêu</Th>
-              <Th phai className="min-w-[150px]">
+              <Th className="min-w-55">Chỉ tiêu</Th>
+              <Th phai className="min-w-37.5">
                 Giá trị
               </Th>
               <Th>Cách tính</Th>
@@ -1164,7 +1163,7 @@ async function EVMTab({ maCongTrinh }: { maCongTrinh: string }) {
             <tr>
               <Th phai>BAC</Th>
               <Th phai>EAC</Th>
-              <Th className="min-w-[200px]">EAC / BAC</Th>
+              <Th className="min-w-50">EAC / BAC</Th>
               <Th phai>Vượt</Th>
             </tr>
           </thead>
@@ -1237,7 +1236,7 @@ async function LichSu({ maCongTrinh }: { maCongTrinh: string }) {
             {los.map((l) => (
               <tr key={l.id} className="hover:bg-nen">
                 <Td className="whitespace-nowrap">{nhanThang(l.kyDuLieu)}</Td>
-                <Td className="max-w-[320px] truncate text-xs" title={l.tenFile}>
+                <Td className="max-w-80 truncate text-xs" title={l.tenFile}>
                   {l.tenFile}
                 </Td>
                 <Td className="text-xs whitespace-nowrap">{l.nguoiTai}</Td>

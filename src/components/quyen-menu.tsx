@@ -41,9 +41,9 @@ export function QuyenMenu({ cauHinh }: { cauHinh: Record<string, string[]> }) {
         <Bang>
           <thead>
             <tr>
-              <Th className="sticky left-0 z-20 min-w-[180px]">Mục menu</Th>
+              <Th className="sticky left-0 z-20 min-w-45">Mục menu</Th>
               {DS_VAI_TRO.map((v) => (
-                <Th key={v} className="min-w-[110px] text-center">
+                <Th key={v} className="min-w-27.5 text-center">
                   {VAI_TRO[v]}
                 </Th>
               ))}
@@ -66,7 +66,7 @@ export function QuyenMenu({ cauHinh }: { cauHinh: Record<string, string[]> }) {
                         defaultChecked={laAdmin || (cauHinh[v] ?? []).includes(m.id)}
                         disabled={laAdmin}
                         title={laAdmin ? "Quản trị hệ thống luôn thấy mọi mục" : undefined}
-                        className="size-4 accent-[var(--nhan)] disabled:opacity-40"
+                        className="size-4 accent-nhan disabled:opacity-40"
                       />
                     </Td>
                   );

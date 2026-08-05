@@ -177,7 +177,7 @@ export function LuoiKeHoach({
                     {m.ma}
                   </td>
                   <td
-                    className={`max-w-[380px] truncate px-3 py-1.5 text-xs ${m.laNhom ? "font-semibold" : ""}`}
+                    className={`max-w-95 truncate px-3 py-1.5 text-xs ${m.laNhom ? "font-semibold" : ""}`}
                     title={m.ten}
                   >
                     {m.loai === "Doanh thu" ? <span className="text-nhan">{m.ten}</span> : m.ten}

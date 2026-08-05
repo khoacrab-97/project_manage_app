@@ -205,7 +205,7 @@ async function HoSo({ duocSua, laAdmin }: { duocSua: boolean; laAdmin: boolean }
                   <Td className="text-xs whitespace-nowrap">
                     <NhanCongTrinh tenRutGon={c.tenRutGon} ma={c.maCongTrinh} />
                   </Td>
-                  <Td className="max-w-[280px] truncate text-xs" title={c.tenCongTrinh}>
+                  <Td className="max-w-70 truncate text-xs" title={c.tenCongTrinh}>
                     {c.tenCongTrinh}
                   </Td>
                   <Td>
@@ -347,7 +347,7 @@ async function PhanCong({
                                 <Td className="text-xs whitespace-nowrap">
                                   <NhanCongTrinh tenRutGon={c.tenRutGon} ma={c.maCongTrinh} />
                                 </Td>
-                                <Td className="max-w-[280px] truncate text-xs" title={c.tenCongTrinh}>
+                                <Td className="max-w-70 truncate text-xs" title={c.tenCongTrinh}>
                                   {c.tenCongTrinh}
                                 </Td>
                                 <Td className="text-xs">
@@ -739,7 +739,7 @@ async function TongHopBang({ thang, view }: { thang: string; view: "cong-trinh" 
               <Td className="text-xs whitespace-nowrap">
                 <NhanCongTrinh tenRutGon={r.tenRutGon} ma={r.maCongTrinh} />
               </Td>
-              <Td className="max-w-[220px] truncate text-xs" title={r.tenCongTrinh}>
+              <Td className="max-w-55 truncate text-xs" title={r.tenCongTrinh}>
                 {r.tenCongTrinh}
               </Td>
               <Td phai>{r.soNguoi}</Td>
@@ -841,7 +841,7 @@ async function DoiChieu({ thang: thangTho }: { thang?: string }) {
                       {nhanLech(d.loai)}
                     </Nhan>
                   </Td>
-                  <Td className="max-w-[220px] truncate text-xs" title={d.ghiChu}>
+                  <Td className="max-w-55 truncate text-xs" title={d.ghiChu}>
                     {d.ghiChu || "—"}
                   </Td>
                 </tr>

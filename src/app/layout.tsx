@@ -133,7 +133,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               <ThanhNguoiDung />
             </div>
           </header>
-          <main className="mx-auto w-full max-w-[1600px] px-4 py-5">{children}</main>
+          <main className="mx-auto w-full max-w-400 px-4 py-5">{children}</main>
         </div>
       </body>
     </html>

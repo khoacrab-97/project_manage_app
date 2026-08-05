@@ -45,6 +45,18 @@ Không dùng `npm`, `npx`, `yarn`, `package-lock.json` hoặc `yarn.lock`.
 7. **Không tự sinh mã doanh thu – chi phí** (§3.4). Danh mục 55 mã do công ty
    kiểm soát.
 
+8. **Tailwind v4: ưu tiên class canonical, tránh arbitrary spacing không cần
+   thiết.** Biome rule `tailwindcss(suggestCanonicalClasses)` sẽ cảnh báo các
+   class như `w-[76px]`, `min-w-[220px]`, `left-[90px]`, `max-w-[320px]`,
+   `max-h-[4.75rem]` vì có dạng canonical tương đương theo `--spacing: .25rem`:
+   `w-19`, `min-w-55`, `left-22.5`, `max-w-80`, `max-h-19`. Tailwind v4 chấp
+   nhận thang số tự do, kể cả số lẻ như `22.5`, `32.5`, `37.5`, và số lớn như
+   `400`.
+
+   Chỉ giữ arbitrary value khi thật sự không có canonical rõ ràng, ví dụ
+   `max-h-[60vh]`, `w-[min(34rem,72vw)]`, `grid-cols-[1fr_7rem_5rem]`,
+   `shadow-[...]`, `text-[11px]`.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
