@@ -294,6 +294,7 @@ export function FormThemMa({ danhMuc }: { danhMuc: MaDTCP[] }) {
         batDau(async () => {
           const r = await themMa(fd);
           setKq(r);
+          if (r.ok) setTimeout(() => setMo(false), 900);
         })
       }
       className="rounded-lg border border-nhan bg-nhannhat p-3"
