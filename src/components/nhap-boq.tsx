@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Download, Plus, Trash2, Upload, X } from "lucide-react";
+import { Check, Download, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
 import {
   docFileBOQ,
+  doiThangBill,
   luuKhoiLuong,
   luuThietLapVAT,
   themBillThang,
@@ -157,6 +158,29 @@ export function HopThoaiBill({
   const [kq, setKq] = useState<KetQuaBOQ | null>(null);
   const [dangChay, batDau] = useTransition();
   const luoiRef = useRef<HTMLTableSectionElement>(null);
+  // Mở ra là chế độ XEM; bấm "Sửa" mới cập nhật được.
+  const [khoa, setKhoa] = useState(true);
+  const capNhat = duocNhap && !khoa;
+  // Đổi tháng của Bill (dời cả khối lượng đã nhập sang tháng mới).
+  const [thangMoi, setThangMoi] = useState(thang);
+  const [dangDoi, doiTransition] = useTransition();
+
+  const doiThang = () => {
+    const fd = new FormData();
+    fd.set("maCongTrinh", maCongTrinh);
+    fd.set("thangCu", thang);
+    fd.set("thangMoi", thangMoi.trim());
+    doiTransition(async () => {
+      const r = await doiThangBill(fd);
+      setKq(r);
+      if (r.ok) router.push(`${base}?tab=boq&bq=${thangMoi.trim()}`);
+    });
+  };
+
+  const datLaiTuProps = () => {
+    setKl(Object.fromEntries(dongs.map((d) => [d.id, d.klHienTai ? String(d.klHienTai) : ""])));
+    setXong(Object.fromEntries(dongs.map((d) => [d.id, d.hoanThanh])));
+  };
 
   useEffect(() => {
     const f = (e: KeyboardEvent) => {
@@ -246,6 +270,27 @@ export function HopThoaiBill({
           </button>
         </div>
 
+        {capNhat ? (
+          <div className="flex flex-wrap items-center gap-2 border-b border-vien bg-nhannhat/50 px-4 py-2 text-xs">
+            <span className="text-chunhat">Đổi tháng Bill:</span>
+            <input
+              value={thangMoi}
+              onChange={(e) => setThangMoi(e.target.value)}
+              placeholder="2026-08"
+              className={`${O} w-28`}
+            />
+            <button
+              type="button"
+              onClick={doiThang}
+              disabled={dangDoi || thangMoi.trim() === thang}
+              className="rounded-md border border-nhan px-2.5 py-1 text-xs font-medium text-nhan disabled:opacity-40"
+            >
+              {dangDoi ? "Đang đổi…" : "Đổi tháng"}
+            </button>
+            <span className="text-[11px] text-chunhat">Dời toàn bộ khối lượng đã nhập sang tháng mới.</span>
+          </div>
+        ) : null}
+
         <div className="max-h-[60vh] overflow-auto" onPaste={dan}>
           <table className="w-full border-collapse text-sm">
             <thead className="sticky top-0 z-10 bg-the">
@@ -288,7 +333,7 @@ export function HopThoaiBill({
                   <td className={`${oTd} whitespace-nowrap`}>{d.dvt}</td>
                   {cots.map((c) => (
                     <td key={c.id} className={oTd}>
-                      {duocNhap ? (
+                      {capNhat ? (
                         <ONhapCot maCongTrinh={maCongTrinh} cotId={c.id} boqLineId={d.id} giaTri={d.giaTriCot[c.id] ?? ""} />
                       ) : (
                         d.giaTriCot[c.id] || <span className="text-chunhat">—</span>
@@ -300,7 +345,7 @@ export function HopThoaiBill({
                     {d.klKyTruoc ? dinhDangKL(d.klKyTruoc) : "—"}
                   </td>
                   <td className={`${oTd} bg-nhannhat/40 text-right`}>
-                    {duocNhap ? (
+                    {capNhat ? (
                       <input
                         data-r={i}
                         data-kl=""
@@ -316,7 +361,7 @@ export function HopThoaiBill({
                     )}
                   </td>
                   <td className={`${oTd} text-center`}>
-                    {duocNhap ? (
+                    {capNhat ? (
                       <input
                         type="checkbox"
                         checked={xong[d.id] ?? false}
@@ -348,7 +393,7 @@ export function HopThoaiBill({
           <p className="text-xs">
             <span className="text-chunhat">Giá trị Bill {nhan}: </span>
             <strong className="so text-sm">{tien(tongTien)} đ</strong>
-            {duocNhap ? (
+            {capNhat ? (
               <span className="ml-2 text-[11px] text-chunhat">
                 Sửa ô Khối lượng như Excel · dán được một cột từ ngoài vào.
               </span>
@@ -364,16 +409,38 @@ export function HopThoaiBill({
             <button type="button" onClick={dong} className="rounded-md border border-vien px-3 py-1.5 text-xs">
               Đóng
             </button>
-            {duocNhap ? (
+            {duocNhap && khoa ? (
               <button
                 type="button"
-                onClick={luu}
-                disabled={dangChay}
-                className="inline-flex items-center gap-1 rounded-md bg-nhan px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+                onClick={() => setKhoa(false)}
+                className="inline-flex items-center gap-1 rounded-md bg-nhan px-3 py-1.5 text-xs font-medium text-white"
               >
-                <Check className="size-3.5" />
-                {dangChay ? "Đang lưu…" : "Lưu"}
+                <Pencil className="size-3.5" /> Sửa
               </button>
+            ) : null}
+            {capNhat ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    datLaiTuProps();
+                    setKq(null);
+                    setKhoa(true);
+                  }}
+                  className="rounded-md border border-vien px-3 py-1.5 text-xs"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  onClick={luu}
+                  disabled={dangChay}
+                  className="inline-flex items-center gap-1 rounded-md bg-nhan px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+                >
+                  <Check className="size-3.5" />
+                  {dangChay ? "Đang lưu…" : "Lưu"}
+                </button>
+              </>
             ) : null}
           </div>
         </div>

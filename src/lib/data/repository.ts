@@ -459,6 +459,35 @@ export function giaTriBillThang(
   return heSoChuaVAT === 1 ? sauGiam : Math.round(sauGiam * heSoChuaVAT);
 }
 
+/**
+ * Giá trị Bill (giá trị thực hiện = doanh thu dự kiến) theo từng tháng của MỘT
+ * công trình. Công trình ĐÃ CÓ BOQ lấy từ khối lượng thực hiện (BOQ) — CÙNG nguồn
+ * với KPI doanh thu, tab Tổng quan và Danh mục sức khỏe. Công trình chưa có BOQ
+ * giữ cách cũ: cộng giao dịch mã Bill theo tháng.
+ *
+ * Trước đây tab Doanh thu tự cộng mã "Bill" từ sổ giao dịch nên công trình có BOQ
+ * (Bill nằm ở BOQThucHien, không phải Transaction) hiện "chưa ghi nhận" dù đã nhập.
+ */
+export async function billDoanhThuTheoThang(maCongTrinh: string): Promise<Map<string, number>> {
+  const ct = (await layCongTrinh()).find((c) => c.maCongTrinh === maCongTrinh);
+  if (!ct) return new Map();
+  const { duAnCoBOQ, theoThang } = await billTuBOQ();
+  if (duAnCoBOQ.has(ct.id)) {
+    const m = new Map<string, number>();
+    for (const [k, v] of theoThang) {
+      const [pid, thang] = k.split("|");
+      if (pid === ct.id) m.set(thang, v);
+    }
+    return m;
+  }
+  const rows = await db.transaction.groupBy({
+    by: ["thangThucHien"],
+    _sum: { soTien: true },
+    where: { projectId: ct.id, maDTCP: MA_DOANH_THU_DIEU_HANH },
+  });
+  return new Map(rows.map((r) => [r.thangThucHien, r._sum.soTien ?? 0]));
+}
+
 // ------------------------------------------------------------ Giao dịch
 export interface BoLocGiaoDich {
   maCongTrinh?: string;
