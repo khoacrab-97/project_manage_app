@@ -386,7 +386,6 @@ async function BOQTab({
   // Công trình hoàn thành thì ẩn hết lối sửa. Chốt chặn thật nằm ở Server Action
   // (`congTrinhChoGhi`); ẩn ở đây chỉ để không mời người dùng bấm vào ngõ cụt.
   const duocNhap = coQuyen(u, "nhap_boq") && !daHoanThanh;
-  const duocXacNhan = coQuyen(u, "xac_nhan_bill") && !daHoanThanh;
 
   if (!dongs.length) {
     return (
@@ -417,9 +416,11 @@ async function BOQTab({
   const ttHopDong = dongs.reduce((a, d) => a + d.ttHopDong, 0);
   // Lũy kế vật lý tính mọi tháng; lũy kế vào KPI chỉ tính tháng đã xác nhận.
   const ttLuyKe = dongs.reduce((a, d) => a + d.ttLuyKe, 0);
-  const ttXacNhan = thangs
-    .filter((t) => t.trangThai === "DA_XAC_NHAN")
-    .reduce((a, t) => a + giaTriBillThang(dongs, t.thang, heSoBill, giamGia, lamTronThanhTien), 0);
+  // Không còn xác nhận: mọi kỳ Bill đều tính vào lũy kế.
+  const ttXacNhan = thangs.reduce(
+    (a, t) => a + giaTriBillThang(dongs, t.thang, heSoBill, giamGia, lamTronThanhTien),
+    0
+  );
   const billKy = ky ? giaTriBillThang(dongs, ky.thang, heSoBill, giamGia, lamTronThanhTien) : 0;
   const soXong = dongs.filter((d) => d.hoanThanh).length;
 
@@ -439,15 +440,11 @@ async function BOQTab({
           giaTri={ttHopDong}
           phuChu={`${dongs.length} công tác · ${soXong} đã xong`}
         />
-        <TheKPI
-          nhan="Lũy kế đã xác nhận"
-          giaTri={ttXacNhan}
-          phuChu={ttXacNhan === ttLuyKe ? "Toàn bộ đã duyệt" : `Chờ duyệt ${tien(ttLuyKe - ttXacNhan)}`}
-        />
+        <TheKPI nhan="Lũy kế Bill" giaTri={ttXacNhan} phuChu="Giá trị Bill mọi kỳ" />
         <TheKPI
           nhan={ky ? `Bill ${nhanThang(ky.thang)}` : "Bill tháng"}
           giaTri={billKy}
-          phuChu={ky?.trangThai === "DA_XAC_NHAN" ? "Đã xác nhận" : "Chờ xác nhận"}
+          phuChu="Giá trị Bill kỳ này"
         />
         <TheKPI
           nhan="Tiến độ thực hiện"
@@ -457,26 +454,18 @@ async function BOQTab({
         />
       </div>
 
-      {/* ---- Chọn tháng: bấm để mở hộp thoại Bill. Cam đậm = chưa xác nhận, xanh = đã duyệt. ---- */}
+      {/* ---- Chọn tháng: bấm để mở hộp thoại Bill. ---- */}
       <div className="mt-4 flex flex-wrap items-center gap-1.5">
         <span className="mr-1 text-xs font-medium text-chunhat">Kỳ Bill:</span>
-        {thangs.map((t) => {
-          const xn = t.trangThai === "DA_XAC_NHAN";
-          return (
-            <Link
-              key={t.thang}
-              href={`${base}?tab=boq&bq=${t.thang}`}
-              scroll={false}
-              className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
-                xn
-                  ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300"
-                  : "border-orange-500 bg-orange-500 text-white hover:bg-orange-600 dark:border-orange-600 dark:bg-orange-600"
-              } ${kyChon?.thang === t.thang ? "ring-2 ring-nhan ring-offset-1 ring-offset-nen" : ""}`}
-            >
-              {nhanThang(t.thang)} {xn ? "✓" : "⏳"}
-            </Link>
-          );
-        })}
+        {thangs.map((t) => (
+          <LocLink
+            key={t.thang}
+            href={`${base}?tab=boq&bq=${t.thang}`}
+            dangChon={kyChon?.thang === t.thang}
+          >
+            {nhanThang(t.thang)}
+          </LocLink>
+        ))}
         {thangs.length === 0 ? <span className="text-xs text-chunhat">Chưa có kỳ Bill nào.</span> : null}
       </div>
 
@@ -523,11 +512,8 @@ async function BOQTab({
           thang={kyChon.thang}
           nhan={nhanThang(kyChon.thang)}
           base={base}
-          trangThai={kyChon.trangThai}
           nguoiNhap={kyChon.nguoiNhap || ""}
-          nguoiXacNhan={kyChon.nguoiXacNhan || ""}
           duocNhap={duocNhap}
-          duocXacNhan={duocXacNhan}
           lamTronThanhTien={lamTronThanhTien}
           cots={cots.map((c) => ({ id: c.id, ten: c.ten }))}
           dongs={dongs.map((d) => ({

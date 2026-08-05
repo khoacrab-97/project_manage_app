@@ -18,7 +18,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { nguoiDungHienTai } from "@/lib/auth/phien";
-import { batBuocQuyen, coQuyen } from "@/lib/auth/quyen";
+import { batBuocQuyen } from "@/lib/auth/quyen";
 import { layCongTrinh } from "@/lib/data/repository";
 import { docBOQTuExcel, type DongBOQDoc } from "@/lib/excel/parse-boq";
 
@@ -91,7 +91,8 @@ export async function themBillThang(formData: FormData): Promise<KetQuaBOQ> {
     data: {
       projectId: ct.id,
       thang,
-      trangThai: "CHO_XAC_NHAN",
+      // Không còn bước xác nhận: Bill tính vào KPI ngay khi người phụ trách nhập.
+      trangThai: "DA_XAC_NHAN",
       nguoiNhap: u!.email,
       ngayNhap: new Date(),
     },
@@ -141,27 +142,15 @@ export async function luuKhoiLuong(formData: FormData): Promise<KetQuaBOQ> {
     await db.bOQLine.update({ where: { id: l.id }, data: { hoanThanh: xong } });
   }
 
-  // Người có quyền xác nhận thì lưu là xác nhận luôn; còn lại phải chờ duyệt.
-  const tuXacNhan = coQuyen(u, "xac_nhan_bill");
+  // Không còn bước xác nhận: lưu là số liệu vào KPI ngay.
   await db.billThang.update({
     where: { id: bill.id },
-    data: {
-      nguoiNhap: u!.email,
-      ngayNhap: new Date(),
-      trangThai: tuXacNhan ? "DA_XAC_NHAN" : "CHO_XAC_NHAN",
-      nguoiXacNhan: tuXacNhan ? u!.email : null,
-      ngayXacNhan: tuXacNhan ? new Date() : null,
-    },
+    data: { nguoiNhap: u!.email, ngayNhap: new Date(), trangThai: "DA_XAC_NHAN" },
   });
 
   revalidatePath(`/cong-trinh/${maCongTrinh}`);
   revalidatePath("/");
-  return {
-    ok: true,
-    thongDiep: tuXacNhan
-      ? `Đã lưu và xác nhận Bill tháng ${thang}.`
-      : `Đã lưu Bill tháng ${thang}. Chờ chỉ huy trưởng xác nhận mới tính vào KPI.`,
-  };
+  return { ok: true, thongDiep: `Đã lưu Bill tháng ${thang}.` };
 }
 
 // ------------------------------------------------------------ Cột tùy chỉnh
@@ -513,30 +502,4 @@ export async function xoaGiamGiaBOQ(formData: FormData): Promise<KetQuaBOQ> {
   revalidatePath(`/cong-trinh/${maCongTrinh}`);
   revalidatePath("/");
   return { ok: true, thongDiep: "Đã xoá dòng giảm giá." };
-}
-
-export async function xacNhanBill(formData: FormData): Promise<KetQuaBOQ> {
-  const u = await nguoiDungHienTai();
-  batBuocQuyen(u, "xac_nhan_bill");
-
-  const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
-  const thang = String(formData.get("thang") ?? "").trim();
-
-  const kq = await congTrinhChoGhi(maCongTrinh);
-  if ("loi" in kq) return { ok: false, thongDiep: kq.loi };
-  const ct = kq.ct;
-
-  const bill = await db.billThang.findUnique({
-    where: { projectId_thang: { projectId: ct.id, thang } },
-  });
-  if (!bill) return { ok: false, thongDiep: `Chưa có Bill tháng ${thang}.` };
-
-  await db.billThang.update({
-    where: { id: bill.id },
-    data: { trangThai: "DA_XAC_NHAN", nguoiXacNhan: u!.email, ngayXacNhan: new Date() },
-  });
-
-  revalidatePath(`/cong-trinh/${maCongTrinh}`);
-  revalidatePath("/");
-  return { ok: true, thongDiep: `Đã xác nhận Bill tháng ${thang}. Số liệu được tính vào KPI.` };
 }

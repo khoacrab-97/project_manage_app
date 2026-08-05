@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Download, Plus, ShieldCheck, Trash2, Upload, X } from "lucide-react";
+import { Check, Download, Plus, Trash2, Upload, X } from "lucide-react";
 import {
   docFileBOQ,
   luuKhoiLuong,
@@ -10,7 +10,6 @@ import {
   themBillThang,
   themGiamGiaBOQ,
   themNhieuDongBOQ,
-  xacNhanBill,
   xoaGiamGiaBOQ,
   type KetQuaBOQ,
 } from "@/app/cong-trinh/boq-actions";
@@ -131,26 +130,20 @@ export function HopThoaiBill({
   thang,
   nhan,
   base,
-  trangThai,
   nguoiNhap,
-  nguoiXacNhan,
   dongs,
   cots,
   duocNhap,
-  duocXacNhan,
   lamTronThanhTien,
 }: {
   maCongTrinh: string;
   thang: string;
   nhan: string;
   base: string;
-  trangThai: string;
   nguoiNhap: string;
-  nguoiXacNhan: string;
   dongs: DongBill[];
   cots: { id: string; ten: string }[];
   duocNhap: boolean;
-  duocXacNhan: boolean;
   lamTronThanhTien: boolean;
 }) {
   const router = useRouter();
@@ -164,7 +157,6 @@ export function HopThoaiBill({
   const [kq, setKq] = useState<KetQuaBOQ | null>(null);
   const [dangChay, batDau] = useTransition();
   const luoiRef = useRef<HTMLTableSectionElement>(null);
-  const daXacNhan = trangThai === "DA_XAC_NHAN";
 
   useEffect(() => {
     const f = (e: KeyboardEvent) => {
@@ -248,18 +240,7 @@ export function HopThoaiBill({
         <div className="flex items-center justify-between border-b border-vien px-4 py-3">
           <div className="flex items-center gap-3">
             <h2 className="text-sm font-semibold">Bill {nhan}</h2>
-            <span
-              className={`rounded-md border px-2 py-0.5 text-xs font-medium ${
-                daXacNhan
-                  ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300"
-                  : "border-orange-400 bg-orange-500 text-white dark:border-orange-500 dark:bg-orange-600"
-              }`}
-            >
-              {daXacNhan ? "Đã xác nhận" : "Chưa xác nhận"}
-            </span>
-            <span className="text-xs text-chunhat">
-              {daXacNhan ? `Duyệt bởi ${nguoiXacNhan || "—"}` : `Người nhập ${nguoiNhap || "—"}`}
-            </span>
+            {nguoiNhap ? <span className="text-xs text-chunhat">Người nhập {nguoiNhap}</span> : null}
           </div>
           <button type="button" onClick={dong} className="rounded-md border border-vien p-1.5" title="Đóng (Esc)">
             <X className="size-4" />
@@ -375,18 +356,15 @@ export function HopThoaiBill({
             ) : null}
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            {daXacNhan ? (
-              <a
-                href={`/api/bill/${encodeURIComponent(maCongTrinh)}/${thang}`}
-                className="inline-flex items-center gap-1 rounded-md border border-vien px-2.5 py-1.5 text-xs font-medium hover:bg-nen"
-              >
-                <Download className="size-3.5" /> Xuất Bill .xlsx
-              </a>
-            ) : null}
+            <a
+              href={`/api/bill/${encodeURIComponent(maCongTrinh)}/${thang}`}
+              className="inline-flex items-center gap-1 rounded-md border border-vien px-2.5 py-1.5 text-xs font-medium hover:bg-nen"
+            >
+              <Download className="size-3.5" /> Xuất Bill .xlsx
+            </a>
             <button type="button" onClick={dong} className="rounded-md border border-vien px-3 py-1.5 text-xs">
               Đóng
             </button>
-            {duocXacNhan && !daXacNhan ? <NutXacNhan maCongTrinh={maCongTrinh} thang={thang} /> : null}
             {duocNhap ? (
               <button
                 type="button"
@@ -395,16 +373,11 @@ export function HopThoaiBill({
                 className="inline-flex items-center gap-1 rounded-md bg-nhan px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
               >
                 <Check className="size-3.5" />
-                {dangChay ? "Đang lưu…" : duocXacNhan ? "Lưu và xác nhận" : "Lưu (chờ xác nhận)"}
+                {dangChay ? "Đang lưu…" : "Lưu"}
               </button>
             ) : null}
           </div>
         </div>
-        {duocNhap && !duocXacNhan ? (
-          <p className="px-4 pb-2 text-[11px] text-chunhat">
-            Bạn không có quyền xác nhận — chỉ huy trưởng duyệt thì số liệu mới vào KPI.
-          </p>
-        ) : null}
         <div className="px-4 pb-3">
           <ThongBao kq={kq} />
         </div>
@@ -1088,30 +1061,3 @@ export function GiamGiaBOQ({
   );
 }
 
-/** Nút duyệt một tháng đang chờ xác nhận. */
-export function NutXacNhan({ maCongTrinh, thang }: { maCongTrinh: string; thang: string }) {
-  const [kq, setKq] = useState<KetQuaBOQ | null>(null);
-  const [dangChay, batDau] = useTransition();
-
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        const fd = new FormData(e.currentTarget);
-        batDau(async () => setKq(await xacNhanBill(fd)));
-      }}
-      className="inline"
-    >
-      <input type="hidden" name="maCongTrinh" value={maCongTrinh} />
-      <input type="hidden" name="thang" value={thang} />
-      <button
-        type="submit"
-        disabled={dangChay}
-        className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-60"
-      >
-        <ShieldCheck className="size-3.5" /> {dangChay ? "Đang duyệt…" : "Xác nhận Bill"}
-      </button>
-      <ThongBao kq={kq} />
-    </form>
-  );
-}

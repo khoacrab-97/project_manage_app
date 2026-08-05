@@ -33,17 +33,11 @@ export async function GET(_req: Request, { params }: RouteContext<"/api/bill/[ma
   const { thangs, dongs } = await layBOQ(maCongTrinh);
   const ky = thangs.find((t) => t.thang === thang);
   if (!ky) return new Response(`Chưa có Bill tháng ${thang}`, { status: 404 });
-  if (ky.trangThai !== "DA_XAC_NHAN") {
-    return new Response(
-      `Bill tháng ${thang} chưa được xác nhận. Chỉ xuất được Bill đã xác nhận.`,
-      { status: 409 }
-    );
-  }
 
   const giaTri = giaTriBillThang(dongs, thang);
-  // Luỹ kế "đã ra bill" tính tới hết tháng đang xuất, chỉ gồm tháng đã xác nhận.
+  // Luỹ kế "đã ra bill" tính tới hết tháng đang xuất (không còn bước xác nhận).
   const luyKe = thangs
-    .filter((t) => t.trangThai === "DA_XAC_NHAN" && t.thang <= thang)
+    .filter((t) => t.thang <= thang)
     .reduce((a, t) => a + giaTriBillThang(dongs, t.thang), 0);
   const ttHopDong = dongs.reduce((a, d) => a + d.ttHopDong, 0);
   const tienDo = ttHopDong ? luyKe / ttHopDong : 0;

@@ -51,7 +51,6 @@ export type HanhDong =
   | "sua_ke_hoach"
   | "nhap_du_lieu"
   | "nhap_boq"
-  | "xac_nhan_bill"
   | "quan_tri_nguoi_dung";
 
 /**
@@ -70,9 +69,6 @@ const QUYEN: Record<HanhDong, VaiTro[]> = {
   // Nhập khối lượng BOQ: đúng ba vai trò hiện trường. THU_KY CỐ Ý không có —
   // khác với nhap_du_lieu, đây là số liệu kỹ thuật phải do người ngoài công trường ghi.
   nhap_boq: ["ADMIN", "CHI_HUY_TRUONG", "CHUYEN_VIEN_CAO", "CAN_BO_KY_THUAT"],
-  // Xác nhận bill: chỉ huy trưởng là cấp có thẩm quyền (nên bản thân họ nhập là
-  // xác nhận luôn); Admin giữ quyền gỡ kẹt khi chỉ huy trưởng vắng.
-  xac_nhan_bill: ["ADMIN", "CHI_HUY_TRUONG"],
   quan_tri_nguoi_dung: ["ADMIN"],
 };
 

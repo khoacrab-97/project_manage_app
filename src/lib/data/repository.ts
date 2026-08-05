@@ -251,16 +251,7 @@ const billTuBOQ = cache(async () => {
   );
   const lamTron = new Map(projs.map((p) => [p.id, p.lamTronThanhTien]));
 
-  const daXacNhan = new Set(
-    (
-      await db.billThang.findMany({
-        where: { trangThai: "DA_XAC_NHAN" },
-        select: { projectId: true, thang: true },
-      })
-    ).map((b) => `${b.projectId}|${b.thang}`)
-  );
-
-  // Thành tiền TỪNG DÒNG (theo vị trí) cho mỗi `project|thang`.
+  // Không còn bước xác nhận: mọi khối lượng thực hiện đã nhập đều vào KPI.
   const ttTheoThang = new Map<string, number[]>();
   const ds = await db.bOQThucHien.findMany({
     select: { boqLineId: true, thang: true, khoiLuong: true },
@@ -269,7 +260,6 @@ const billTuBOQ = cache(async () => {
     const l = tra.get(t.boqLineId);
     if (!l) continue;
     const k = `${l.projectId}|${t.thang}`;
-    if (!daXacNhan.has(k)) continue; // chờ duyệt thì không vào KPI
     let arr = ttTheoThang.get(k);
     if (!arr) {
       arr = new Array(soDong.get(l.projectId) ?? 0).fill(0);
