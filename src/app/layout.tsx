@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Đường dẫn do middleware gắn vào header; layout không tự biết mình đang ở đâu.
+  // Đường dẫn do proxy gắn vào header; layout không tự biết mình đang ở đâu.
   const duongDan = (await headers()).get("x-duong-dan") ?? "/";
   const laTrangDangNhap = duongDan.startsWith("/dang-nhap");
 

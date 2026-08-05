@@ -93,9 +93,9 @@ async function main() {
   const cookieCht = await taoCookie("cht.test@noibo.local");
 
   // --- Cookie rác / phiên đã bị xoá phải bị đá về đăng nhập ---
-  // Đây là lỗi đã gặp thật: middleware chỉ kiểm tra CÓ cookie, nên cookie cũ lọt
+  // Đây là lỗi đã gặp thật: proxy chỉ kiểm tra CÓ cookie, nên cookie cũ lọt
   // qua và app hiện toàn số 0 thay vì bắt đăng nhập lại.
-  const cookieRac = "prmana_phien=" + "de".repeat(32);
+  const cookieRac = `prmana_phien=${"de".repeat(32)}`;
   const racRes = await fetch(`${GOC}/`, { headers: { cookie: cookieRac }, redirect: "manual" });
   ok(
     racRes.status === 307 || racRes.status === 302,

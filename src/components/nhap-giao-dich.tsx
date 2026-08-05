@@ -182,7 +182,7 @@ export function BangGiaoDich({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [khoa, chonDong, dongs.length]);
+  }, [khoa, chonDong]);
 
   const suaO = (i: number, k: keyof Dong, v: string) =>
     setDongs((s) => s.map((d, j) => (j === i ? { ...d, [k]: v } : d)));
@@ -191,6 +191,10 @@ export function BangGiaoDich({
   const xoaDong = (i: number) => {
     setDongs((s) => (s.length > 1 ? s.filter((_, j) => j !== i) : s));
     setChonDong(null);
+  };
+  const chonDongNhap = (i: number) => {
+    setChonDong(i);
+    (document.activeElement as HTMLElement | null)?.blur?.();
   };
 
   // Di chuyển giữa các ô bằng phím mũi tên / Enter như bảng tính.
@@ -407,14 +411,16 @@ export function BangGiaoDich({
               return (
                 <tr key={i} className={chonDong === i ? "bg-nhannhat" : ""}>
                   <td
-                    onClick={() => {
-                      setChonDong(i);
-                      (document.activeElement as HTMLElement | null)?.blur?.();
-                    }}
-                    title="Bấm để chọn dòng (Insert thêm / Delete xoá)"
-                    className={`sticky left-0 z-10 cursor-pointer border border-vien px-2 py-1 text-center text-[11px] select-none ${chonDong === i ? "bg-nhan font-semibold text-white" : "bg-the text-chunhat hover:bg-nen"}`}
+                    className={`sticky left-0 z-10 border border-vien p-0 text-center text-[11px] ${chonDong === i ? "bg-nhan font-semibold text-white" : "bg-the text-chunhat hover:bg-nen"}`}
                   >
-                    {i + 1}
+                    <button
+                      type="button"
+                      onClick={() => chonDongNhap(i)}
+                      title="Bấm để chọn dòng (Insert thêm / Delete xoá)"
+                      className="block h-full w-full cursor-pointer px-2 py-1 text-current select-none"
+                    >
+                      {i + 1}
+                    </button>
                   </td>
                   {COT.map((c, ci) => {
                     const so = !!c.so;
