@@ -249,7 +249,7 @@ export function NutThemDong({
             <option value="">— Lên đầu bảng —</option>
             {dongs.map((d) => (
               <option key={d.id} value={d.id}>
-                Sau {d.stt} — {d.noiDung.slice(0, 40)}
+                Sau {d.stt} — {d.noiDung.replace(/<[^>]*>/g, "").slice(0, 40)}
               </option>
             ))}
           </select>

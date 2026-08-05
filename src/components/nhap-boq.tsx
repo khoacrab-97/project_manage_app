@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Download, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
+import { Bold, Check, Download, Italic, Pencil, Plus, Trash2, Underline, Upload, X } from "lucide-react";
 import {
   docFileBOQ,
   doiThangBill,
   luuKhoiLuong,
   luuThietLapVAT,
+  suaNhieuDongBOQ,
   themBillThang,
   themGiamGiaBOQ,
   themNhieuDongBOQ,
@@ -19,6 +20,12 @@ import { khoiLuong as dinhDangKL, tien, tienLe } from "@/lib/format";
 import { docSoVN } from "@/lib/so-vn";
 
 const O = "rounded-md border border-vien bg-the px-2 py-1 text-xs";
+
+/** Bỏ thẻ định dạng, lấy chữ thuần (cho tooltip title). */
+const boChu = (s: string) => s.replace(/<[^>]*>/g, "");
+
+/** Số -> chuỗi kiểu Việt "1.234,56" để nhập lại (server đọc theo cùng quy ước). */
+const soVN = (n: number) => (Number.isFinite(n) ? n.toLocaleString("vi-VN", { maximumFractionDigits: 6 }) : "");
 
 function ThongBao({ kq }: { kq: KetQuaBOQ | null }) {
   if (!kq) return null;
@@ -136,6 +143,8 @@ export function HopThoaiBill({
   cots,
   duocNhap,
   lamTronThanhTien,
+  donGiaGomVAT,
+  vatPhanTram,
 }: {
   maCongTrinh: string;
   thang: string;
@@ -146,6 +155,8 @@ export function HopThoaiBill({
   cots: { id: string; ten: string }[];
   duocNhap: boolean;
   lamTronThanhTien: boolean;
+  donGiaGomVAT: boolean;
+  vatPhanTram: number;
 }) {
   const router = useRouter();
   const dong = useCallback(() => router.push(`${base}?tab=boq`), [base, router]);
@@ -157,13 +168,20 @@ export function HopThoaiBill({
   );
   const [kq, setKq] = useState<KetQuaBOQ | null>(null);
   const [dangChay, batDau] = useTransition();
-  const luoiRef = useRef<HTMLTableSectionElement>(null);
   // Mở ra là chế độ XEM; bấm "Sửa" mới cập nhật được.
   const [khoa, setKhoa] = useState(true);
   const capNhat = duocNhap && !khoa;
   // Đổi tháng của Bill (dời cả khối lượng đã nhập sang tháng mới).
   const [thangMoi, setThangMoi] = useState(thang);
   const [dangDoi, doiTransition] = useTransition();
+  // Chọn ô cột "Khối lượng" kiểu Excel: neoKL/cuoiKL = hàng đầu/cuối của vùng chọn,
+  // suaKL = hàng đang gõ. Chọn nhiều ô để xoá nhanh; bấm 2 lần / gõ / F2 để sửa.
+  const [neoKL, setNeoKL] = useState<number | null>(null);
+  const [cuoiKL, setCuoiKL] = useState<number | null>(null);
+  const [suaKL, setSuaKL] = useState<number | null>(null);
+  const keoKL = useRef(false);
+  const bamKL = useRef<{ r: number; t: number } | null>(null);
+  const klRef = useRef<HTMLInputElement | null>(null);
 
   const doiThang = () => {
     const fd = new FormData();
@@ -180,15 +198,94 @@ export function HopThoaiBill({
   const datLaiTuProps = () => {
     setKl(Object.fromEntries(dongs.map((d) => [d.id, d.klHienTai ? String(d.klHienTai) : ""])));
     setXong(Object.fromEntries(dongs.map((d) => [d.id, d.hoanThanh])));
+    setNeoKL(null);
+    setCuoiKL(null);
+    setSuaKL(null);
   };
 
   useEffect(() => {
     const f = (e: KeyboardEvent) => {
-      if (e.key === "Escape") dong();
+      if (e.key !== "Escape") return;
+      // Đang gõ trong một ô nhập -> để ô đó tự xử lý Esc (thoát sửa), không đóng hộp.
+      const ae = document.activeElement;
+      if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.tagName === "SELECT")) return;
+      dong();
     };
     window.addEventListener("keydown", f);
     return () => window.removeEventListener("keydown", f);
   }, [dong]);
+
+  // Kết thúc kéo chọn vùng khi thả chuột.
+  useEffect(() => {
+    const up = () => {
+      keoKL.current = false;
+    };
+    window.addEventListener("mouseup", up);
+    return () => window.removeEventListener("mouseup", up);
+  }, []);
+
+  // Vào chế độ sửa ô Khối lượng -> focus, đưa con trỏ về cuối.
+  useEffect(() => {
+    if (suaKL === null) return;
+    const el = klRef.current;
+    if (!el) return;
+    el.focus();
+    const n = el.value.length;
+    try {
+      el.setSelectionRange(n, n);
+    } catch {
+      /* noop */
+    }
+  }, [suaKL]);
+
+  // Phím tắt chọn ô Khối lượng (khi KHÔNG gõ trong ô): mũi tên di chuyển, Delete xoá
+  // cả vùng, gõ ký tự / F2 vào sửa.
+  useEffect(() => {
+    if (!capNhat) return;
+    const onKey = (e: KeyboardEvent) => {
+      const ae = document.activeElement;
+      if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.tagName === "SELECT")) return;
+      if (neoKL === null) return;
+      const cur = cuoiKL ?? neoKL;
+      const move = (nr: number, keep: boolean) => {
+        e.preventDefault();
+        const p = Math.max(0, Math.min(dongs.length - 1, nr));
+        if (keep) setCuoiKL(p);
+        else {
+          setNeoKL(p);
+          setCuoiKL(p);
+        }
+      };
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        const a = Math.min(neoKL, cur);
+        const b = Math.max(neoKL, cur);
+        setKl((prev) => {
+          const n = { ...prev };
+          for (let i = a; i <= b; i++) {
+            const d = dongs[i];
+            if (d) n[d.id] = "";
+          }
+          return n;
+        });
+      } else if (e.key === "ArrowDown") move(cur + 1, e.shiftKey);
+      else if (e.key === "ArrowUp") move(cur - 1, e.shiftKey);
+      else if (e.key === "Enter") move(neoKL + 1, false);
+      else if (e.key === "F2") {
+        e.preventDefault();
+        setSuaKL(neoKL);
+      } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        const d = dongs[neoKL];
+        if (d) {
+          setKl((p) => ({ ...p, [d.id]: e.key }));
+          setSuaKL(neoKL);
+        }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [capNhat, neoKL, cuoiKL, dongs]);
 
   const soCua = (v: string) => {
     const n = Number(v.replace(/\s/g, "").replace(",", "."));
@@ -199,28 +296,63 @@ export function HopThoaiBill({
     return lamTronThanhTien ? Math.round(v) : v;
   };
   const tongTien = dongs.reduce((a, d) => a + ttThang(d), 0);
+  // Giá trị Bill hiện theo đơn giá (gồm/chưa VAT tuỳ BOQ) kèm giá trị đối ứng VAT.
+  const vat = (vatPhanTram || 0) / 100;
+  const nhanChinhVAT = donGiaGomVAT ? "gồm VAT" : "chưa VAT";
+  const nhanPhuVAT = donGiaGomVAT ? "chưa VAT" : "gồm VAT";
+  const giaPhuVAT = donGiaGomVAT ? Math.round(tongTien / (1 + vat)) : Math.round(tongTien * (1 + vat));
 
-  // Di chuyển dọc cột Khối lượng bằng mũi tên / Enter.
-  const diChuyen = (e: React.KeyboardEvent) => {
-    const inp = e.target as HTMLInputElement;
-    const r = Number(inp.dataset.r);
-    if (Number.isNaN(r)) return;
-    const den = (rr: number) => {
-      const t = luoiRef.current?.querySelector<HTMLElement>(`input[data-r="${rr}"][data-kl]`);
-      if (t) {
-        e.preventDefault();
-        t.focus();
-      }
-    };
-    if (e.key === "ArrowDown" || e.key === "Enter") den(r + 1);
-    else if (e.key === "ArrowUp") den(r - 1);
+  const trongVungKL = (i: number) =>
+    neoKL !== null && cuoiKL !== null && i >= Math.min(neoKL, cuoiKL) && i <= Math.max(neoKL, cuoiKL);
+
+  // Chuột trên ô Khối lượng: bấm chọn, kéo/Shift chọn vùng, bấm 2 lần để sửa.
+  const onXuongKL = (e: React.MouseEvent, i: number) => {
+    const now = Date.now();
+    const last = bamKL.current;
+    if (!e.shiftKey && last && last.r === i && now - last.t < 400) {
+      bamKL.current = null;
+      setNeoKL(i);
+      setCuoiKL(i);
+      setSuaKL(i);
+      return;
+    }
+    bamKL.current = { r: i, t: now };
+    setSuaKL(null);
+    if (e.shiftKey && neoKL !== null) setCuoiKL(i);
+    else {
+      setNeoKL(i);
+      setCuoiKL(i);
+    }
+    keoKL.current = true;
+  };
+  const onVaoKL = (i: number) => {
+    if (keoKL.current) setCuoiKL(i);
   };
 
-  // Dán một cột khối lượng từ Excel/Sheets, điền xuống từ dòng đang chọn.
+  // Phím trong ô Khối lượng đang sửa: Enter/mũi tên lưu & rời ô, Esc thoát sửa.
+  const onPhimKL = (i: number) => (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === "ArrowDown") {
+      e.preventDefault();
+      const nr = Math.min(dongs.length - 1, i + 1);
+      setSuaKL(null);
+      setNeoKL(nr);
+      setCuoiKL(nr);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const nr = Math.max(0, i - 1);
+      setSuaKL(null);
+      setNeoKL(nr);
+      setCuoiKL(nr);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setSuaKL(null);
+    }
+  };
+
+  // Dán một cột khối lượng từ Excel/Sheets, điền xuống từ ô neo (hoặc ô đang sửa).
   const dan = (e: React.ClipboardEvent) => {
-    const t = e.target as HTMLElement;
-    if (!(t instanceof HTMLInputElement) || t.dataset.kl === undefined) return;
-    const r0 = Number(t.dataset.r);
+    const goc = suaKL ?? neoKL;
+    if (goc === null) return;
     const text = e.clipboardData.getData("text/plain");
     if (!text?.includes("\n")) return; // 1 ô -> để mặc định
     e.preventDefault();
@@ -231,12 +363,13 @@ export function HopThoaiBill({
       .map((l) => l.split("\t")[0].trim());
     setKl((prev) => {
       const next = { ...prev };
-      cot.forEach((v, i) => {
-        const d = dongs[r0 + i];
+      cot.forEach((v, k) => {
+        const d = dongs[goc + k];
         if (d) next[d.id] = v;
       });
       return next;
     });
+    setSuaKL(null);
   };
 
   const luu = () => {
@@ -320,16 +453,19 @@ export function HopThoaiBill({
                 <th className={`${oTh} bg-nhannhat text-right`}>Thành tiền {nhan}</th>
               </tr>
             </thead>
-            <tbody ref={luoiRef}>
+            <tbody>
               {dongs.map((d, i) => (
                 <tr key={d.id} className={xong[d.id] ? "bg-nen/50" : ""}>
                   <td className={`${oTd} whitespace-nowrap`}>
                     {d.stt}
                     {d.hoanThanh ? <span className="ml-1 text-emerald-600 dark:text-emerald-400">✓</span> : null}
                   </td>
-                  <td className={`${oTd} max-w-65 truncate`} title={d.noiDung}>
-                    {d.noiDung}
-                  </td>
+                  <td
+                    className={`${oTd} max-w-65 truncate`}
+                    title={boChu(d.noiDung)}
+                    // biome-ignore lint/security/noDangerouslySetInnerHtml: nội dung BOQ đã lọc còn b/i/u ở server (locDinhDang)
+                    dangerouslySetInnerHTML={{ __html: d.noiDung }}
+                  />
                   <td className={`${oTd} whitespace-nowrap`}>{d.dvt}</td>
                   {cots.map((c) => (
                     <td key={c.id} className={oTd}>
@@ -344,18 +480,31 @@ export function HopThoaiBill({
                   <td className={`${oTd} text-right text-chunhat`}>
                     {d.klKyTruoc ? dinhDangKL(d.klKyTruoc) : "—"}
                   </td>
-                  <td className={`${oTd} bg-nhannhat/40 text-right`}>
+                  <td className={`${oTd} bg-nhannhat/40 p-0 text-right`}>
                     {capNhat ? (
-                      <input
-                        data-r={i}
-                        data-kl=""
-                        value={kl[d.id] ?? ""}
-                        onChange={(e) => setKl({ ...kl, [d.id]: e.target.value })}
-                        onKeyDown={diChuyen}
-                        inputMode="decimal"
-                        placeholder="0"
-                        className={`${O} w-24 text-right`}
-                      />
+                      suaKL === i ? (
+                        <input
+                          ref={klRef}
+                          data-r={i}
+                          data-kl=""
+                          value={kl[d.id] ?? ""}
+                          onChange={(e) => setKl({ ...kl, [d.id]: e.target.value })}
+                          onKeyDown={onPhimKL(i)}
+                          inputMode="decimal"
+                          placeholder="0"
+                          className="w-24 bg-white px-2 py-1 text-right text-xs ring-2 ring-nhan outline-none ring-inset dark:bg-black/40"
+                        />
+                      ) : (
+                        <div
+                          onMouseDown={(e) => onXuongKL(e, i)}
+                          onMouseEnter={() => onVaoKL(i)}
+                          className={`min-h-[1.75rem] cursor-cell px-2 py-1 text-right text-xs select-none ${
+                            trongVungKL(i) ? "bg-nhan/15 dark:bg-nhan/25" : ""
+                          } ${neoKL === i ? "ring-2 ring-nhan ring-inset" : ""}`}
+                        >
+                          {kl[d.id] ? dinhDangKL(soCua(kl[d.id])) : " "}
+                        </div>
+                      )
                     ) : (
                       <span>{kl[d.id] ? dinhDangKL(soCua(kl[d.id])) : "—"}</span>
                     )}
@@ -391,11 +540,16 @@ export function HopThoaiBill({
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-vien px-4 py-3">
           <p className="text-xs">
-            <span className="text-chunhat">Giá trị Bill {nhan}: </span>
+            <span className="text-chunhat">Giá trị Bill {nhan} ({nhanChinhVAT}): </span>
             <strong className="so text-sm">{tien(tongTien)} đ</strong>
+            {vat > 0 ? (
+              <span className="ml-2 text-chunhat">
+                · {nhanPhuVAT}: <strong className="so text-chu">{tien(giaPhuVAT)} đ</strong>
+              </span>
+            ) : null}
             {capNhat ? (
-              <span className="ml-2 text-[11px] text-chunhat">
-                Sửa ô Khối lượng như Excel · dán được một cột từ ngoài vào.
+              <span className="ml-2 block text-[11px] text-chunhat">
+                Chọn/kéo ô Khối lượng (Shift+bấm mở rộng) · Delete xoá vùng · bấm 2 lần để sửa · dán một cột.
               </span>
             ) : null}
           </p>
@@ -1123,6 +1277,239 @@ export function GiamGiaBOQ({
       <button type="button" onClick={() => setMo(false)} className="mt-2 rounded-md border border-vien px-3 py-1 text-xs">
         Đóng
       </button>
+    </div>
+  );
+}
+
+interface DongSuaBOQ {
+  id: string;
+  stt: string;
+  noiDung: string;
+  dvt: string;
+  khoiLuong: number;
+  donGia: number;
+}
+
+/**
+ * Ô nội dung định dạng được (contenteditable). Đặt nội dung ban đầu MỘT lần lúc
+ * gắn để React không ghi đè lúc render lại (mất chữ đang gõ). Toolbar in đậm/
+ * nghiêng/gạch chân dùng execCommand tác động lên ô đang focus.
+ */
+function ONoiDung({
+  html,
+  dangKy,
+  onSua,
+}: {
+  html: string;
+  dangKy: (el: HTMLDivElement | null) => void;
+  onSua: () => void;
+}) {
+  return (
+    <div
+      contentEditable
+      suppressContentEditableWarning
+      onInput={onSua}
+      ref={(el) => {
+        dangKy(el);
+        if (el && el.dataset.dat !== "1") {
+          el.innerHTML = html;
+          el.dataset.dat = "1";
+        }
+      }}
+      className="min-h-[2rem] w-full rounded-md border border-vien bg-the px-2 py-1 text-xs break-words outline-none focus:ring-2 focus:ring-nhan focus:ring-inset"
+    />
+  );
+}
+
+/**
+ * Sửa BOQ tại chỗ: chỉnh lỗi nhỏ ở nội dung (và STT/ĐVT/khối lượng/đơn giá) mà
+ * KHÔNG phải import lại — import ghi đè sẽ xoá khối lượng Bill các tháng đã nhập.
+ * Nội dung có định dạng cơ bản: in đậm, nghiêng, gạch chân.
+ */
+export function SuaBOQ({ maCongTrinh, dongs }: { maCongTrinh: string; dongs: DongSuaBOQ[] }) {
+  const [mo, setMo] = useState(false);
+  const tuDongs = () =>
+    dongs.map((d) => ({ id: d.id, stt: d.stt, dvt: d.dvt, kl: soVN(d.khoiLuong), dg: soVN(d.donGia) }));
+  const [rows, setRows] = useState(tuDongs);
+  const ndRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  // Chỉ gửi các dòng NGƯỜI DÙNG ĐÃ SỬA — tránh validate/ghi cả bảng (dòng trống sẵn
+  // có trong BOQ sẽ làm hỏng cả lượt lưu) và tránh cập nhật thừa hàng trăm dòng.
+  const dirtyRef = useRef<Set<string>>(new Set());
+  const [kq, setKq] = useState<KetQuaBOQ | null>(null);
+  const [dangChay, batDau] = useTransition();
+  const ndBanDau = new Map(dongs.map((d) => [d.id, d.noiDung]));
+
+  useEffect(() => {
+    if (!mo) return;
+    const f = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMo(false);
+    };
+    window.addEventListener("keydown", f);
+    return () => window.removeEventListener("keydown", f);
+  }, [mo]);
+
+  const moLai = () => {
+    setRows(tuDongs());
+    ndRefs.current = {};
+    dirtyRef.current = new Set();
+    setKq(null);
+    setMo(true);
+  };
+  const suaO = (id: string, k: "stt" | "dvt" | "kl" | "dg", v: string) => {
+    dirtyRef.current.add(id);
+    setRows((s) => s.map((r) => (r.id === id ? { ...r, [k]: v } : r)));
+  };
+  const dinhDang = (lenh: "bold" | "italic" | "underline") => document.execCommand(lenh, false);
+
+  const luu = () => {
+    const daSua = rows.filter((r) => dirtyRef.current.has(r.id));
+    if (!daSua.length) {
+      setKq({ ok: false, thongDiep: "Chưa sửa dòng nào." });
+      return;
+    }
+    const fd = new FormData();
+    fd.set("maCongTrinh", maCongTrinh);
+    for (const r of daSua) {
+      fd.append("id", r.id);
+      fd.append("stt", r.stt);
+      fd.append("noiDung", ndRefs.current[r.id]?.innerHTML ?? "");
+      fd.append("dvt", r.dvt);
+      fd.append("khoiLuong", r.kl);
+      fd.append("donGia", r.dg);
+    }
+    batDau(async () => {
+      const res = await suaNhieuDongBOQ(fd);
+      setKq(res);
+      if (res.ok) setTimeout(() => setMo(false), 900);
+    });
+  };
+
+  if (!mo) {
+    return (
+      <button
+        type="button"
+        onClick={moLai}
+        className="inline-flex items-center gap-1 rounded-md border border-vien px-2.5 py-1 text-xs font-medium hover:bg-nen"
+      >
+        <Pencil className="size-3.5" /> Sửa BOQ
+      </button>
+    );
+  }
+
+  const nutDD = "rounded border border-vien px-2 py-1 text-xs font-semibold hover:bg-nen";
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
+      <div className="my-6 w-full max-w-5xl rounded-xl border border-vien bg-the shadow-xl">
+        <div className="flex items-center justify-between border-b border-vien px-4 py-3">
+          <div>
+            <h2 className="text-sm font-semibold">Sửa BOQ</h2>
+            <p className="mt-0.5 text-xs text-chunhat">
+              Chỉnh lỗi nhỏ ở nội dung mà không import lại (giữ khối lượng Bill đã nhập). Bôi đen chữ
+              rồi bấm <strong>B</strong>/<strong>I</strong>/<strong>U</strong> để định dạng.
+            </p>
+          </div>
+          <button type="button" onClick={() => setMo(false)} className="rounded-md border border-vien p-1.5" title="Đóng (Esc)">
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* Thanh định dạng dùng chung, tác động lên ô nội dung đang focus. */}
+        <div className="flex items-center gap-1.5 border-b border-vien bg-nhannhat/40 px-4 py-2">
+          <span className="mr-1 text-[11px] text-chunhat">Định dạng:</span>
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => dinhDang("bold")} className={nutDD} title="In đậm">
+            <Bold className="size-3.5" />
+          </button>
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => dinhDang("italic")} className={nutDD} title="Nghiêng">
+            <Italic className="size-3.5" />
+          </button>
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => dinhDang("underline")} className={nutDD} title="Gạch chân">
+            <Underline className="size-3.5" />
+          </button>
+        </div>
+
+        <div className="max-h-[60vh] overflow-auto">
+          <table className="w-full border-collapse text-sm">
+            <thead className="sticky top-0 z-10 bg-the">
+              <tr>
+                {["STT", "Nội dung công việc", "ĐVT", "Khối lượng", "Đơn giá"].map((h, i) => (
+                  <th
+                    key={h}
+                    className={`border border-vien bg-nen px-2 py-1.5 text-xs font-semibold whitespace-nowrap text-chunhat ${i >= 3 ? "text-right" : "text-left"}`}
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  <td className="border border-vien p-1 align-top">
+                    <input
+                      value={r.stt}
+                      onChange={(e) => suaO(r.id, "stt", e.target.value)}
+                      className={`${O} w-16`}
+                    />
+                  </td>
+                  <td className="border border-vien p-1 align-top">
+                    <ONoiDung
+                      html={ndBanDau.get(r.id) ?? ""}
+                      dangKy={(el) => {
+                        ndRefs.current[r.id] = el;
+                      }}
+                      onSua={() => dirtyRef.current.add(r.id)}
+                    />
+                  </td>
+                  <td className="border border-vien p-1 align-top">
+                    <input
+                      value={r.dvt}
+                      onChange={(e) => suaO(r.id, "dvt", e.target.value)}
+                      className={`${O} w-20`}
+                    />
+                  </td>
+                  <td className="border border-vien p-1 text-right align-top">
+                    <input
+                      value={r.kl}
+                      onChange={(e) => suaO(r.id, "kl", e.target.value)}
+                      inputMode="decimal"
+                      className={`${O} w-28 text-right`}
+                    />
+                  </td>
+                  <td className="border border-vien p-1 text-right align-top">
+                    <input
+                      value={r.dg}
+                      onChange={(e) => suaO(r.id, "dg", e.target.value)}
+                      inputMode="decimal"
+                      className={`${O} w-28 text-right`}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 border-t border-vien px-4 py-3">
+          <span className="text-[11px] text-chunhat">
+            Số kiểu Việt (dấu <strong>,</strong> thập phân, <strong>.</strong> ngăn nghìn).
+          </span>
+          <div className="grow" />
+          <button type="button" onClick={() => setMo(false)} className="rounded-md border border-vien px-3 py-1.5 text-xs">
+            Đóng
+          </button>
+          <button
+            type="button"
+            onClick={luu}
+            disabled={dangChay}
+            className="inline-flex items-center gap-1 rounded-md bg-nhan px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+          >
+            <Check className="size-3.5" /> {dangChay ? "Đang lưu…" : "Lưu"}
+          </button>
+        </div>
+        <div className="px-4 pb-3">
+          <ThongBao kq={kq} />
+        </div>
+      </div>
     </div>
   );
 }

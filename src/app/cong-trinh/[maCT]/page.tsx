@@ -41,7 +41,7 @@ import { nguoiDungHienTai } from "@/lib/auth/phien";
 import { coQuyen } from "@/lib/auth/quyen";
 import { motGiaTri } from "@/lib/search-params";
 import { NGAY_HIEN_TAI } from "@/lib/thresholds";
-import { GiamGiaBOQ, HopThoaiBill, ImportBOQ, LuoiNhapBOQ, NutThemBill, ThietLapVAT } from "@/components/nhap-boq";
+import { GiamGiaBOQ, HopThoaiBill, ImportBOQ, LuoiNhapBOQ, NutThemBill, SuaBOQ, ThietLapVAT } from "@/components/nhap-boq";
 import { BangGiaoDich } from "@/components/nhap-giao-dich";
 import { NutThemCot, NutThemDong } from "@/components/cot-boq";
 
@@ -479,6 +479,17 @@ async function BOQTab({
             maCongTrinh={maCongTrinh}
             dongs={dongs.map((d) => ({ id: d.id, stt: d.stt, noiDung: d.noiDung }))}
           />
+          <SuaBOQ
+            maCongTrinh={maCongTrinh}
+            dongs={dongs.map((d) => ({
+              id: d.id,
+              stt: d.stt,
+              noiDung: d.noiDung,
+              dvt: d.dvt,
+              khoiLuong: d.klHopDong,
+              donGia: d.donGia,
+            }))}
+          />
           <LuoiNhapBOQ maCongTrinh={maCongTrinh} />
           <ImportBOQ maCongTrinh={maCongTrinh} daCoBOQ />
           <NutThemCot maCongTrinh={maCongTrinh} />
@@ -518,6 +529,8 @@ async function BOQTab({
           nguoiNhap={kyChon.nguoiNhap || ""}
           duocNhap={duocNhap}
           lamTronThanhTien={lamTronThanhTien}
+          donGiaGomVAT={donGiaGomVAT}
+          vatPhanTram={vatPhanTram}
           cots={cots.map((c) => ({ id: c.id, ten: c.ten }))}
           dongs={dongs.map((d) => ({
             id: d.id,
@@ -603,9 +616,12 @@ function SpreadsheetBOQ({
                   </span>
                 ) : null}
               </td>
-              <td className="border border-vien px-2 py-1 text-xs" style={{ minWidth: 280 }}>
-                {d.noiDung}
-              </td>
+              <td
+                className="border border-vien px-2 py-1 text-xs"
+                style={{ minWidth: 280 }}
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: nội dung BOQ đã lọc còn b/i/u ở server (locDinhDang)
+                dangerouslySetInnerHTML={{ __html: d.noiDung }}
+              />
               <td className={oS}>{d.dvt}</td>
               <td className={`${oS} so text-right`}>{khoiLuong(d.klHopDong)}</td>
               <td className={`${oS} so text-right`}>{tienLe(d.donGia)}</td>

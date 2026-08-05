@@ -449,6 +449,92 @@ export async function themNhieuDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
 }
 
 /**
+ * Chỉ giữ định dạng in đậm / nghiêng / gạch chân trong nội dung BOQ; bỏ mọi thẻ
+ * và thuộc tính khác (chống XSS). Chuẩn hoá strong→b, em→i cho gọn.
+ */
+function locDinhDang(raw: string): string {
+  return raw
+    .replace(/<\s*strong(\s[^>]*)?>/gi, "<b>")
+    .replace(/<\s*\/\s*strong\s*>/gi, "</b>")
+    .replace(/<\s*em(\s[^>]*)?>/gi, "<i>")
+    .replace(/<\s*\/\s*em\s*>/gi, "</i>")
+    // Bỏ thuộc tính của chính b/i/u.
+    .replace(/<\s*(b|i|u)(\s[^>]*)?>/gi, "<$1>")
+    // Xuống dòng -> khoảng trắng (nội dung BOQ là một dòng).
+    .replace(/<br\s*\/?>/gi, " ")
+    // Bỏ MỌI thẻ khác (giữ phần chữ bên trong).
+    .replace(/<\/?(?!(?:b|i|u)\b)[a-z][^>]*>/gi, "")
+    .trim();
+}
+
+/**
+ * Sửa nội dung nhiều dòng BOQ đang có (chỉnh lỗi nhỏ), KHÔNG import lại — vì import
+ * ghi đè sẽ xoá mất khối lượng Bill các tháng đã nhập. Nội dung giữ định dạng cơ
+ * bản (in đậm/nghiêng/gạch chân) sau khi lọc. Mỗi trường gửi dạng mảng theo dòng.
+ */
+export async function suaNhieuDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
+  batBuocQuyen(await nguoiDungHienTai(), "nhap_boq");
+
+  const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
+  const kq = await congTrinhChoGhi(maCongTrinh);
+  if ("loi" in kq) return { ok: false, thongDiep: kq.loi };
+  const ct = kq.ct;
+
+  const ids = formData.getAll("id").map(String);
+  const stts = formData.getAll("stt").map((v) => String(v).trim());
+  const noiDungs = formData.getAll("noiDung").map(String);
+  const dvts = formData.getAll("dvt").map((v) => String(v).trim());
+  const kls = formData.getAll("khoiLuong").map(String);
+  const dgs = formData.getAll("donGia").map(String);
+  const so = (t: string) => Number(String(t).replace(/\s/g, "").replace(/\./g, "").replace(",", "."));
+
+  // Chỉ cho sửa dòng THUỘC công trình này (chống sửa xuyên công trình qua id đoán mò).
+  const cua = new Set(
+    (await db.bOQLine.findMany({ where: { projectId: ct.id }, select: { id: true } })).map((l) => l.id)
+  );
+
+  const dsSua: {
+    id: string;
+    stt: string;
+    noiDung: string;
+    dvt: string | null;
+    khoiLuong: number;
+    donGia: number;
+  }[] = [];
+  for (let i = 0; i < ids.length; i++) {
+    if (!cua.has(ids[i])) continue;
+    const stt = stts[i];
+    if (!stt) return { ok: false, thongDiep: `Dòng ${i + 1}: STT không được để trống.` };
+    const noiDung = locDinhDang(noiDungs[i] ?? "");
+    if (noiDung.replace(/<[^>]*>/g, "").trim() === "") {
+      return { ok: false, thongDiep: `${stt}: nội dung không được để trống.` };
+    }
+    const khoiLuong = kls[i] ? so(kls[i]) : 0;
+    const donGia = dgs[i] ? so(dgs[i]) : 0;
+    if (!Number.isFinite(khoiLuong) || khoiLuong < 0) {
+      return { ok: false, thongDiep: `${stt}: khối lượng phải là số không âm.` };
+    }
+    if (!Number.isFinite(donGia) || donGia < 0) {
+      return { ok: false, thongDiep: `${stt}: đơn giá phải là số không âm.` };
+    }
+    dsSua.push({ id: ids[i], stt, noiDung, dvt: dvts[i] || null, khoiLuong, donGia });
+  }
+
+  if (!dsSua.length) return { ok: false, thongDiep: "Không có dòng nào để sửa." };
+  await db.$transaction(
+    dsSua.map((u) =>
+      db.bOQLine.update({
+        where: { id: u.id },
+        data: { stt: u.stt, noiDung: u.noiDung, dvt: u.dvt, khoiLuong: u.khoiLuong, donGia: u.donGia },
+      })
+    )
+  );
+  revalidatePath(`/cong-trinh/${maCongTrinh}`);
+  revalidatePath("/");
+  return { ok: true, thongDiep: `Đã cập nhật ${dsSua.length} dòng BOQ.` };
+}
+
+/**
  * Đọc file BOQ Excel người dùng tải lên và trả về các dòng ĐÃ NHẬN DIỆN để đưa
  * vào bước review — CHƯA lưu gì. Người dùng sửa trên màn review rồi mới bấm lưu
  * (dùng `themNhieuDongBOQ`). Kiểm quyền + công trình trước khi cho đọc.
