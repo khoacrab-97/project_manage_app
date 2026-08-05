@@ -121,32 +121,39 @@ export async function luuKhoiLuong(formData: FormData): Promise<KetQuaBOQ> {
 
   const dong = await db.bOQLine.findMany({ where: { projectId: ct.id }, select: { id: true } });
 
+  const thucHienMoi: { boqLineId: string; thang: string; khoiLuong: number }[] = [];
+  const idsXong: string[] = [];
+  const idsChuaXong: string[] = [];
   for (const l of dong) {
     const raw = String(formData.get(`kl_${l.id}`) ?? "").trim().replace(/\s/g, "").replace(",", ".");
     const kl = raw === "" ? 0 : Number(raw);
     if (!Number.isFinite(kl) || kl < 0) {
       return { ok: false, thongDiep: "Khối lượng phải là số không âm." };
     }
-    if (kl === 0) {
-      await db.bOQThucHien.deleteMany({ where: { boqLineId: l.id, thang } });
-    } else {
-      await db.bOQThucHien.upsert({
-        where: { boqLineId_thang: { boqLineId: l.id, thang } },
-        create: { boqLineId: l.id, thang, khoiLuong: kl },
-        update: { khoiLuong: kl },
-      });
-    }
-
+    if (kl > 0) thucHienMoi.push({ boqLineId: l.id, thang, khoiLuong: kl });
     // Ô tích "đã thi công xong" — thuộc về công tác, không theo tháng.
-    const xong = formData.get(`xong_${l.id}`) === "on";
-    await db.bOQLine.update({ where: { id: l.id }, data: { hoanThanh: xong } });
+    (formData.get(`xong_${l.id}`) === "on" ? idsXong : idsChuaXong).push(l.id);
   }
 
-  // Không còn bước xác nhận: lưu là số liệu vào KPI ngay.
-  await db.billThang.update({
-    where: { id: bill.id },
-    data: { nguoiNhap: u!.email, ngayNhap: new Date(), trangThai: "DA_XAC_NHAN" },
-  });
+  // GỘP thành vài truy vấn trong MỘT giao dịch thay vì 2 lệnh mỗi dòng chạy tuần
+  // tự — BOQ vài trăm dòng mà round-trip từng dòng lên Railway thì rất lâu.
+  // Xoá sạch khối lượng tháng này của các dòng rồi ghi lại dòng có số (>0).
+  const ids = dong.map((l) => l.id);
+  await db.$transaction([
+    db.bOQThucHien.deleteMany({ where: { boqLineId: { in: ids }, thang } }),
+    ...(thucHienMoi.length ? [db.bOQThucHien.createMany({ data: thucHienMoi })] : []),
+    ...(idsXong.length
+      ? [db.bOQLine.updateMany({ where: { id: { in: idsXong } }, data: { hoanThanh: true } })]
+      : []),
+    ...(idsChuaXong.length
+      ? [db.bOQLine.updateMany({ where: { id: { in: idsChuaXong } }, data: { hoanThanh: false } })]
+      : []),
+    // Không còn bước xác nhận: lưu là số liệu vào KPI ngay.
+    db.billThang.update({
+      where: { id: bill.id },
+      data: { nguoiNhap: u!.email, ngayNhap: new Date(), trangThai: "DA_XAC_NHAN" },
+    }),
+  ]);
 
   revalidatePath(`/cong-trinh/${maCongTrinh}`);
   revalidatePath("/");
@@ -353,7 +360,15 @@ export async function themNhieuDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
   let thuTu = (max._max.thuTu ?? -1) + 1;
 
   const loi: string[] = [];
-  let them = 0;
+  const dsMoi: {
+    projectId: string;
+    stt: string;
+    noiDung: string;
+    dvt: string | null;
+    khoiLuong: number;
+    donGia: number;
+    thuTu: number;
+  }[] = [];
   for (let i = 0; i < stts.length; i++) {
     const stt = stts[i];
     const noiDung = noiDungs[i] ?? "";
@@ -376,11 +391,13 @@ export async function themNhieuDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
       loi.push(`${stt}: đơn giá phải là số không âm`);
       continue;
     }
-    await db.bOQLine.create({
-      data: { projectId: ct.id, stt, noiDung, dvt: dvts[i] || null, khoiLuong, donGia, thuTu: thuTu++ },
-    });
-    them++;
+    dsMoi.push({ projectId: ct.id, stt, noiDung, dvt: dvts[i] || null, khoiLuong, donGia, thuTu: thuTu++ });
   }
+
+  // Ghi MỘT lệnh thay vì create từng dòng tuần tự — import file vài trăm dòng lên
+  // Railway mà chạy tuần tự thì rất lâu.
+  if (dsMoi.length) await db.bOQLine.createMany({ data: dsMoi });
+  const them = dsMoi.length;
 
   if (!them && !loi.length) return { ok: false, thongDiep: "Chưa nhập dòng BOQ nào." };
   revalidatePath(`/cong-trinh/${maCongTrinh}`);
