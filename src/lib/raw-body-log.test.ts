@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { captureRawBodyFields, encodeBody, encodingForBody } from "./raw-body-log";
+import {
+  captureRawBodyFields,
+  captureServerActionRequestFields,
+  captureServerActionResponseFields,
+  encodeBody,
+  encodingForBody,
+} from "./raw-body-log";
 
 describe("raw body logging", () => {
   it("chooses readable encoding for text bodies", () => {
@@ -54,6 +60,32 @@ describe("raw body logging", () => {
       requestBodyBytes: 0,
       requestBodyEncoding: "utf8",
       requestBodyRaw: "",
+    });
+  });
+
+  it("captures server action form data as raw json", async () => {
+    const formData = new FormData();
+    formData.set("maCongTrinh", "HL-00105");
+    formData.set("isActive", "on");
+
+    const fields = await captureServerActionRequestFields([formData]);
+
+    expect(fields).toMatchObject({
+      requestContentType: "application/json; kind=server-action-args",
+      requestBodyEncoding: "utf8",
+    });
+    expect(String(fields.requestBodyRaw)).toContain('"type":"FormData"');
+    expect(String(fields.requestBodyRaw)).toContain('"maCongTrinh"');
+    expect(String(fields.requestBodyRaw)).toContain('"HL-00105"');
+  });
+
+  it("captures server action result as raw json", async () => {
+    await expect(
+      captureServerActionResponseFields({ ok: true, thongDiep: "Đã cập nhật HL-00105." })
+    ).resolves.toMatchObject({
+      responseContentType: "application/json; kind=server-action-result",
+      responseBodyEncoding: "utf8",
+      responseBodyRaw: '{"ok":true,"thongDiep":"Đã cập nhật HL-00105."}',
     });
   });
 });

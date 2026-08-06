@@ -8,7 +8,11 @@ import {
   type LogFields,
   type LogLevelName,
 } from "./logger-core";
-import { captureRawBodyFields } from "./raw-body-log";
+import {
+  captureRawBodyFields,
+  captureServerActionRequestFields,
+  captureServerActionResponseFields,
+} from "./raw-body-log";
 
 type ApiRouteHandler<TArgs extends [Request, ...unknown[]]> = (...args: TArgs) => Response | Promise<Response>;
 
@@ -103,6 +107,48 @@ export function withApiLogging<TArgs extends [Request, ...unknown[]]>(
   };
 }
 
+export async function withServerActionLogging<TResult>(
+  action: string,
+  args: unknown[],
+  handler: () => Promise<TResult>
+): Promise<TResult> {
+  const startedAt = Date.now();
+  const requestBodyFields = await captureServerActionBodyFields("request", args);
+
+  try {
+    const result = await handler();
+    const responseBodyFields = await captureServerActionBodyFields("response", result);
+
+    serverLogger.info("server_action_completed", {
+      route: `server_action:${action}`,
+      action,
+      method: "POST",
+      status: 200,
+      durationMs: Date.now() - startedAt,
+      ...requestBodyFields,
+      ...responseBodyFields,
+    });
+    scheduleFlush();
+
+    return result;
+  } catch (error) {
+    serverLogger.error(
+      "server_action_failed",
+      {
+        route: `server_action:${action}`,
+        action,
+        method: "POST",
+        status: 500,
+        durationMs: Date.now() - startedAt,
+        ...requestBodyFields,
+      },
+      error
+    );
+    await flushLogs();
+    throw error;
+  }
+}
+
 function writeLog(level: LogLevelName, event: string, fields: LogFields = {}, error?: unknown): void {
   const payload = sanitizeLogFields({
     ...baseFields,
@@ -131,6 +177,17 @@ async function captureApiBodyFields(source: Request | Response, side: "request" 
   return {
     apiBodyLogging: "raw_full",
     ...(await captureRawBodyFields(source, side)),
+  };
+}
+
+async function captureServerActionBodyFields(side: "request" | "response", value: unknown): Promise<LogFields> {
+  if (process.env.AXIOM_LOG_FULL_API_BODIES !== "true") return {};
+  return {
+    apiBodyLogging: "raw_full",
+    actionBodyLogging: "raw_full",
+    ...(side === "request"
+      ? await captureServerActionRequestFields(value as unknown[])
+      : await captureServerActionResponseFields(value)),
   };
 }
 

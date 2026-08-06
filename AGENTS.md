@@ -42,10 +42,22 @@ Không dùng `npm`, `npx`, `yarn`, `package-lock.json` hoặc `yarn.lock`.
 6. **Mọi truy cập dữ liệu đi qua `src/lib/data/repository.ts`.** Đây là ranh giới
    để Phase 2 thay bằng Prisma mà không phải sửa component.
 
-7. **Không tự sinh mã doanh thu – chi phí** (§3.4). Danh mục 55 mã do công ty
+7. **Server Action phải có logger.** Mọi `export async function` trong
+   `src/app/**/actions.ts` hoặc `*actions.ts` có `"use server"` phải import
+   `withServerActionLogging` từ `src/lib/logger.ts` và wrap body:
+   `return withServerActionLogging("<ten_action_lower_snake_case>", [formData],
+   async () => { ... });`. Action không tham số truyền `[]`. Không thêm Server
+   Action mới dạng export trực tiếp mà bỏ qua wrapper này.
+
+8. **API route phải có logger.** Route handler trong `src/app/api/**/route.ts`
+   dùng `withApiLogging`. Khi `AXIOM_LOG_FULL_API_BODIES=true`, logger cố ý ghi
+   raw request/response body production theo yêu cầu vận hành, gồm cả FormData và
+   binary base64; không tự ý tắt hoặc sanitize lại nếu không được yêu cầu.
+
+9. **Không tự sinh mã doanh thu – chi phí** (§3.4). Danh mục 55 mã do công ty
    kiểm soát.
 
-8. **Tailwind v4: ưu tiên class canonical, tránh arbitrary spacing không cần
+10. **Tailwind v4: ưu tiên class canonical, tránh arbitrary spacing không cần
    thiết.** Biome rule `tailwindcss(suggestCanonicalClasses)` sẽ cảnh báo các
    class như `w-[76px]`, `min-w-[220px]`, `left-[90px]`, `max-w-[320px]`,
    `max-h-[4.75rem]` vì có dạng canonical tương đương theo `--spacing: .25rem`:

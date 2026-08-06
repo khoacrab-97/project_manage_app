@@ -16,6 +16,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { nguoiDungHienTai } from "@/lib/auth/phien";
 import { batBuocQuyen } from "@/lib/auth/quyen";
+import { withServerActionLogging } from "@/lib/logger";
 import type { TrangThaiDuAn } from "@/lib/types";
 
 export interface KetQuaCongTrinh {
@@ -106,73 +107,79 @@ function docTruongChung(fd: FormData) {
 }
 
 export async function taoCongTrinh(formData: FormData): Promise<KetQuaCongTrinh> {
-  batBuocQuyen(await nguoiDungHienTai(), "tao_cong_trinh");
+  return withServerActionLogging("tao_cong_trinh", [formData], async () => {
+    batBuocQuyen(await nguoiDungHienTai(), "tao_cong_trinh");
 
-  const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim().toUpperCase();
-  if (!maCongTrinh) return { ok: false, thongDiep: "Mã công trình không được để trống." };
+    const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim().toUpperCase();
+    if (!maCongTrinh) return { ok: false, thongDiep: "Mã công trình không được để trống." };
 
-  const chung = docTruongChung(formData);
-  if (typeof chung === "string") return { ok: false, thongDiep: chung };
+    const chung = docTruongChung(formData);
+    if (typeof chung === "string") return { ok: false, thongDiep: chung };
 
-  if (await db.project.findUnique({ where: { maCongTrinh } })) {
-    return { ok: false, thongDiep: `Mã công trình ${maCongTrinh} đã tồn tại.` };
-  }
+    if (await db.project.findUnique({ where: { maCongTrinh } })) {
+      return { ok: false, thongDiep: `Mã công trình ${maCongTrinh} đã tồn tại.` };
+    }
 
-  const ct = await db.project.create({ data: { maCongTrinh, ...chung } });
-  await ghiAudit(ct.id, "CREATE", null, null, `${maCongTrinh} — ${chung.tenCongTrinh}`);
+    const ct = await db.project.create({ data: { maCongTrinh, ...chung } });
+    await ghiAudit(ct.id, "CREATE", null, null, `${maCongTrinh} — ${chung.tenCongTrinh}`);
 
-  revalidatePath("/cong-trinh");
-  revalidatePath("/");
-  return { ok: true, thongDiep: `Đã tạo công trình ${maCongTrinh}.` };
+    revalidatePath("/cong-trinh");
+    revalidatePath("/");
+    return { ok: true, thongDiep: `Đã tạo công trình ${maCongTrinh}.` };
+  });
 }
 
 /** Bật lại theo dõi một công trình đã ngừng (isActive = true). */
 export async function moLaiTheoDoi(formData: FormData): Promise<KetQuaCongTrinh> {
-  batBuocQuyen(await nguoiDungHienTai(), "tao_cong_trinh");
+  return withServerActionLogging("mo_lai_theo_doi_cong_trinh", [formData], async () => {
+    batBuocQuyen(await nguoiDungHienTai(), "tao_cong_trinh");
 
-  const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
-  const cu = await db.project.findUnique({ where: { maCongTrinh } });
-  if (!cu) return { ok: false, thongDiep: `Không tìm thấy công trình ${maCongTrinh}.` };
-  if (cu.isActive) return { ok: true, thongDiep: `${maCongTrinh} đang được theo dõi.` };
+    const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
+    const cu = await db.project.findUnique({ where: { maCongTrinh } });
+    if (!cu) return { ok: false, thongDiep: `Không tìm thấy công trình ${maCongTrinh}.` };
+    if (cu.isActive) return { ok: true, thongDiep: `${maCongTrinh} đang được theo dõi.` };
 
-  await db.project.update({ where: { maCongTrinh }, data: { isActive: true } });
-  await ghiAudit(cu.id, "UPDATE", "isActive", "false", "true");
+    await db.project.update({ where: { maCongTrinh }, data: { isActive: true } });
+    await ghiAudit(cu.id, "UPDATE", "isActive", "false", "true");
 
-  revalidatePath("/cong-trinh");
-  revalidatePath("/");
-  return { ok: true, thongDiep: `Đã mở lại theo dõi ${maCongTrinh}.` };
+    revalidatePath("/cong-trinh");
+    revalidatePath("/");
+    return { ok: true, thongDiep: `Đã mở lại theo dõi ${maCongTrinh}.` };
+  });
 }
 
 export async function suaCongTrinh(formData: FormData): Promise<KetQuaCongTrinh> {
-  batBuocQuyen(await nguoiDungHienTai(), "tao_cong_trinh");
+  return withServerActionLogging("sua_cong_trinh", [formData], async () => {
+    batBuocQuyen(await nguoiDungHienTai(), "tao_cong_trinh");
 
-  const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
-  const cu = await db.project.findUnique({ where: { maCongTrinh } });
-  if (!cu) return { ok: false, thongDiep: `Không tìm thấy công trình ${maCongTrinh}.` };
+    const maCongTrinh = String(formData.get("maCongTrinh") ?? "").trim();
+    const cu = await db.project.findUnique({ where: { maCongTrinh } });
+    if (!cu) return { ok: false, thongDiep: `Không tìm thấy công trình ${maCongTrinh}.` };
 
-  const chung = docTruongChung(formData);
-  if (typeof chung === "string") return { ok: false, thongDiep: chung };
+    const chung = docTruongChung(formData);
+    if (typeof chung === "string") return { ok: false, thongDiep: chung };
 
-  const isActive = formData.get("isActive") === "on";
+    const isActive = formData.get("isActive") === "on";
 
-  await db.project.update({ where: { maCongTrinh }, data: { ...chung, isActive } });
+    await db.project.update({ where: { maCongTrinh }, data: { ...chung, isActive } });
 
-  if (cu.tenCongTrinh !== chung.tenCongTrinh) {
-    await ghiAudit(cu.id, "UPDATE", "tenCongTrinh", cu.tenCongTrinh, chung.tenCongTrinh);
-  }
-  if (cu.trangThai !== chung.trangThai) {
-    await ghiAudit(cu.id, "UPDATE", "trangThai", cu.trangThai, chung.trangThai);
-  }
-  if (cu.isActive !== isActive) {
-    await ghiAudit(cu.id, "UPDATE", "isActive", String(cu.isActive), String(isActive));
-  }
+    if (cu.tenCongTrinh !== chung.tenCongTrinh) {
+      await ghiAudit(cu.id, "UPDATE", "tenCongTrinh", cu.tenCongTrinh, chung.tenCongTrinh);
+    }
+    if (cu.trangThai !== chung.trangThai) {
+      await ghiAudit(cu.id, "UPDATE", "trangThai", cu.trangThai, chung.trangThai);
+    }
+    if (cu.isActive !== isActive) {
+      await ghiAudit(cu.id, "UPDATE", "isActive", String(cu.isActive), String(isActive));
+    }
 
-  revalidatePath("/cong-trinh");
-  revalidatePath("/");
-  return {
-    ok: true,
-    thongDiep: isActive
-      ? `Đã cập nhật ${maCongTrinh}.`
-      : `Đã cập nhật ${maCongTrinh} và chuyển sang ngừng theo dõi.`,
-  };
+    revalidatePath("/cong-trinh");
+    revalidatePath("/");
+    return {
+      ok: true,
+      thongDiep: isActive
+        ? `Đã cập nhật ${maCongTrinh}.`
+        : `Đã cập nhật ${maCongTrinh} và chuyển sang ngừng theo dõi.`,
+    };
+  });
 }

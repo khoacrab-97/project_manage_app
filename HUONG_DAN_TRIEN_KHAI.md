@@ -39,16 +39,19 @@ Quy ước log production: event dùng `lower_snake_case`; không ghi mật kh�
 session token, email, họ tên, tên file gốc, nội dung Excel thô, số tiền hoặc chi
 tiết giao dịch vào log.
 
-Riêng khi `AXIOM_LOG_FULL_API_BODIES=true`, API log sẽ ghi raw request/response
-body theo yêu cầu vận hành production. JSON/text được ghi UTF-8 trong
-`requestBodyRaw` / `responseBodyRaw`; binary như Excel được ghi base64 và đánh
-dấu bằng `requestBodyEncoding` / `responseBodyEncoding`. Chế độ này có thể đưa
-dữ liệu nhạy cảm và file lớn lên Axiom; tắt bằng cách xoá biến hoặc đặt khác
-`true`.
+Riêng khi `AXIOM_LOG_FULL_API_BODIES=true`, API route và Server Action log sẽ ghi
+raw request/response body theo yêu cầu vận hành production. API route ghi raw HTTP
+body; Server Action ghi raw JSON của arguments và return value sau khi Next giải
+mã action. JSON/text được ghi UTF-8 trong `requestBodyRaw` / `responseBodyRaw`;
+binary như Excel được ghi base64 và đánh dấu bằng `requestBodyEncoding` /
+`responseBodyEncoding`. Chế độ này có thể đưa dữ liệu nhạy cảm và file lớn lên
+Axiom; tắt bằng cách xoá biến hoặc đặt khác `true`.
 
 Các event chính:
 
 - `api_request_completed` / `api_request_failed`: các route `/api/*`.
+- `server_action_completed` / `server_action_failed`: Server Action đã được wrap,
+  ví dụ action tạo/sửa/mở lại công trình.
 - `web_request_seen`: page request và Server Action `GET/POST` đi qua web route.
 - `web_request_redirected`: request web bị proxy chuyển về `/dang-nhap`.
 
@@ -60,6 +63,10 @@ Sau deploy có thể kiểm tra trong Axiom:
 
 ```apl
 ['prmana_app'] | where event == "api_request_completed" | limit 20
+```
+
+```apl
+['prmana_app'] | where event == "server_action_completed" | limit 20
 ```
 
 Không cần nữa:
