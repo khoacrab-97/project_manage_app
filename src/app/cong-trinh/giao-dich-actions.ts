@@ -146,7 +146,9 @@ export async function luuGiaoDich(formData: FormData): Promise<KetQuaGiaoDich> {
         soTien,
         maDTCP,
         ghiChu: ghiChus[i] || null,
-        rowHash: bam(`${ct.id}|${ngayCT}|${soHoaDons[i] ?? ""}|${maDTCP}|${soTien}|${noiDung}`),
+        // Gắn số thứ tự dòng vào hash: nhập tay = thay toàn bộ, nên các dòng TRÙNG
+        // NHAU HOÀN TOÀN vẫn là bản ghi riêng (không gộp như khi đồng bộ file).
+        rowHash: bam(`${ct.id}|${i}|${ngayCT}|${soHoaDons[i] ?? ""}|${maDTCP}|${soTien}|${noiDung}`),
       });
     }
 
@@ -155,14 +157,9 @@ export async function luuGiaoDich(formData: FormData): Promise<KetQuaGiaoDich> {
       return { ok: false, thongDiep: `Không có dòng hợp lệ. ${loi.join("; ")}.` };
     }
 
-    // Bỏ dòng trùng y hệt trong bảng (khớp @@unique[rowHash, projectId]).
-    const trongLo = new Set<string>();
-    const moi = rows.filter((r) => {
-      if (trongLo.has(r.rowHash)) return false;
-      trongLo.add(r.rowHash);
-      return true;
-    });
-    const soTrung = rows.length - moi.length;
+    // Giữ NGUYÊN mọi dòng hợp lệ — có bao nhiêu dòng lưu bấy nhiêu. rowHash đã gắn
+    // số thứ tự nên dòng trùng nhau hoàn toàn vẫn tách riêng, không bị gộp.
+    const moi = rows;
 
     // THAY TOÀN BỘ: xoá hết giao dịch của công trình rồi ghi lại theo bảng (một
     // giao dịch DB để không có trạng thái nửa vời nếu lỗi giữa chừng).
@@ -209,9 +206,7 @@ export async function luuGiaoDich(formData: FormData): Promise<KetQuaGiaoDich> {
 
     revalidatePath(`/cong-trinh/${maCongTrinh}`);
     revalidatePath("/");
-    const phu = [soTrung ? `${soTrung} dòng trùng đã bỏ` : "", loi.length ? `Lỗi: ${loi.join("; ")}` : ""]
-      .filter(Boolean)
-      .join(". ");
+    const phu = loi.length ? `Lỗi: ${loi.join("; ")}` : "";
     return {
       ok: true,
       thongDiep: moi.length
