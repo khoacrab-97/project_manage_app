@@ -27,6 +27,15 @@ const boChu = (s: string) => s.replace(/<[^>]*>/g, "");
 /** Số -> chuỗi kiểu Việt "1.234,56" để nhập lại (server đọc theo cùng quy ước). */
 const soVN = (n: number) => (Number.isFinite(n) ? n.toLocaleString("vi-VN", { maximumFractionDigits: 6 }) : "");
 
+/** Trạng thái định dạng của vùng đang chọn (để làm sáng nút B/I/U). */
+function docDinhDang() {
+  return {
+    bold: document.queryCommandState("bold"),
+    italic: document.queryCommandState("italic"),
+    underline: document.queryCommandState("underline"),
+  };
+}
+
 function ThongBao({ kq }: { kq: KetQuaBOQ | null }) {
   if (!kq) return null;
   return (
@@ -1337,6 +1346,8 @@ export function SuaBOQ({ maCongTrinh, dongs }: { maCongTrinh: string; dongs: Don
   const dirtyRef = useRef<Set<string>>(new Set());
   const [kq, setKq] = useState<KetQuaBOQ | null>(null);
   const [dangChay, batDau] = useTransition();
+  // Nút B/I/U sáng khi vùng đang chọn có định dạng tương ứng.
+  const [dd, setDd] = useState({ bold: false, italic: false, underline: false });
   const ndBanDau = new Map(dongs.map((d) => [d.id, d.noiDung]));
 
   useEffect(() => {
@@ -1346,6 +1357,14 @@ export function SuaBOQ({ maCongTrinh, dongs }: { maCongTrinh: string; dongs: Don
     };
     window.addEventListener("keydown", f);
     return () => window.removeEventListener("keydown", f);
+  }, [mo]);
+
+  // Theo dõi vùng chọn để cập nhật trạng thái sáng của nút định dạng.
+  useEffect(() => {
+    if (!mo) return;
+    const f = () => setDd(docDinhDang());
+    document.addEventListener("selectionchange", f);
+    return () => document.removeEventListener("selectionchange", f);
   }, [mo]);
 
   const moLai = () => {
@@ -1359,7 +1378,10 @@ export function SuaBOQ({ maCongTrinh, dongs }: { maCongTrinh: string; dongs: Don
     dirtyRef.current.add(id);
     setRows((s) => s.map((r) => (r.id === id ? { ...r, [k]: v } : r)));
   };
-  const dinhDang = (lenh: "bold" | "italic" | "underline") => document.execCommand(lenh, false);
+  const dinhDang = (lenh: "bold" | "italic" | "underline") => {
+    document.execCommand(lenh, false);
+    setDd(docDinhDang());
+  };
 
   const luu = () => {
     const daSua = rows.filter((r) => dirtyRef.current.has(r.id));
@@ -1396,7 +1418,9 @@ export function SuaBOQ({ maCongTrinh, dongs }: { maCongTrinh: string; dongs: Don
     );
   }
 
-  const nutDD = "rounded border border-vien px-2 py-1 text-xs font-semibold hover:bg-nen";
+  const nutDD = "rounded border px-2 py-1 text-xs font-semibold";
+  const kieuNut = (bat: boolean) =>
+    `${nutDD} ${bat ? "border-nhan bg-nhan text-white" : "border-vien hover:bg-nen"}`;
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
       <div className="my-6 w-full max-w-5xl rounded-xl border border-vien bg-the shadow-xl">
@@ -1416,13 +1440,13 @@ export function SuaBOQ({ maCongTrinh, dongs }: { maCongTrinh: string; dongs: Don
         {/* Thanh định dạng dùng chung, tác động lên ô nội dung đang focus. */}
         <div className="flex items-center gap-1.5 border-b border-vien bg-nhannhat/40 px-4 py-2">
           <span className="mr-1 text-[11px] text-chunhat">Định dạng:</span>
-          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => dinhDang("bold")} className={nutDD} title="In đậm">
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => dinhDang("bold")} className={kieuNut(dd.bold)} title="In đậm (Ctrl+B)">
             <Bold className="size-3.5" />
           </button>
-          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => dinhDang("italic")} className={nutDD} title="Nghiêng">
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => dinhDang("italic")} className={kieuNut(dd.italic)} title="Nghiêng (Ctrl+I)">
             <Italic className="size-3.5" />
           </button>
-          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => dinhDang("underline")} className={nutDD} title="Gạch chân">
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => dinhDang("underline")} className={kieuNut(dd.underline)} title="Gạch chân (Ctrl+U)">
             <Underline className="size-3.5" />
           </button>
         </div>
