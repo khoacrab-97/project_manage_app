@@ -58,6 +58,7 @@ const COT: { key: keyof Dong; nhan: string; px: number; so?: boolean }[] = [
 
 const RONG_STT = 44; // cột "#"
 const RONG_THANG = 96; // cột hiển thị "Tháng TH"
+const RONG_NDCP = 200; // cột hiển thị "Nội dung chi phí" (tên theo mã)
 
 interface O {
   r: number;
@@ -609,7 +610,9 @@ export function BangGiaoDich({
   }
 
   // ---------------- SỬA: bảng tính ----------------
-  const tongRong = RONG_STT + RONG_THANG + COT.reduce((a, c) => a + (rong[c.key] ?? c.px), 0);
+  const tongRong = RONG_STT + RONG_THANG + RONG_NDCP + COT.reduce((a, c) => a + (rong[c.key] ?? c.px), 0);
+  // Tra tên khoản mục theo mã (chỉ mã cho nhập trực tiếp). Không có = mã nhập sai.
+  const tenTheoMa = new Map(dsMa.map((m) => [m.ma, m.ten]));
   return (
     <div>
       <div className="border-b border-vien bg-nhannhat px-4 py-2 text-[11px] text-chunhat">
@@ -638,9 +641,9 @@ export function BangGiaoDich({
             <col style={{ width: RONG_STT }} />
             {COT.flatMap((c) => {
               const col = <col key={c.key} style={{ width: rong[c.key] ?? c.px }} />;
-              return c.key === "ngayChungTu"
-                ? [col, <col key="thangTH" style={{ width: RONG_THANG }} />]
-                : [col];
+              if (c.key === "ngayChungTu") return [col, <col key="thangTH" style={{ width: RONG_THANG }} />];
+              if (c.key === "maDTCP") return [col, <col key="ndCP" style={{ width: RONG_NDCP }} />];
+              return [col];
             })}
           </colgroup>
           <thead className="sticky top-0 z-10 bg-the">
@@ -663,16 +666,27 @@ export function BangGiaoDich({
                     />
                   </th>
                 );
-                if (c.key !== "ngayChungTu") return [th];
-                return [
-                  th,
-                  <th
-                    key="thangTH"
-                    className="border border-vien bg-nen px-2 py-1.5 text-left text-xs font-semibold whitespace-nowrap text-chunhat"
-                  >
-                    Tháng TH
-                  </th>,
-                ];
+                if (c.key === "ngayChungTu")
+                  return [
+                    th,
+                    <th
+                      key="thangTH"
+                      className="border border-vien bg-nen px-2 py-1.5 text-left text-xs font-semibold whitespace-nowrap text-chunhat"
+                    >
+                      Tháng TH
+                    </th>,
+                  ];
+                if (c.key === "maDTCP")
+                  return [
+                    th,
+                    <th
+                      key="ndCP"
+                      className="border border-vien bg-nen px-2 py-1.5 text-left text-xs font-semibold whitespace-nowrap text-chunhat"
+                    >
+                      Nội dung chi phí
+                    </th>,
+                  ];
+                return [th];
               })}
             </tr>
           </thead>
@@ -758,17 +772,40 @@ export function BangGiaoDich({
                       </td>
                     );
                   }).flatMap((cell, ci) => {
-                    if (COT[ci]?.key !== "ngayChungTu") return [cell];
-                    const thang = isoNgay ? nhanThang(isoNgay.slice(0, 7)) : "—";
-                    return [
-                      cell,
-                      <td
-                        key="thangTH"
-                        className="border border-vien bg-nen/40 px-2 py-1 align-top text-xs whitespace-nowrap text-chunhat"
-                      >
-                        {thang}
-                      </td>,
-                    ];
+                    const key = COT[ci]?.key;
+                    if (key === "ngayChungTu") {
+                      const thang = isoNgay ? nhanThang(isoNgay.slice(0, 7)) : "—";
+                      return [
+                        cell,
+                        <td
+                          key="thangTH"
+                          className="border border-vien bg-nen/40 px-2 py-1 align-top text-xs whitespace-nowrap text-chunhat"
+                        >
+                          {thang}
+                        </td>,
+                      ];
+                    }
+                    if (key === "maDTCP") {
+                      // Cột KHOÁ: tự nhận diện tên khoản mục theo mã; mã sai thì báo tại ô.
+                      const ma = d.maDTCP.trim();
+                      const ten = ma ? tenTheoMa.get(ma) : undefined;
+                      const saiMa = ma !== "" && ten === undefined;
+                      return [
+                        cell,
+                        <td
+                          key="ndCP"
+                          title={saiMa ? "Mã DT–CP không có trong danh mục" : ten}
+                          className={`border border-vien px-2 py-1 align-top text-xs break-words ${
+                            saiMa
+                              ? "bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300"
+                              : "bg-nen/40 text-chunhat"
+                          }`}
+                        >
+                          {ma === "" ? "—" : saiMa ? "⚠ Mã không có trong danh mục" : ten}
+                        </td>,
+                      ];
+                    }
+                    return [cell];
                   })}
                 </tr>
               );
