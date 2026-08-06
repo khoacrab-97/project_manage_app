@@ -14,11 +14,22 @@ Trong cùng project Railway cần có:
 ```text
 DATABASE_URL=${{Postgres.DATABASE_URL}}
 ADMIN_EMAIL=<email-admin>
+AXIOM_TOKEN=<basic-token>
+AXIOM_DATASET=prmana_app
+AXIOM_SERVICE_NAME=prmana-app
 ```
 
 `DATABASE_URL` phải nằm ở service app, không chỉ ở service Postgres: Dockerfile
 nhận biến này trong build stage để `next build` chạy được, và runtime cũng dùng
 cùng biến đó để chạy migration rồi truy vấn DB.
+
+`AXIOM_TOKEN` là Basic API token chỉ có quyền ingest vào dataset log của ứng dụng.
+Nếu chưa cấu hình Axiom thì app vẫn chạy bình thường và chỉ ghi log ra stdout/stderr
+của Railway.
+
+Quy ước log production: event dùng `lower_snake_case`; không ghi mật khẩu, cookie,
+session token, email, họ tên, tên file gốc, nội dung Excel thô, số tiền hoặc chi
+tiết giao dịch vào log.
 
 Không cần nữa:
 

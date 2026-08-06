@@ -26,6 +26,10 @@
     "db:thu-dang-nhap": "tsx prisma/thu-dang-nhap.ts"
   },
   "dependencies": {
+    "@axiomhq/js": "^2.0.0",
+    "@axiomhq/logging": "^0.4.0",
+    "@axiomhq/nextjs": "^0.4.0",
+    "@axiomhq/react": "^0.4.0",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "@tanstack/react-table": "^9.0.0",
@@ -38,6 +42,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "recharts": "^3.10.1",
+    "server-only": "^0.0.1",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
   },

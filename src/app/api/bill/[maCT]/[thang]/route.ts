@@ -15,10 +15,11 @@ import path from "node:path";
 import ExcelJS from "exceljs";
 import { nguoiDungHienTai } from "@/lib/auth/phien";
 import { giaTriBillThang, layBOQ, layCongTrinh } from "@/lib/data/repository";
+import { serverLogger, withApiLogging } from "@/lib/logger";
 
 const TEN_SHEET = "1.1 BILL";
 
-export async function GET(_req: Request, { params }: RouteContext<"/api/bill/[maCT]/[thang]">) {
+async function getBill(_req: Request, { params }: RouteContext<"/api/bill/[maCT]/[thang]">) {
   const { maCT, thang } = await params;
   const maCongTrinh = decodeURIComponent(maCT);
 
@@ -28,11 +29,27 @@ export async function GET(_req: Request, { params }: RouteContext<"/api/bill/[ma
 
   // layCongTrinh() đã lọc theo phạm vi, nên công trình ngoài phạm vi = không thấy.
   const ct = (await layCongTrinh()).find((c) => c.maCongTrinh === maCongTrinh);
-  if (!ct) return new Response("Không tìm thấy công trình", { status: 404 });
+  if (!ct) {
+    serverLogger.warn("bill_export_rejected", {
+      module: "bill_export",
+      projectCode: maCongTrinh,
+      month: thang,
+      status: "project_not_found",
+    });
+    return new Response("Không tìm thấy công trình", { status: 404 });
+  }
 
   const { thangs, dongs } = await layBOQ(maCongTrinh);
   const ky = thangs.find((t) => t.thang === thang);
-  if (!ky) return new Response(`Chưa có Bill tháng ${thang}`, { status: 404 });
+  if (!ky) {
+    serverLogger.warn("bill_export_rejected", {
+      module: "bill_export",
+      projectCode: maCongTrinh,
+      month: thang,
+      status: "bill_not_found",
+    });
+    return new Response(`Chưa có Bill tháng ${thang}`, { status: 404 });
+  }
 
   const giaTri = giaTriBillThang(dongs, thang);
   // Luỹ kế "đã ra bill" tính tới hết tháng đang xuất (không còn bước xác nhận).
@@ -50,7 +67,15 @@ export async function GET(_req: Request, { params }: RouteContext<"/api/bill/[ma
     if (ws.name !== TEN_SHEET) wb.removeWorksheet(ws.id);
   }
   const ws = wb.getWorksheet(TEN_SHEET);
-  if (!ws) return new Response("File mẫu thiếu sheet 1.1 BILL", { status: 500 });
+  if (!ws) {
+    serverLogger.error("bill_export_failed", {
+      module: "bill_export",
+      projectCode: maCongTrinh,
+      month: thang,
+      status: "missing_template_sheet",
+    });
+    return new Response("File mẫu thiếu sheet 1.1 BILL", { status: 500 });
+  }
 
   const nhanTien = (v: number) => v.toLocaleString("vi-VN");
 
@@ -78,6 +103,12 @@ export async function GET(_req: Request, { params }: RouteContext<"/api/bill/[ma
   ws.getCell("F17").value = { formula: "+D17*E17", result: giaTri };
 
   const buf = await wb.xlsx.writeBuffer();
+  serverLogger.info("bill_export_completed", {
+    module: "bill_export",
+    projectCode: maCongTrinh,
+    month: thang,
+    status: "completed",
+  });
   return new Response(buf as ArrayBuffer, {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -85,3 +116,5 @@ export async function GET(_req: Request, { params }: RouteContext<"/api/bill/[ma
     },
   });
 }
+
+export const GET = withApiLogging("/api/bill/[maCT]/[thang]", getBill);

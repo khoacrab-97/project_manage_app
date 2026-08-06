@@ -8,8 +8,9 @@
 import ExcelJS from "exceljs";
 import { nguoiDungHienTai } from "@/lib/auth/phien";
 import { layDanhMucTheoCay } from "@/lib/data/repository";
+import { withApiLogging } from "@/lib/logger";
 
-export async function GET() {
+async function getMauKeHoach(_request: Request) {
   if (!(await nguoiDungHienTai())) return new Response("Chưa đăng nhập", { status: 401 });
 
   // Cùng trật tự cây với lưới nhập trên app — người dùng đối chiếu hai bên không lạc.
@@ -46,3 +47,5 @@ export async function GET() {
     },
   });
 }
+
+export const GET = withApiLogging("/api/mau-ke-hoach", getMauKeHoach);

@@ -8,6 +8,7 @@ import { nguoiDungHienTai } from "@/lib/auth/phien";
 import { xemModuleCongNhan } from "@/lib/auth/quyen";
 import { duLieuXuatChamCong, type Doi } from "@/lib/data/cong-nhan";
 import { taoWorkbookChamCong } from "@/lib/excel/xuat-cham-cong";
+import { serverLogger, withApiLogging } from "@/lib/logger";
 
 // Logo letterhead riêng từng đội (trích từ 2 form mẫu).
 const LOGO: Record<Doi, { theoDoi: string; bang: string }> = {
@@ -16,7 +17,7 @@ const LOGO: Record<Doi, { theoDoi: string; bang: string }> = {
 };
 const NHAN_FILE: Record<Doi, string> = { NOI_THANH: "noi_thanh", NGOAI_THANH: "ngoai_thanh" };
 
-export async function GET(req: Request) {
+async function getXuatChamCong(req: Request) {
   const u = await nguoiDungHienTai();
   if (!u) return new Response("Chưa đăng nhập", { status: 401 });
   if (!xemModuleCongNhan(u.vaiTro)) return new Response("Không có quyền", { status: 403 });
@@ -36,6 +37,13 @@ export async function GET(req: Request) {
   const dulieu = await duLieuXuatChamCong(thang, doi, doiDAId || undefined);
   if (!dulieu.congNhan.length) {
     const ten = doi === "NGOAI_THANH" ? `đội dự án ${dulieu.tenDoi || doiDAId}` : "đội thi công";
+    serverLogger.warn("timesheet_export_rejected", {
+      module: "timesheet_export",
+      month: thang,
+      teamType: doi,
+      rowCount: 0,
+      status: "no_data",
+    });
     return new Response(`Tháng ${thang} chưa có dữ liệu chấm công ${ten}.`, { status: 404 });
   }
 
@@ -45,6 +53,13 @@ export async function GET(req: Request) {
       ? `${NHAN_FILE[doi]}_${dulieu.tenDoi.replace(/[^\p{L}\p{N}]+/gu, "_")}`
       : NHAN_FILE[doi];
   const buf = await taoWorkbookChamCong(dulieu, LOGO[doi]);
+  serverLogger.info("timesheet_export_completed", {
+    module: "timesheet_export",
+    month: thang,
+    teamType: doi,
+    rowCount: dulieu.congNhan.length,
+    status: "completed",
+  });
   return new Response(buf, {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -52,3 +67,5 @@ export async function GET(req: Request) {
     },
   });
 }
+
+export const GET = withApiLogging("/api/xuat-cham-cong", getXuatChamCong);

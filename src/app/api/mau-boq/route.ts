@@ -8,8 +8,9 @@
 import ExcelJS from "exceljs";
 import { nguoiDungHienTai } from "@/lib/auth/phien";
 import { coQuyen } from "@/lib/auth/quyen";
+import { withApiLogging } from "@/lib/logger";
 
-export async function GET() {
+async function getMauBoq(_request: Request) {
   const u = await nguoiDungHienTai();
   if (!u) return new Response("Chưa đăng nhập", { status: 401 });
   if (!coQuyen(u, "nhap_boq")) return new Response("Không có quyền", { status: 403 });
@@ -42,3 +43,5 @@ export async function GET() {
     },
   });
 }
+
+export const GET = withApiLogging("/api/mau-boq", getMauBoq);
