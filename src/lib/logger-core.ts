@@ -31,26 +31,10 @@ const SENSITIVE_KEY_PARTS = [
   "tthopdong",
 ];
 
-export interface ProxyRequestInfo {
-  method: string;
-  pathname: string;
-  headers: Headers;
-}
-
 export function levelForStatus(status: number): LogLevelName {
   if (status >= 500) return "error";
   if (status >= 400) return "warn";
   return "info";
-}
-
-export function shouldLogProxyRequest({ method, pathname, headers }: ProxyRequestInfo): boolean {
-  if (pathname.startsWith("/api/")) return false;
-  if (pathname.startsWith("/_next/")) return false;
-  if (pathname === "/favicon.ico") return false;
-  if (headers.has("next-router-prefetch")) return false;
-  if (headers.get("purpose") === "prefetch") return false;
-  if (headers.get("sec-purpose")?.includes("prefetch")) return false;
-  return method === "GET" || method === "POST";
 }
 
 export function serializeError(error: unknown): LogFields {

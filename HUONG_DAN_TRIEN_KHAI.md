@@ -51,15 +51,9 @@ Các event chính:
 
 - `api_request_completed` / `api_request_failed`: các route `/api/*`.
 - `server_action_completed` / `server_action_failed`: Server Action đã được wrap,
-  ví dụ action tạo/sửa/mở lại công trình.
-- `web_request_seen`: page request và Server Action `GET/POST` đi qua web route.
-- `web_request_redirected`: request web bị proxy chuyển về `/dang-nhap`.
+  ví dụ action tạo/sửa/mở lại công trình. Không ghi log route page thông thường.
 
 Sau deploy có thể kiểm tra trong Axiom:
-
-```apl
-['prmana_app'] | where event == "web_request_seen" | limit 20
-```
 
 ```apl
 ['prmana_app'] | where event == "api_request_completed" | limit 20

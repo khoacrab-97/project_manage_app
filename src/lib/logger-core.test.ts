@@ -4,7 +4,6 @@ import {
   levelForStatus,
   sanitizeLogFields,
   serializeError,
-  shouldLogProxyRequest,
 } from "./logger-core";
 
 describe("logger core", () => {
@@ -57,53 +56,5 @@ describe("logger core", () => {
       errorMessage: "broken",
       errorStack: "stack details",
     });
-  });
-
-  it("logs page traffic from proxy", () => {
-    expect(
-      shouldLogProxyRequest({
-        method: "GET",
-        pathname: "/cong-trinh",
-        headers: new Headers(),
-      })
-    ).toBe(true);
-    expect(
-      shouldLogProxyRequest({
-        method: "POST",
-        pathname: "/cong-trinh/HL-00105",
-        headers: new Headers(),
-      })
-    ).toBe(true);
-  });
-
-  it("skips api, static, prefetch, and non-page methods in proxy", () => {
-    expect(
-      shouldLogProxyRequest({
-        method: "GET",
-        pathname: "/api/mau-boq",
-        headers: new Headers(),
-      })
-    ).toBe(false);
-    expect(
-      shouldLogProxyRequest({
-        method: "GET",
-        pathname: "/_next/static/chunks/app.js",
-        headers: new Headers(),
-      })
-    ).toBe(false);
-    expect(
-      shouldLogProxyRequest({
-        method: "GET",
-        pathname: "/cong-trinh",
-        headers: new Headers({ "next-router-prefetch": "1" }),
-      })
-    ).toBe(false);
-    expect(
-      shouldLogProxyRequest({
-        method: "HEAD",
-        pathname: "/cong-trinh",
-        headers: new Headers(),
-      })
-    ).toBe(false);
   });
 });
