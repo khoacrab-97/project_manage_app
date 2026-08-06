@@ -17,6 +17,7 @@ ADMIN_EMAIL=<email-admin>
 AXIOM_TOKEN=<basic-token>
 AXIOM_DATASET=prmana_app
 AXIOM_SERVICE_NAME=prmana-app
+AXIOM_LOG_FULL_API_BODIES=true
 ```
 
 `DATABASE_URL` phải nằm ở service app, không chỉ ở service Postgres: Dockerfile
@@ -37,6 +38,13 @@ AXIOM_EDGE_URL=<edge-url>
 Quy ước log production: event dùng `lower_snake_case`; không ghi mật khẩu, cookie,
 session token, email, họ tên, tên file gốc, nội dung Excel thô, số tiền hoặc chi
 tiết giao dịch vào log.
+
+Riêng khi `AXIOM_LOG_FULL_API_BODIES=true`, API log sẽ ghi raw request/response
+body theo yêu cầu vận hành production. JSON/text được ghi UTF-8 trong
+`requestBodyRaw` / `responseBodyRaw`; binary như Excel được ghi base64 và đánh
+dấu bằng `requestBodyEncoding` / `responseBodyEncoding`. Chế độ này có thể đưa
+dữ liệu nhạy cảm và file lớn lên Axiom; tắt bằng cách xoá biến hoặc đặt khác
+`true`.
 
 Các event chính:
 

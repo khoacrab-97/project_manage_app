@@ -5,6 +5,7 @@ export const MAX_LOG_STRING_LENGTH = 500;
 
 const MAX_LOG_DEPTH = 4;
 const MAX_LOG_ARRAY_LENGTH = 25;
+const FULL_STRING_KEYS = ["requestbodyraw", "responsebodyraw"];
 
 const SENSITIVE_KEY_PARTS = [
   "authorization",
@@ -87,26 +88,26 @@ function sanitizeRecord(fields: LogFields, depth: number): LogFields {
   for (const [key, value] of Object.entries(fields)) {
     if (isSensitiveKey(key)) continue;
 
-    const sanitized = sanitizeValue(value, depth);
+    const sanitized = sanitizeValue(key, value, depth);
     if (sanitized !== undefined) out[key] = sanitized;
   }
   return out;
 }
 
-function sanitizeValue(value: unknown, depth: number): unknown {
+function sanitizeValue(key: string, value: unknown, depth: number): unknown {
   if (value === undefined) return undefined;
   if (value === null) return null;
   if (value instanceof Error) return serializeError(value);
   if (value instanceof Date) return value.toISOString();
 
-  if (typeof value === "string") return limitString(value);
+  if (typeof value === "string") return shouldPreserveFullString(key) ? value : limitString(value);
   if (typeof value === "number" || typeof value === "boolean") return value;
   if (typeof value === "bigint") return value.toString();
   if (typeof value === "symbol" || typeof value === "function") return undefined;
 
   if (Array.isArray(value)) {
     if (depth >= MAX_LOG_DEPTH) return "[max_depth]";
-    return value.slice(0, MAX_LOG_ARRAY_LENGTH).map((item) => sanitizeValue(item, depth + 1));
+    return value.slice(0, MAX_LOG_ARRAY_LENGTH).map((item) => sanitizeValue(key, item, depth + 1));
   }
 
   if (isPlainRecord(value)) {
@@ -120,6 +121,10 @@ function sanitizeValue(value: unknown, depth: number): unknown {
 function isSensitiveKey(key: string): boolean {
   const normalized = normalizeKey(key);
   return SENSITIVE_KEY_PARTS.some((part) => normalized.includes(part));
+}
+
+function shouldPreserveFullString(key: string): boolean {
+  return FULL_STRING_KEYS.includes(normalizeKey(key));
 }
 
 function normalizeKey(key: string): string {

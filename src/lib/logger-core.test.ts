@@ -41,6 +41,13 @@ describe("logger core", () => {
     );
   });
 
+  it("keeps raw api body fields untruncated", () => {
+    const longValue = "x".repeat(MAX_LOG_STRING_LENGTH + 20);
+
+    expect(sanitizeLogFields({ requestBodyRaw: longValue }).requestBodyRaw).toBe(longValue);
+    expect(sanitizeLogFields({ responseBodyRaw: longValue }).responseBodyRaw).toBe(longValue);
+  });
+
   it("serializes errors", () => {
     const error = new Error("broken");
     error.stack = "stack details";

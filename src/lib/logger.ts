@@ -8,6 +8,7 @@ import {
   type LogFields,
   type LogLevelName,
 } from "./logger-core";
+import { captureRawBodyFields } from "./raw-body-log";
 
 type ApiRouteHandler<TArgs extends [Request, ...unknown[]]> = (...args: TArgs) => Response | Promise<Response>;
 
@@ -65,17 +66,21 @@ export function withApiLogging<TArgs extends [Request, ...unknown[]]>(
   return async (...args: TArgs) => {
     const [request] = args;
     const startedAt = Date.now();
+    const requestBodyFields = await captureApiBodyFields(request, "request");
 
     try {
       const response = await handler(...args);
       const status = response.status;
       const level = levelForStatus(status);
+      const responseBodyFields = await captureApiBodyFields(response, "response");
 
       serverLogger[level]("api_request_completed", {
         route,
         method: request.method,
         status,
         durationMs: Date.now() - startedAt,
+        ...requestBodyFields,
+        ...responseBodyFields,
       });
       scheduleFlush();
 
@@ -88,6 +93,7 @@ export function withApiLogging<TArgs extends [Request, ...unknown[]]>(
           method: request.method,
           status: 500,
           durationMs: Date.now() - startedAt,
+          ...requestBodyFields,
         },
         error
       );
@@ -118,6 +124,14 @@ function writeLog(level: LogLevelName, event: string, fields: LogFields = {}, er
 
 function scheduleFlush(): void {
   void flushLogs();
+}
+
+async function captureApiBodyFields(source: Request | Response, side: "request" | "response"): Promise<LogFields> {
+  if (process.env.AXIOM_LOG_FULL_API_BODIES !== "true") return {};
+  return {
+    apiBodyLogging: "raw_full",
+    ...(await captureRawBodyFields(source, side)),
+  };
 }
 
 function rootLogFields(payload: LogFields): LogFields {
