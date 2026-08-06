@@ -1047,7 +1047,7 @@ async function BaoCaoTab({
                     className={`sticky left-22.5 z-10 max-w-55 truncate text-xs ${nhomCha ? "bg-nen/60 font-semibold" : "bg-the"}`}
                     title={h.ten}
                   >
-                    {h.loai === "Doanh thu" ? <span className="text-nhan">{h.ten}</span> : h.ten}
+                    {h.loai === "Chi phí" ? h.ten : <span className="text-nhan">{h.ten}</span>}
                   </Td>
                   <Td phai className="bg-nen font-semibold">
                     {tien(h.tong)}
@@ -1076,9 +1076,10 @@ async function BaoCaoTab({
 
       <GhiChuNguon>
         Liệt kê đầy đủ danh mục mã theo cây 2 cấp (mã nhóm in đậm, mã chi tiết thụt vào); dòng toàn
-        dấu “—” là mã chưa phát sinh. Phần doanh thu chỉ hiện mã <strong>Bill</strong> — TƯ, TT, QT
-        là dòng tiền thu theo hợp đồng nên không đặt chung bảng với chi phí thực hiện. Cột{" "}
-        <strong>Tổng</strong> luôn là lũy kế mọi kỳ, không đổi theo bộ lọc Thời điểm.
+        dấu “—” là mã chưa phát sinh. Dòng <strong>Bill</strong> là giá trị thực hiện lấy từ BOQ
+        (cùng nguồn với tab Doanh thu), không phải tổng giao dịch mã Bill; TƯ, TT, QT là dòng tiền
+        thu theo hợp đồng nên không đặt chung bảng với chi phí thực hiện. Cột <strong>Tổng</strong>{" "}
+        luôn là lũy kế mọi kỳ, không đổi theo bộ lọc Thời điểm.
       </GhiChuNguon>
     </>
   );

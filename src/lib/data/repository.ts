@@ -1105,7 +1105,17 @@ export async function maTranTheoCongTrinh(maCongTrinh: string, ky: KyBaoCao) {
   const khoaKy = (thang: string) =>
     ky === "thang" ? thang : ky === "quy" ? khoaQuy(thang) : thang.slice(0, 4);
 
-  const cot = [...new Set(rows.map((r) => khoaKy(r.thangThucHien)))].sort();
+  // Dòng "Bill nội bộ" lấy từ Giá trị thực hiện (BOQ) — CÙNG nguồn với tab Doanh
+  // thu và KPI, không cộng mã "Bill" trên sổ giao dịch (công trình có BOQ không có
+  // giao dịch Bill nên trước đây báo cáo hiện 0). Gom giá trị thực hiện theo kỳ.
+  const billThang = await billDoanhThuTheoThang(maCongTrinh);
+  const billKy = new Map<string, number>();
+  for (const [thang, v] of billThang) {
+    const k = khoaKy(thang);
+    billKy.set(k, (billKy.get(k) ?? 0) + v);
+  }
+
+  const cot = [...new Set([...rows.map((r) => khoaKy(r.thangThucHien)), ...billKy.keys()])].sort();
   const o = new Map<string, Map<string, number>>();
   for (const r of rows) {
     const k = khoaKy(r.thangThucHien);
@@ -1116,6 +1126,8 @@ export async function maTranTheoCongTrinh(maCongTrinh: string, ky: KyBaoCao) {
     }
     hang.set(k, (hang.get(k) ?? 0) + (r._sum.soTien ?? 0));
   }
+  // Ghi đè dòng Bill bằng giá trị thực hiện (BOQ), thay cho tổng giao dịch mã Bill.
+  o.set(MA_DOANH_THU_DIEU_HANH, billKy);
 
   const hangs = danhMuc
     .map((c) => {
