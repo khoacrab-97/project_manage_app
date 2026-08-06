@@ -238,15 +238,20 @@ export function NhanCongTrinh({
 }
 
 // ---------------------------------------------------------------- Thanh tỷ lệ
-export function ThanhTyLe({ tyLe, nguong = 1 }: { tyLe: number | null; nguong?: number }) {
+export function ThanhTyLe({
+  tyLe,
+  nguong = 1,
+  mau,
+}: { tyLe: number | null; nguong?: number; mau?: string }) {
   if (tyLe === null) return <span className="text-xs text-chunhat">—</span>;
   const rong = Math.min(100, Math.max(0, tyLe * 100));
-  const mau =
-    tyLe > nguong ? "bg-rose-500" : tyLe > nguong * 0.9 ? "bg-amber-500" : "bg-emerald-500";
+  const mauBar =
+    mau ??
+    (tyLe > nguong ? "bg-rose-500" : tyLe > nguong * 0.9 ? "bg-amber-500" : "bg-emerald-500");
   return (
     <div className="flex items-center gap-2">
       <div className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-vien">
-        <div className={cn("h-full rounded-full", mau)} style={{ width: `${rong}%` }} />
+        <div className={cn("h-full rounded-full", mauBar)} style={{ width: `${rong}%` }} />
       </div>
       <span className="so text-xs text-chunhat">{(tyLe * 100).toFixed(0)}%</span>
     </div>
