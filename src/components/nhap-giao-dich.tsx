@@ -646,15 +646,35 @@ export function BangGiaoDich({
 
   // ---------------- SỬA: bảng tính ----------------
   const tongRong = RONG_STT + RONG_THANG + RONG_NDCP + COT.reduce((a, c) => a + (rong[c.key] ?? c.px), 0);
-  // Tổng số tiền hiện đang gõ trong bảng (dùng cả Đơn giá × Số lượng khi để trống Số tiền).
-  const tongSua = dongs.reduce((a, d) => a + (soTienDuKien(d).giaTri ?? 0), 0);
+  // Tổng chỉ cộng những dòng SẼ được ghi sổ — cùng điều kiện với luuGiaoDich:
+  // có mã hợp lệ, có Nội dung, Ngày chứng từ đọc được và tính được Số tiền. Nhờ
+  // vậy tổng xem trước khớp đúng tổng sau khi Lưu (dòng thiếu thông tin không lưu).
+  const dongLuu = (d: Dong) =>
+    d.maDTCP.trim() !== "" &&
+    tenTheoMa.has(d.maDTCP.trim()) &&
+    d.noiDung.trim() !== "" &&
+    docNgay(d.ngayChungTu) !== null &&
+    soTienDuKien(d).giaTri !== null;
+  const tongSua = dongs.reduce((a, d) => a + (dongLuu(d) ? (soTienDuKien(d).giaTri ?? 0) : 0), 0);
+  const soDongLuu = dongs.filter(dongLuu).length;
+  // Dòng đã gõ gì đó nhưng chưa đủ điều kiện lưu -> báo để hiểu vì sao chưa tính.
+  const soDangSoan = dongs.filter(
+    (d) => COT.some((c) => d[c.key].trim() !== "") && !dongLuu(d)
+  ).length;
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-vien px-4 py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-vien px-4 py-2.5">
         <p className="text-sm text-chunhat">
-          Tổng số tiền đang nhập:{" "}
+          Tổng số tiền:{" "}
           <strong className="so text-base text-chu">{tien(tongSua)} đ</strong>
+          <span className="ml-1 text-xs">· {soDongLuu} dòng sẽ lưu</span>
         </p>
+        {soDangSoan > 0 ? (
+          <p className="text-xs text-amber-600 dark:text-amber-400">
+            {soDangSoan} dòng chưa đủ thông tin (thiếu mã hợp lệ / nội dung / ngày) — chưa tính vào
+            tổng và sẽ không được lưu.
+          </p>
+        ) : null}
       </div>
       <div className="border-b border-vien bg-nhannhat px-4 py-2 text-[11px] text-chunhat">
         Thao tác như Excel: <strong>bấm</strong> chọn ô (kéo/Shift để chọn vùng),{" "}
