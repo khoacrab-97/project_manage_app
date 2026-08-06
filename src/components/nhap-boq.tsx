@@ -307,6 +307,9 @@ export function HopThoaiBill({
     return lamTronThanhTien ? Math.round(v) : v;
   };
   const tongTien = dongs.reduce((a, d) => a + ttThang(d), 0);
+  // Trạng thái tích "Xong" của cả bảng — cho ô "tất cả" ở tiêu đề cột Xong.
+  const soDaXong = dongs.filter((d) => xong[d.id]).length;
+  const tatCaXong = dongs.length > 0 && soDaXong === dongs.length;
   // Giá trị Bill hiện theo đơn giá (gồm/chưa VAT tuỳ BOQ) kèm giá trị đối ứng VAT.
   const vat = (vatPhanTram || 0) / 100;
   const nhanChinhVAT = donGiaGomVAT ? "gồm VAT" : "chưa VAT";
@@ -460,7 +463,27 @@ export function HopThoaiBill({
                 <th className={`${oTh} text-right`}>Đơn giá</th>
                 <th className={`${oTh} text-right`}>Lũy kế kỳ trước</th>
                 <th className={`${oTh} bg-nhannhat text-right`}>KL {nhan}</th>
-                <th className={oTh}>Xong</th>
+                <th className={oTh}>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span>Xong</span>
+                    {capNhat ? (
+                      <label className="flex items-center gap-1 text-[10px] font-normal normal-case">
+                        <input
+                          type="checkbox"
+                          checked={tatCaXong}
+                          ref={(el) => {
+                            if (el) el.indeterminate = !tatCaXong && soDaXong > 0;
+                          }}
+                          onChange={(e) =>
+                            setXong(Object.fromEntries(dongs.map((d) => [d.id, e.target.checked])))
+                          }
+                          title="Tích tất cả công tác đã xong"
+                        />
+                        tất cả
+                      </label>
+                    ) : null}
+                  </div>
+                </th>
                 <th className={`${oTh} bg-nhannhat text-right`}>Thành tiền {nhan}</th>
               </tr>
             </thead>

@@ -431,6 +431,9 @@ async function BOQTab({
   );
   const billKy = ky ? giaTriBillThang(dongs, ky.thang, heSoBill, giamGia, lamTronThanhTien) : 0;
   const soXong = dongs.filter((d) => d.hoanThanh).length;
+  // Tất cả công tác tích "Xong" = tiến độ thực hiện 100% (theo yêu cầu nghiệp vụ),
+  // bất kể lũy kế giá trị. Ngược lại tính theo lũy kế / hợp đồng như cũ.
+  const tatCaXong = dongs.length > 0 && soXong === dongs.length;
 
   /** Luỹ kế khối lượng của các tháng TRƯỚC kỳ đang chọn. */
   const klKyTruoc = (d: (typeof dongs)[number]) =>
@@ -456,9 +459,9 @@ async function BOQTab({
         />
         <TheKPI
           nhan="Tiến độ thực hiện"
-          giaTri={ttHopDong ? ttLuyKe / ttHopDong : null}
+          giaTri={tatCaXong ? 1 : ttHopDong ? ttLuyKe / ttHopDong : null}
           dinhDang="phanTram"
-          phuChu="Lũy kế / Hợp đồng"
+          phuChu={tatCaXong ? "Tất cả công tác đã xong" : "Lũy kế / Hợp đồng"}
         />
       </div>
 
