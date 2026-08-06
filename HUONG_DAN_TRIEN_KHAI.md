@@ -27,9 +27,32 @@ cùng biến đó để chạy migration rồi truy vấn DB.
 Nếu chưa cấu hình Axiom thì app vẫn chạy bình thường và chỉ ghi log ra stdout/stderr
 của Railway.
 
+Nếu workspace Axiom dùng region/edge riêng, thêm biến theo hướng dẫn của Axiom:
+
+```text
+AXIOM_EDGE=<edge>
+AXIOM_EDGE_URL=<edge-url>
+```
+
 Quy ước log production: event dùng `lower_snake_case`; không ghi mật khẩu, cookie,
 session token, email, họ tên, tên file gốc, nội dung Excel thô, số tiền hoặc chi
 tiết giao dịch vào log.
+
+Các event chính:
+
+- `api_request_completed` / `api_request_failed`: các route `/api/*`.
+- `web_request_seen`: page request và Server Action `GET/POST` đi qua web route.
+- `web_request_redirected`: request web bị proxy chuyển về `/dang-nhap`.
+
+Sau deploy có thể kiểm tra trong Axiom:
+
+```apl
+['prmana_app'] | where event == "web_request_seen" | limit 20
+```
+
+```apl
+['prmana_app'] | where event == "api_request_completed" | limit 20
+```
 
 Không cần nữa:
 

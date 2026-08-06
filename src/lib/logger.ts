@@ -1,6 +1,6 @@
 import "server-only";
 import { Axiom } from "@axiomhq/js";
-import { AxiomJSTransport, ConsoleTransport, Logger, type Transport } from "@axiomhq/logging";
+import { AxiomJSTransport, ConsoleTransport, EVENT, Logger, type Transport } from "@axiomhq/logging";
 import {
   levelForStatus,
   sanitizeLogFields,
@@ -20,6 +20,8 @@ const transports: [Transport, ...Transport[]] =
         new AxiomJSTransport({
           axiom: new Axiom({
             token: axiomToken,
+            edge: process.env.AXIOM_EDGE,
+            edgeUrl: process.env.AXIOM_EDGE_URL,
             onError: (error) => {
               console.error("axiom_ingest_failed", sanitizeLogFields(serializeError(error)));
             },
@@ -104,7 +106,7 @@ function writeLog(level: LogLevelName, event: string, fields: LogFields = {}, er
   });
 
   try {
-    logger[level](event, payload);
+    logger[level](event, { ...payload, [EVENT]: rootLogFields(payload) });
   } catch (logError) {
     console.error("logger_write_failed", {
       attemptedLevel: level,
@@ -116,4 +118,14 @@ function writeLog(level: LogLevelName, event: string, fields: LogFields = {}, er
 
 function scheduleFlush(): void {
   void flushLogs();
+}
+
+function rootLogFields(payload: LogFields): LogFields {
+  return sanitizeLogFields({
+    event: payload.event,
+    service: payload.service,
+    environment: payload.environment,
+    deploymentId: payload.deploymentId,
+    railwayServiceId: payload.railwayServiceId,
+  });
 }

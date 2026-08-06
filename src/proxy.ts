@@ -9,18 +9,43 @@
  * Layout không tự biết đường dẫn, nên proxy gắn vào header `x-duong-dan` để
  * layout biết có đang ở trang đăng nhập hay không mà miễn trừ.
  */
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
+import { shouldLogProxyRequest } from "./lib/logger-core";
+import { logProxyRequest } from "./lib/proxy-logger";
 
 const CONG_KHAI = ["/dang-nhap"];
 
-export function proxy(request: NextRequest) {
+export function proxy(request: NextRequest, event: NextFetchEvent) {
+  const startedAt = Date.now();
   const { pathname, search } = request.nextUrl;
+  const shouldLog = shouldLogProxyRequest({
+    method: request.method,
+    pathname,
+    headers: request.headers,
+  });
 
   const header = new Headers(request.headers);
   header.set("x-duong-dan", pathname + search);
   const diTiep = NextResponse.next({ request: { headers: header } });
+  const logWebRequest = (logEvent: string, status: number) => {
+    if (!shouldLog) return;
 
-  if (CONG_KHAI.some((p) => pathname.startsWith(p))) return diTiep;
+    event.waitUntil(
+      logProxyRequest({
+        event: logEvent,
+        route: pathname,
+        method: request.method,
+        status,
+        durationMs: Date.now() - startedAt,
+        module: "web",
+      })
+    );
+  };
+
+  if (CONG_KHAI.some((p) => pathname.startsWith(p))) {
+    logWebRequest("web_request_seen", 200);
+    return diTiep;
+  }
 
   if (!request.cookies.get("prmana_phien")) {
     const url = request.nextUrl.clone();
@@ -28,9 +53,11 @@ export function proxy(request: NextRequest) {
     url.search = "";
     // Nhớ trang đang muốn vào để đăng nhập xong quay lại đúng chỗ.
     if (pathname !== "/") url.searchParams.set("tiep", pathname + search);
+    logWebRequest("web_request_redirected", 307);
     return NextResponse.redirect(url);
   }
 
+  logWebRequest("web_request_seen", 200);
   return diTiep;
 }
 
