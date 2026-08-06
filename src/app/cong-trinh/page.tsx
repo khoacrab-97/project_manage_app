@@ -203,7 +203,9 @@ function BangCongTrinh({
             </Td>
             <Td phai>{phanTram(r.bienLN)}</Td>
             <Td>
-              {r.boqHopDong ? (
+              {r.tatCaXong ? (
+                <ThanhTyLe tyLe={1} />
+              ) : r.boqHopDong ? (
                 <ThanhTyLe tyLe={r.doanhThu / r.boqHopDong} />
               ) : (
                 <span className="text-xs text-chunhat">—</span>

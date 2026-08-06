@@ -909,6 +909,8 @@ export interface DongDanhMuc extends KetQuaSucKhoe {
   soLoiDuLieu: number;
   /** Tổng giá trị hợp đồng theo BOQ. null = công trình chưa nhập BOQ. */
   boqHopDong: number | null;
+  /** Có BOQ và MỌI công tác đã tích Xong → tiến độ TH tính 100%. */
+  tatCaXong: boolean;
 }
 
 export const danhMucSucKhoe = cache(async (tatCa = false): Promise<DongDanhMuc[]> => {
@@ -961,12 +963,18 @@ export const danhMucSucKhoe = cache(async (tatCa = false): Promise<DongDanhMuc[]
    * như mọi chỗ khác trong app. Bảng BOQ chỉ vài chục dòng nên đọc hết không tốn.
    */
   const boqHopDong = new Map<string, number>();
+  // Đếm số dòng BOQ và số dòng đã Xong theo công trình — nếu tất cả Xong thì
+  // tiến độ TH ở danh mục hiển thị 100% (khớp quy tắc tab BOQ).
+  const soDong = new Map<string, number>();
+  const soXong = new Map<string, number>();
   for (const l of await db.bOQLine.findMany({
-    select: { projectId: true, khoiLuong: true, donGia: true },
+    select: { projectId: true, khoiLuong: true, donGia: true, hoanThanh: true },
   })) {
     const ma = idSangMa.get(l.projectId);
     if (!ma) continue;
     boqHopDong.set(ma, (boqHopDong.get(ma) ?? 0) + Math.round(l.khoiLuong * l.donGia));
+    soDong.set(ma, (soDong.get(ma) ?? 0) + 1);
+    if (l.hoanThanh) soXong.set(ma, (soXong.get(ma) ?? 0) + 1);
   }
 
   return congTrinh
@@ -993,6 +1001,9 @@ export const danhMucSucKhoe = cache(async (tatCa = false): Promise<DongDanhMuc[]
         chenhLechCP: kh.cpKeHoach - th.cp,
         soLoiDuLieu,
         boqHopDong: boqHopDong.get(ct.maCongTrinh) ?? null,
+        tatCaXong:
+          (soDong.get(ct.maCongTrinh) ?? 0) > 0 &&
+          (soXong.get(ct.maCongTrinh) ?? 0) === soDong.get(ct.maCongTrinh),
         ...sk,
       };
     })
