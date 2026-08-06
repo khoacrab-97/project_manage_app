@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Check, Download, Pencil, Upload, X } from "lucide-react";
 import { luuKeHoach, nhapKeHoachExcel, type KetQuaKeHoach } from "@/app/ke-hoach/actions";
 import { tien } from "@/lib/format";
+import type { LoaiMa } from "@/lib/types";
 
 const O = "rounded-md border border-vien bg-the px-2 py-1 text-xs";
 
@@ -21,7 +22,7 @@ function ThongBao({ kq }: { kq: KetQuaKeHoach | null }) {
 export interface MaNhap {
   ma: string;
   ten: string;
-  loai: "Doanh thu" | "Chi phí";
+  loai: LoaiMa;
   /** Mã con thì thụt vào, giống bảng chi phí ở màn hình công trình. */
   capCon: boolean;
   /** Mã nhóm (không nhận giao dịch trực tiếp) — vẫn cho lập ngân sách cấp nhóm. */

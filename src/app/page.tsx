@@ -134,9 +134,9 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
         tieuDe="Tổng quan điều hành"
         moTa={
           <>
-            Lũy kế tất cả công trình đến hết {nhanThang(thang)}. Doanh thu lấy theo mã{" "}
+            Lũy kế tất cả công trình đến hết {nhanThang(thang)}. Giá trị thực hiện lấy theo mã{" "}
             <strong>{MA_DOANH_THU_DIEU_HANH} — bill nội bộ</strong>; theo §6.1 các trạng thái Tạm
-            ứng / Thanh toán đợt / Quyết toán không được cộng lẫn vào đây.
+            ứng / Thanh toán đợt / Quyết toán (dòng tiền) không được cộng lẫn vào đây.
           </>
         }
         phai={
@@ -151,14 +151,14 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
         <div className="mb-5">
           <CanhBaoBox
             bienThe="do"
-            tieuDe={`${khongDoanhThu.length} công trình đã phát sinh chi phí nhưng chưa ghi nhận đồng doanh thu nào`}
+            tieuDe={`${khongDoanhThu.length} công trình đã phát sinh chi phí nhưng chưa ghi nhận giá trị thực hiện nào`}
           >
             <p>
               Tổng chi phí đang treo:{" "}
               <strong className="so">
                 {tien(khongDoanhThu.reduce((a, d) => a + d.chiPhi, 0))} đ
               </strong>
-              . Cần xác minh đây là chưa tới kỳ ra bill hay là thiếu dữ liệu doanh thu.
+              . Cần xác minh đây là chưa tới kỳ ra bill hay là thiếu dữ liệu giá trị thực hiện.
             </p>
           </CanhBaoBox>
         </div>
@@ -173,14 +173,14 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
         Lũy kế từ đầu năm
       </p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TheKPI nhan="Doanh thu lũy kế" giaTri={luyKe.doanhThu} phuChu="Bill nội bộ" />
+        <TheKPI nhan="Giá trị thực hiện lũy kế" giaTri={luyKe.doanhThu} phuChu="Bill nội bộ" />
         <TheKPI nhan="Chi phí lũy kế" giaTri={luyKe.chiPhi} phuChu="Tổng các mã chi phí" />
-        <TheKPI nhan="Lợi nhuận gộp" giaTri={luyKe.loiNhuan} phuChu="Doanh thu − Chi phí" />
+        <TheKPI nhan="Lợi nhuận gộp" giaTri={luyKe.loiNhuan} phuChu="Giá trị thực hiện − Chi phí" />
         <TheKPI
           nhan="Biên lợi nhuận gộp"
           giaTri={luyKe.bienLN}
           dinhDang="phanTram"
-          phuChu="Lợi nhuận / Doanh thu"
+          phuChu="Lợi nhuận / Giá trị thực hiện"
         />
       </div>
 
@@ -192,7 +192,7 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
       </p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <TheKPI
-          nhan={`Doanh thu trong ${tenKy}`}
+          nhan={`Giá trị thực hiện trong ${tenKy}`}
           giaTri={kyNay?.doanhThu ?? null}
           delta={delta(kyNay?.doanhThu ?? 0, kyTruoc?.doanhThu)}
           tangLaTot
@@ -216,7 +216,7 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
           nhan={`Biên lợi nhuận ${tenKy}`}
           giaTri={kyNay?.bienLN ?? null}
           dinhDang="phanTram"
-          phuChu="Lợi nhuận / Doanh thu"
+          phuChu="Lợi nhuận / Giá trị thực hiện"
         />
       </div>
 
@@ -297,7 +297,7 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
         <The className="xl:col-span-2">
           <TheDau
-            tieuDe={`Doanh thu – Chi phí – Lợi nhuận theo ${kyXem === "quy" ? "quý" : "tháng"}`}
+            tieuDe={`Giá trị thực hiện – Chi phí – Lợi nhuận theo ${kyXem === "quy" ? "quý" : "tháng"}`}
             moTa="Cùng một trục giá trị (VNĐ) để so sánh trực tiếp"
             phai={
               <div className="flex gap-1.5">
@@ -319,7 +319,7 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
                 <thead>
                   <tr>
                     <Th>{kyXem === "quy" ? "Quý" : "Tháng"}</Th>
-                    <Th phai>Doanh thu</Th>
+                    <Th phai>Giá trị thực hiện</Th>
                     <Th phai>Chi phí</Th>
                     <Th phai>Lợi nhuận gộp</Th>
                     <Th phai>Biên LN</Th>

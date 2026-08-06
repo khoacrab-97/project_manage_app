@@ -13,10 +13,11 @@ export default async function TrangDanhMuc() {
     if (c.maCha) soCon.set(c.maCha, (soCon.get(c.maCha) ?? 0) + 1);
   }
 
-  // Xếp theo cây: mã gốc rồi tới mã con của nó. Nhóm Doanh thu xếp trên, Chi phí xếp dưới.
+  // Xếp theo cây: mã gốc rồi tới mã con. Thứ tự nhóm: Doanh thu → Giá trị thực hiện → Chi phí.
+  const XEP_LOAI: Record<string, number> = { "Doanh thu": 0, "Giá trị thực hiện": 1, "Chi phí": 2 };
   const goc = danhMuc
     .filter((c) => !c.maCha)
-    .sort((a, b) => (a.loai === b.loai ? 0 : a.loai === "Doanh thu" ? -1 : 1));
+    .sort((a, b) => (XEP_LOAI[a.loai] ?? 9) - (XEP_LOAI[b.loai] ?? 9));
   const hang: { ma: (typeof danhMuc)[number]; con: boolean }[] = [];
   for (const g of goc) {
     hang.push({ ma: g, con: false });
@@ -25,6 +26,7 @@ export default async function TrangDanhMuc() {
 
   const soDT = danhMuc.filter((c) => c.loai === "Doanh thu").length;
   const soCP = danhMuc.filter((c) => c.loai === "Chi phí").length;
+  const soGTTH = danhMuc.filter((c) => c.loai === "Giá trị thực hiện").length;
   const soNhap = danhMuc.filter((c) => c.choPhepNhapTrucTiep).length;
   const soChuaDung = danhMuc.filter((c) => c.choPhepNhapTrucTiep && !phatSinh.has(c.ma)).length;
 
@@ -36,6 +38,7 @@ export default async function TrangDanhMuc() {
         phai={
           <>
             <Nhan bienThe="nhan">{soDT} mã doanh thu</Nhan>
+            {soGTTH ? <Nhan bienThe="xanh">{soGTTH} giá trị thực hiện</Nhan> : null}
             <Nhan>{soCP} mã chi phí</Nhan>
           </>
         }
@@ -98,7 +101,11 @@ export default async function TrangDanhMuc() {
                   <Td className={`text-xs ${con ? "pl-8" : "font-semibold"}`}>{ma.ma}</Td>
                   <Td className={`text-xs ${con ? "" : "font-semibold"}`}>{ma.ten}</Td>
                   <Td>
-                    <Nhan bienThe={ma.loai === "Doanh thu" ? "nhan" : "trung_tinh"}>{ma.loai}</Nhan>
+                    <Nhan
+                      bienThe={ma.loai === "Doanh thu" ? "nhan" : ma.loai === "Giá trị thực hiện" ? "xanh" : "trung_tinh"}
+                    >
+                      {ma.loai}
+                    </Nhan>
                   </Td>
                   <Td className="text-xs text-chunhat">{ma.maCha ?? "—"}</Td>
                   <Td>

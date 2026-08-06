@@ -20,6 +20,9 @@ export interface KetQuaAction {
   thongDiep: string;
 }
 
+const LOAI_HOP_LE = ["Doanh thu", "Chi phí", "Giá trị thực hiện"];
+const nhanLoai = LOAI_HOP_LE.join(", ");
+
 async function ghiAudit(
   ma: string,
   hanhDong: string,
@@ -52,8 +55,8 @@ export async function suaMa(formData: FormData): Promise<KetQuaAction> {
 
     if (!ma) return { ok: false, thongDiep: "Thiếu mã." };
     if (!ten) return { ok: false, thongDiep: "Tên mã không được để trống." };
-    if (loai !== "Doanh thu" && loai !== "Chi phí") {
-      return { ok: false, thongDiep: "Loại phải là Doanh thu hoặc Chi phí." };
+    if (!LOAI_HOP_LE.includes(loai)) {
+      return { ok: false, thongDiep: `Loại phải là một trong: ${nhanLoai}.` };
     }
 
     const cu = await db.costRevenueCode.findUnique({ where: { ma } });
@@ -155,8 +158,8 @@ export async function themMa(formData: FormData): Promise<KetQuaAction> {
 
     if (!ma) return { ok: false, thongDiep: "Mã không được để trống." };
     if (!ten) return { ok: false, thongDiep: "Tên mã không được để trống." };
-    if (loai !== "Doanh thu" && loai !== "Chi phí") {
-      return { ok: false, thongDiep: "Loại phải là Doanh thu hoặc Chi phí." };
+    if (!LOAI_HOP_LE.includes(loai)) {
+      return { ok: false, thongDiep: `Loại phải là một trong: ${nhanLoai}.` };
     }
 
     if (await db.costRevenueCode.findUnique({ where: { ma } })) {

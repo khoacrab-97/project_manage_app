@@ -274,7 +274,7 @@ async function TongQuan({
   return (
     <>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TheKPI nhan="Doanh thu lũy kế" giaTri={dong.doanhThu} phuChu="Bill nội bộ" />
+        <TheKPI nhan="Giá trị thực hiện lũy kế" giaTri={dong.doanhThu} phuChu="Bill nội bộ (BOQ)" />
         <TheKPI nhan="Chi phí lũy kế" giaTri={dong.chiPhi} phuChu="Tổng các mã chi phí" />
         <TheKPI nhan="Lợi nhuận gộp" giaTri={dong.loiNhuan} phuChu="Doanh thu − Chi phí" />
         <TheKPI

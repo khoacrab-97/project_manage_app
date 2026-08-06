@@ -5,11 +5,12 @@ import { Check, Pencil, Plus, Redo2, Trash2, Undo2, X } from "lucide-react";
 import { luuGiaoDich, type KetQuaGiaoDich } from "@/app/cong-trinh/giao-dich-actions";
 import { docSoVN } from "@/lib/so-vn";
 import { nhanThang, ngay as dinhDangNgay, tien } from "@/lib/format";
+import type { LoaiMa } from "@/lib/types";
 
 interface MaChon {
   ma: string;
   ten: string;
-  loai: "Doanh thu" | "Chi phí";
+  loai: LoaiMa;
 }
 
 /** Một giao dịch đã lưu (đọc từ sổ). */

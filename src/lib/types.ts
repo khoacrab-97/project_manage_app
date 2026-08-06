@@ -4,7 +4,9 @@
  * Tên trường giữ tiếng Việt không dấu để khớp ngôn ngữ nghiệp vụ của người dùng.
  */
 
-export type LoaiMa = "Doanh thu" | "Chi phí";
+// "Giá trị thực hiện" tách riêng cho Bill (khối lượng thực hiện từ BOQ) — KHÔNG
+// phải dòng tiền doanh thu. Doanh thu/Chi phí là dòng tiền thu/chi trên sổ giao dịch.
+export type LoaiMa = "Doanh thu" | "Chi phí" | "Giá trị thực hiện";
 
 /** Danh mục mã doanh thu – chi phí (55 mã, nguồn: sheet DM_MA_DT_CP). */
 export interface MaDTCP {

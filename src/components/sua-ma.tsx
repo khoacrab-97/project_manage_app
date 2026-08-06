@@ -120,6 +120,7 @@ export function NutSuaMa({ ma, soGiaoDich }: { ma: MaDTCP; soGiaoDich: number })
           <select name="loai" defaultValue={ma.loai} disabled={khoaLoai} className={`${O} w-full disabled:opacity-60`}>
             <option>Doanh thu</option>
             <option>Chi phí</option>
+            <option>Giá trị thực hiện</option>
           </select>
         </label>
 
@@ -313,6 +314,7 @@ export function FormThemMa({ danhMuc }: { danhMuc: MaDTCP[] }) {
           <select name="loai" defaultValue="Chi phí" className={`${O} w-full`}>
             <option>Chi phí</option>
             <option>Doanh thu</option>
+            <option>Giá trị thực hiện</option>
           </select>
         </label>
         <label className="text-xs sm:col-span-2">
