@@ -493,6 +493,26 @@ export function BangGiaoDich({
     setSua(null);
   };
 
+  // Sao chép (Ctrl+C) vùng đang chọn ra clipboard dạng TSV để dán sang Excel/Sheets.
+  // Đang sửa ô thì để trình duyệt tự sao chép chữ trong ô. Ô có Tab/xuống dòng thì
+  // bọc trong dấu " theo quy ước Excel để không vỡ hàng/cột khi dán lại.
+  const sao = (e: React.ClipboardEvent) => {
+    if (sua || !neo || !cuoi) return;
+    const r0 = Math.min(neo.r, cuoi.r);
+    const r1 = Math.max(neo.r, cuoi.r);
+    const c0 = Math.min(neo.c, cuoi.c);
+    const c1 = Math.max(neo.c, cuoi.c);
+    const boc = (v: string) => (/[\t\n"]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+    const hang: string[] = [];
+    for (let ri = r0; ri <= r1; ri++) {
+      const o: string[] = [];
+      for (let ci = c0; ci <= c1; ci++) o.push(boc(dongs[ri][COT[ci].key]));
+      hang.push(o.join("\t"));
+    }
+    e.clipboardData.setData("text/plain", hang.join("\n"));
+    e.preventDefault();
+  };
+
   const luu = () => {
     const fd = new FormData();
     fd.set("maCongTrinh", maCongTrinh);
@@ -626,13 +646,15 @@ export function BangGiaoDich({
 
   // ---------------- SỬA: bảng tính ----------------
   const tongRong = RONG_STT + RONG_THANG + RONG_NDCP + COT.reduce((a, c) => a + (rong[c.key] ?? c.px), 0);
+  // Tổng số tiền hiện đang gõ trong bảng (dùng cả Đơn giá × Số lượng khi để trống Số tiền).
+  const tongSua = dongs.reduce((a, d) => a + (soTienDuKien(d).giaTri ?? 0), 0);
   return (
     <div>
       <div className="border-b border-vien bg-nhannhat px-4 py-2 text-[11px] text-chunhat">
         Thao tác như Excel: <strong>bấm</strong> chọn ô (kéo/Shift để chọn vùng),{" "}
         <strong>double-click</strong> hoặc gõ để sửa. <strong>Delete</strong> xoá dữ liệu vùng đang
-        chọn, <strong>Alt+Enter</strong> ngắt dòng trong ô, <strong>dán (Ctrl+V)</strong> vùng từ
-        Excel/Sheets. Rê cạnh phải tiêu đề để <strong>kéo dãn cột</strong>. Bấm ô <strong>#</strong>{" "}
+        chọn, <strong>Alt+Enter</strong> ngắt dòng trong ô,{" "}
+        <strong>sao chép (Ctrl+C)</strong>/<strong>dán (Ctrl+V)</strong> vùng với Excel/Sheets. Rê cạnh phải tiêu đề để <strong>kéo dãn cột</strong>. Bấm ô <strong>#</strong>{" "}
         đầu dòng rồi <strong>Insert</strong>/<strong>Delete</strong> để thêm/xoá dòng.{" "}
         <strong>Ctrl+Z</strong> hoàn tác, <strong>Ctrl+Y</strong> làm lại. Số kiểu Việt (dấu{" "}
         <strong>,</strong> thập phân, <strong>.</strong> ngăn nghìn).
@@ -648,7 +670,7 @@ export function BangGiaoDich({
 
       {/* Vùng bảng tính có phím tắt riêng (chọn ô, sửa, xoá vùng) nên cần nhận focus. */}
       {/* biome-ignore lint/a11y/noNoninteractiveTabindex: widget bảng tính tự xử lý bàn phím */}
-      <div ref={boxRef} role="application" tabIndex={0} onKeyDown={onPhim} onPaste={dan} className="max-h-[60vh] overflow-auto outline-none">
+      <div ref={boxRef} role="application" tabIndex={0} onKeyDown={onPhim} onPaste={dan} onCopy={sao} className="max-h-[60vh] overflow-auto outline-none">
         <table className="border-collapse text-sm" style={{ tableLayout: "fixed", width: tongRong }}>
           <colgroup>
             <col style={{ width: RONG_STT }} />
@@ -862,6 +884,9 @@ export function BangGiaoDich({
           <Redo2 className="size-3" /> Làm lại
         </button>
         <div className="grow" />
+        <span className="mr-1 text-xs text-chunhat">
+          Tổng <strong className="so text-chu">{tien(tongSua)} đ</strong>
+        </span>
         {giaoDich.length ? (
           <button
             type="button"
