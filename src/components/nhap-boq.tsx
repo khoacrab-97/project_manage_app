@@ -296,9 +296,11 @@ export function HopThoaiBill({
     return () => window.removeEventListener("keydown", onKey);
   }, [capNhat, neoKL, cuoiKL, dongs]);
 
+  // Khối lượng Bill được ÂM (tháng điều chỉnh trừ ngược). Chỉ ô rỗng / không đọc
+  // được mới coi là 0.
   const soCua = (v: string) => {
     const n = Number(v.replace(/\s/g, "").replace(",", "."));
-    return Number.isFinite(n) && n > 0 ? n : 0;
+    return Number.isFinite(n) ? n : 0;
   };
   const ttThang = (d: DongBill) => {
     const v = soCua(kl[d.id] ?? "") * d.donGia;

@@ -131,10 +131,12 @@ export async function luuKhoiLuong(formData: FormData): Promise<KetQuaBOQ> {
     for (const l of dong) {
       const raw = String(formData.get(`kl_${l.id}`) ?? "").trim().replace(/\s/g, "").replace(",", ".");
       const kl = raw === "" ? 0 : Number(raw);
-      if (!Number.isFinite(kl) || kl < 0) {
-        return { ok: false, thongDiep: "Khối lượng phải là số không âm." };
+      // Khối lượng Bill ĐƯỢC ÂM: có tháng phải trừ ngược lại giá trị đã ra bill của
+      // công tác đó (điều chỉnh). Chỉ ô trống / 0 mới bỏ qua (không lưu bản ghi).
+      if (!Number.isFinite(kl)) {
+        return { ok: false, thongDiep: "Khối lượng phải là số." };
       }
-      if (kl > 0) thucHienMoi.push({ boqLineId: l.id, thang, khoiLuong: kl });
+      if (kl !== 0) thucHienMoi.push({ boqLineId: l.id, thang, khoiLuong: kl });
       // Ô tích "đã thi công xong" — thuộc về công tác, không theo tháng.
       (formData.get(`xong_${l.id}`) === "on" ? idsXong : idsChuaXong).push(l.id);
     }
