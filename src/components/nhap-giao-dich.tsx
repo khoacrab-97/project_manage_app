@@ -541,6 +541,9 @@ export function BangGiaoDich({
   };
 
   // ---------------- KHÓA: chỉ xem ----------------
+  // Tra tên khoản mục theo mã (chỉ mã cho nhập trực tiếp). Không có = mã sai.
+  const tenTheoMa = new Map(dsMa.map((m) => [m.ma, m.ten]));
+
   if (khoa) {
     const tong = giaoDich.reduce((a, g) => a + g.soTien, 0);
     return (
@@ -568,7 +571,7 @@ export function BangGiaoDich({
                   <th className="sticky top-0 left-0 z-30 border border-vien bg-nen px-2 py-1.5 text-xs font-semibold text-chunhat">
                     #
                   </th>
-                  {["Mã Base", "Số HĐ", "Ngày CT", "Tháng", "Nội dung", "ĐVT", "Đơn giá", "SL", "Số tiền", "Mã DT–CP", "Ghi chú"].map(
+                  {["Mã Base", "Số HĐ", "Ngày CT", "Tháng", "Nội dung", "ĐVT", "Đơn giá", "SL", "Số tiền", "Mã DT–CP", "Nội dung chi phí", "Ghi chú"].map(
                     (h) => (
                       <th
                         key={h}
@@ -581,24 +584,35 @@ export function BangGiaoDich({
                 </tr>
               </thead>
               <tbody>
-                {giaoDich.map((g, i) => (
-                  <tr key={g.id} className="hover:bg-nen">
-                    <td className="sticky left-0 z-10 border border-vien bg-the px-2 py-1 text-center text-[11px] text-chunhat">
-                      {i + 1}
-                    </td>
-                    <td className="border border-vien px-2 py-1 text-xs">{g.maBase ?? "—"}</td>
-                    <td className="border border-vien px-2 py-1 text-xs whitespace-nowrap">{g.soHoaDon ?? "—"}</td>
-                    <td className="border border-vien px-2 py-1 text-xs whitespace-nowrap">{dinhDangNgay(g.ngayChungTu)}</td>
-                    <td className="border border-vien px-2 py-1 text-xs whitespace-nowrap">{nhanThang(g.ngayChungTu?.slice(0, 7))}</td>
-                    <td className="border border-vien px-2 py-1 text-xs">{g.noiDung}</td>
-                    <td className="border border-vien px-2 py-1 text-xs">{g.dvt ?? "—"}</td>
-                    <td className="so border border-vien px-2 py-1 text-right text-xs">{g.donGia !== null ? tien(g.donGia) : "—"}</td>
-                    <td className="so border border-vien px-2 py-1 text-right text-xs">{g.soLuong ?? "—"}</td>
-                    <td className="so border border-vien px-2 py-1 text-right text-xs font-medium">{tien(g.soTien)}</td>
-                    <td className="border border-vien px-2 py-1 text-xs whitespace-nowrap">{g.maDTCP}</td>
-                    <td className="border border-vien px-2 py-1 text-xs">{g.ghiChu ?? "—"}</td>
-                  </tr>
-                ))}
+                {giaoDich.map((g, i) => {
+                  const ma = (g.maDTCP ?? "").trim();
+                  const ten = ma ? tenTheoMa.get(ma) : undefined;
+                  const saiMa = ma !== "" && ten === undefined;
+                  return (
+                    <tr key={g.id} className="hover:bg-nen">
+                      <td className="sticky left-0 z-10 border border-vien bg-the px-2 py-1 text-center text-[11px] text-chunhat">
+                        {i + 1}
+                      </td>
+                      <td className="border border-vien px-2 py-1 text-xs">{g.maBase ?? "—"}</td>
+                      <td className="border border-vien px-2 py-1 text-xs whitespace-nowrap">{g.soHoaDon ?? "—"}</td>
+                      <td className="border border-vien px-2 py-1 text-xs whitespace-nowrap">{dinhDangNgay(g.ngayChungTu)}</td>
+                      <td className="border border-vien px-2 py-1 text-xs whitespace-nowrap">{nhanThang(g.ngayChungTu?.slice(0, 7))}</td>
+                      <td className="border border-vien px-2 py-1 text-xs">{g.noiDung}</td>
+                      <td className="border border-vien px-2 py-1 text-xs">{g.dvt ?? "—"}</td>
+                      <td className="so border border-vien px-2 py-1 text-right text-xs">{g.donGia !== null ? tien(g.donGia) : "—"}</td>
+                      <td className="so border border-vien px-2 py-1 text-right text-xs">{g.soLuong ?? "—"}</td>
+                      <td className="so border border-vien px-2 py-1 text-right text-xs font-medium">{tien(g.soTien)}</td>
+                      <td className="border border-vien px-2 py-1 text-xs whitespace-nowrap">{g.maDTCP}</td>
+                      <td
+                        title={saiMa ? "Mã DT–CP không có trong danh mục" : ten}
+                        className={`border border-vien px-2 py-1 text-xs ${saiMa ? "bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300" : "text-chunhat"}`}
+                      >
+                        {ma === "" ? "—" : saiMa ? "⚠ Mã không có trong danh mục" : ten}
+                      </td>
+                      <td className="border border-vien px-2 py-1 text-xs">{g.ghiChu ?? "—"}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -611,8 +625,6 @@ export function BangGiaoDich({
 
   // ---------------- SỬA: bảng tính ----------------
   const tongRong = RONG_STT + RONG_THANG + RONG_NDCP + COT.reduce((a, c) => a + (rong[c.key] ?? c.px), 0);
-  // Tra tên khoản mục theo mã (chỉ mã cho nhập trực tiếp). Không có = mã nhập sai.
-  const tenTheoMa = new Map(dsMa.map((m) => [m.ma, m.ten]));
   return (
     <div>
       <div className="border-b border-vien bg-nhannhat px-4 py-2 text-[11px] text-chunhat">

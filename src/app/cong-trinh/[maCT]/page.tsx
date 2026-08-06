@@ -918,12 +918,11 @@ async function GiaoDichTab({
 }) {
   const u = await nguoiDungHienTai();
   const duocNhap = coQuyen(u, "nhap_du_lieu") && !daHoanThanh;
-  // Mã được ghi trực tiếp cho ô chọn Mã DT–CP của bảng nhập (bỏ mã nhóm).
-  const dsMaNhap = duocNhap
-    ? (await layDanhMucMa())
-      .filter((c) => c.choPhepNhapTrucTiep)
-      .map((c) => ({ ma: c.ma, ten: c.ten, loai: c.loai }))
-    : [];
+  // Mã cho nhập trực tiếp (bỏ mã nhóm): dùng cho ô chọn Mã DT–CP và cột "Nội dung
+  // chi phí" (tra tên theo mã) — cần cả ở chế độ xem nên luôn nạp, không chỉ khi sửa.
+  const dsMaNhap = (await layDanhMucMa())
+    .filter((c) => c.choPhepNhapTrucTiep)
+    .map((c) => ({ ma: c.ma, ten: c.ten, loai: c.loai }));
 
   const ds = await layGiaoDich({ maCongTrinh });
   const giaoDich = [...ds]
