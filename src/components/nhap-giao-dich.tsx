@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, Pencil, Plus, Redo2, Trash2, Undo2, X } from "lucide-react";
 import { luuGiaoDich, type KetQuaGiaoDich } from "@/app/cong-trinh/giao-dich-actions";
 import { docSoVN } from "@/lib/so-vn";
 import { nhanThang, ngay as dinhDangNgay, tien } from "@/lib/format";
@@ -172,6 +172,9 @@ export function BangGiaoDich({
   const [rong, setRong] = useState<Record<string, number>>(
     () => Object.fromEntries(COT.map((c) => [c.key, c.px]))
   );
+  // Undo/Redo: ngăn xếp trạng thái TRƯỚC mỗi thao tác sửa.
+  const [past, setPast] = useState<Dong[][]>([]);
+  const [future, setFuture] = useState<Dong[][]>([]);
   const keoRef = useRef(false); // đang kéo chọn vùng bằng chuột
   const boxRef = useRef<HTMLDivElement>(null); // khung cuộn, nhận phím
   const suaRef = useRef<HTMLTextAreaElement | HTMLInputElement | null>(null);
@@ -207,12 +210,38 @@ export function BangGiaoDich({
   const suaO = (i: number, k: keyof Dong, v: string) =>
     setDongs((s) => s.map((d, j) => (j === i ? { ...d, [k]: v } : d)));
 
-  const themDong = () => setDongs((s) => [...s, { ...DONG_RONG }]);
+  // Chụp trạng thái hiện tại vào ngăn "quá khứ" TRƯỚC khi thao tác làm đổi bảng.
+  // Dong luôn được thay bằng object/mảng mới nên chỉ cần lưu tham chiếu, không clone.
+  const luuTruoc = () => {
+    setPast((p) => [...p.slice(-99), dongs]);
+    setFuture([]);
+  };
+  const hoanTac = () => {
+    if (!past.length) return;
+    setFuture((f) => [dongs, ...f]);
+    setDongs(past[past.length - 1]);
+    setPast((p) => p.slice(0, -1));
+    setSua(null);
+  };
+  const lamLai = () => {
+    if (!future.length) return;
+    setPast((p) => [...p, dongs]);
+    setDongs(future[0]);
+    setFuture((f) => f.slice(1));
+    setSua(null);
+  };
+
+  const themDong = () => {
+    luuTruoc();
+    setDongs((s) => [...s, { ...DONG_RONG }]);
+  };
   const xoaDong = (i: number) => {
+    luuTruoc();
     setDongs((s) => (s.length > 1 ? s.filter((_, j) => j !== i) : s));
     setChonDong(null);
   };
   const chenDongDuoi = (i: number) => {
+    luuTruoc();
     setDongs((s) => {
       const n = [...s];
       n.splice(i + 1, 0, { ...DONG_RONG });
@@ -249,6 +278,7 @@ export function BangGiaoDich({
   // Xoá dữ liệu toàn bộ ô trong vùng đang chọn (Delete/Backspace).
   const xoaVung = () => {
     if (!neo || !cuoi) return;
+    luuTruoc();
     const r0 = Math.min(neo.r, cuoi.r);
     const r1 = Math.max(neo.r, cuoi.r);
     const c0 = Math.min(neo.c, cuoi.c);
@@ -292,6 +322,7 @@ export function BangGiaoDich({
     if (keoRef.current) setCuoi({ r: i, c: ci });
   };
   const batDauSua = (i: number, ci: number) => {
+    luuTruoc(); // chụp trước khi vào sửa để Ctrl+Z quay lại nội dung cũ của ô
     setNeo({ r: i, c: ci });
     setCuoi({ r: i, c: ci });
     setChonDong(null);
@@ -301,6 +332,18 @@ export function BangGiaoDich({
   // Phím tắt trên KHUNG (khi KHÔNG gõ trong ô).
   const onPhim = (e: React.KeyboardEvent) => {
     if (sua) return; // đang sửa -> để ô nhập tự xử lý (Enter, Alt+Enter, Esc…)
+    // Undo/Redo: Ctrl+Z hoàn tác, Ctrl+Y hoặc Ctrl+Shift+Z làm lại.
+    if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z")) {
+      e.preventDefault();
+      if (e.shiftKey) lamLai();
+      else hoanTac();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === "y" || e.key === "Y")) {
+      e.preventDefault();
+      lamLai();
+      return;
+    }
     // Thao tác theo DÒNG khi đang chọn dòng qua cột "#".
     if (chonDong !== null) {
       if (e.key === "Delete") {
@@ -356,6 +399,7 @@ export function BangGiaoDich({
     // Gõ một ký tự in được -> vào chế độ sửa, thay nội dung ô bằng ký tự đó.
     if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
       e.preventDefault();
+      luuTruoc();
       suaO(r, COT[c].key, e.key);
       setSua({ r, c });
     }
@@ -426,6 +470,7 @@ export function BangGiaoDich({
     const text = e.clipboardData.getData("text/plain");
     if (!text || (!text.includes("\t") && !text.includes("\n"))) return; // 1 ô -> để mặc định
     e.preventDefault();
+    luuTruoc();
     const matrix = text
       .replace(/\r/g, "")
       .replace(/\n$/, "")
@@ -476,6 +521,8 @@ export function BangGiaoDich({
     setNeo(null);
     setCuoi(null);
     setSua(null);
+    setPast([]);
+    setFuture([]);
   };
 
   const suaLai = () => {
@@ -570,8 +617,9 @@ export function BangGiaoDich({
         <strong>double-click</strong> hoặc gõ để sửa. <strong>Delete</strong> xoá dữ liệu vùng đang
         chọn, <strong>Alt+Enter</strong> ngắt dòng trong ô, <strong>dán (Ctrl+V)</strong> vùng từ
         Excel/Sheets. Rê cạnh phải tiêu đề để <strong>kéo dãn cột</strong>. Bấm ô <strong>#</strong>{" "}
-        đầu dòng rồi <strong>Insert</strong>/<strong>Delete</strong> để thêm/xoá dòng. Số kiểu Việt
-        (dấu <strong>,</strong> thập phân, <strong>.</strong> ngăn nghìn).
+        đầu dòng rồi <strong>Insert</strong>/<strong>Delete</strong> để thêm/xoá dòng.{" "}
+        <strong>Ctrl+Z</strong> hoàn tác, <strong>Ctrl+Y</strong> làm lại. Số kiểu Việt (dấu{" "}
+        <strong>,</strong> thập phân, <strong>.</strong> ngăn nghìn).
       </div>
 
       <datalist id="dsMaGiaoDich">
@@ -744,6 +792,24 @@ export function BangGiaoDich({
           className="inline-flex items-center gap-1 rounded-md border border-vien px-2.5 py-1 text-xs text-rose-600 disabled:opacity-40 dark:text-rose-400"
         >
           <Trash2 className="size-3" /> Xoá dòng
+        </button>
+        <button
+          type="button"
+          onClick={hoanTac}
+          disabled={!past.length}
+          title="Hoàn tác (Ctrl+Z)"
+          className="inline-flex items-center gap-1 rounded-md border border-vien px-2.5 py-1 text-xs disabled:opacity-40"
+        >
+          <Undo2 className="size-3" /> Hoàn tác
+        </button>
+        <button
+          type="button"
+          onClick={lamLai}
+          disabled={!future.length}
+          title="Làm lại (Ctrl+Y)"
+          className="inline-flex items-center gap-1 rounded-md border border-vien px-2.5 py-1 text-xs disabled:opacity-40"
+        >
+          <Redo2 className="size-3" /> Làm lại
         </button>
         <div className="grow" />
         {giaoDich.length ? (
