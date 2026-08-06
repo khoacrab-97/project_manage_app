@@ -650,6 +650,12 @@ export function BangGiaoDich({
   const tongSua = dongs.reduce((a, d) => a + (soTienDuKien(d).giaTri ?? 0), 0);
   return (
     <div>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-vien px-4 py-2.5">
+        <p className="text-sm text-chunhat">
+          Tổng số tiền đang nhập:{" "}
+          <strong className="so text-base text-chu">{tien(tongSua)} đ</strong>
+        </p>
+      </div>
       <div className="border-b border-vien bg-nhannhat px-4 py-2 text-[11px] text-chunhat">
         Thao tác như Excel: <strong>bấm</strong> chọn ô (kéo/Shift để chọn vùng),{" "}
         <strong>double-click</strong> hoặc gõ để sửa. <strong>Delete</strong> xoá dữ liệu vùng đang
@@ -884,9 +890,6 @@ export function BangGiaoDich({
           <Redo2 className="size-3" /> Làm lại
         </button>
         <div className="grow" />
-        <span className="mr-1 text-xs text-chunhat">
-          Tổng <strong className="so text-chu">{tien(tongSua)} đ</strong>
-        </span>
         {giaoDich.length ? (
           <button
             type="button"
