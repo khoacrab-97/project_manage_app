@@ -1,6 +1,7 @@
-import { Bang, DauTrang, GhiChuNguon, Nhan, Td, The, TheDau, Th } from "@/components/ui";
+import { Bang, DauTrang, GhiChuNguon, Nhan, The, TheDau, Th } from "@/components/ui";
 import { demGiaoDichTheoMa, layDanhMucMa } from "@/lib/data/repository";
-import { FormThemMa, NutSuaMa, NutXoaMa } from "@/components/sua-ma";
+import { FormThemMa } from "@/components/sua-ma";
+import { CayMaKeo } from "@/components/cay-ma-keo";
 
 export const metadata = { title: "Danh mục mã DT–CP" };
 
@@ -72,7 +73,7 @@ export default async function TrangDanhMuc() {
       <The>
         <TheDau
           tieuDe="Cây mã 2 cấp"
-          moTa="Mã nhóm in đậm và không được ghi giao dịch trực tiếp; mã chi tiết thụt vào"
+          moTa="Kéo biểu tượng ⋮⋮ để sắp xếp: mã nhóm kéo kèm mã con; mã con chỉ đổi thứ tự trong nhóm cha."
         />
         <Bang>
           <thead>
@@ -86,42 +87,14 @@ export default async function TrangDanhMuc() {
               <Th phai>Số giao dịch</Th>
             </tr>
           </thead>
-          <tbody>
-            {hang.map(({ ma, con }) => {
-              const soDong = phatSinh.get(ma.ma) ?? 0;
-              return (
-                <tr key={ma.ma} className={con ? "hover:bg-nen" : "bg-nen/60 hover:bg-nen"}>
-                  {/* Cây bút trên, thùng rác dưới — xếp dọc để cột thao tác chỉ rộng một biểu tượng. */}
-                  <Td className="px-2">
-                    <div className="flex flex-col items-center gap-0.5">
-                      <NutSuaMa ma={ma} soGiaoDich={soDong} />
-                      <NutXoaMa ma={ma} soGiaoDich={soDong} soCon={soCon.get(ma.ma) ?? 0} />
-                    </div>
-                  </Td>
-                  <Td className={`text-xs ${con ? "pl-8" : "font-semibold"}`}>{ma.ma}</Td>
-                  <Td className={`text-xs ${con ? "" : "font-semibold"}`}>{ma.ten}</Td>
-                  <Td>
-                    <Nhan
-                      bienThe={ma.loai === "Doanh thu" ? "nhan" : ma.loai === "Giá trị thực hiện" ? "xanh" : "trung_tinh"}
-                    >
-                      {ma.loai}
-                    </Nhan>
-                  </Td>
-                  <Td className="text-xs text-chunhat">{ma.maCha ?? "—"}</Td>
-                  <Td>
-                    {ma.choPhepNhapTrucTiep ? (
-                      <Nhan bienThe="xanh">Có</Nhan>
-                    ) : (
-                      <Nhan>Không — mã nhóm</Nhan>
-                    )}
-                  </Td>
-                  <Td phai className="text-xs">
-                    {soDong > 0 ? soDong.toLocaleString("vi-VN") : <span className="text-chunhat">0</span>}
-                  </Td>
-                </tr>
-              );
-            })}
-          </tbody>
+          <CayMaKeo
+            hang={hang.map(({ ma, con }) => ({
+              ma,
+              con,
+              soGiaoDich: phatSinh.get(ma.ma) ?? 0,
+              soCon: soCon.get(ma.ma) ?? 0,
+            }))}
+          />
         </Bang>
       </The>
 

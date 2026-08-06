@@ -17,6 +17,7 @@ export const MENU: MucMenu[] = [
   { id: "tong-quan", nhan: "Tổng quan", href: "/" },
   { id: "cong-trinh", nhan: "Công trình", href: "/cong-trinh" },
   { id: "chi-phi", nhan: "Cơ cấu chi phí", href: "/chi-phi" },
+  { id: "dong-tien", nhan: "Dòng tiền", href: "/dong-tien" },
   { id: "ke-hoach", nhan: "Kế hoạch – Ngân sách", href: "/ke-hoach" },
   { id: "cong-nhan", nhan: "Quản lý công nhân", href: "/cong-nhan" },
   { id: "nhap-du-lieu", nhan: "Nhập dữ liệu", href: "/nhap-du-lieu" },

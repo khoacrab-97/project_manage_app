@@ -29,6 +29,7 @@ import {
   layGiaoDich,
   layBOQ,
   billDoanhThuTheoThang,
+  dongTienTheoThang,
   giaTriBillThang,
   giaTriMotGiamGia,
   layGiaoDichChoXuLy,
@@ -43,6 +44,7 @@ import { motGiaTri } from "@/lib/search-params";
 import { NGAY_HIEN_TAI } from "@/lib/thresholds";
 import { GiamGiaBOQ, HopThoaiBill, ImportBOQ, LuoiNhapBOQ, NutThemBill, SuaBOQ, ThietLapVAT } from "@/components/nhap-boq";
 import { BangGiaoDich } from "@/components/nhap-giao-dich";
+import { KhoiDongTien } from "@/components/khoi-dong-tien";
 import { NutThemCot, NutThemDong } from "@/components/cot-boq";
 
 /** Dãy tháng liên tục "yyyy-MM" từ `tu` đến `den`, bao gồm cả hai đầu. */
@@ -66,6 +68,7 @@ const TABS = [
   { id: "doanh-thu", nhan: "Doanh thu" },
   { id: "chi-phi", nhan: "Chi phí" },
   { id: "giao-dich", nhan: "Giao dịch" },
+  { id: "dong-tien", nhan: "Dòng tiền" },
   { id: "bao-cao", nhan: "Báo cáo" },
   { id: "evm", nhan: "EVM" },
   { id: "lich-su", nhan: "Lịch sử nhập" },
@@ -250,6 +253,8 @@ export default async function TrangChiTietCongTrinh({
         <ChiPhi maCongTrinh={maCongTrinh} danhMuc={danhMuc} base={base} an0={an0Param === "1"} />
       ) : tab === "giao-dich" ? (
         <GiaoDichTab maCongTrinh={maCongTrinh} daHoanThanh={ct.trangThai === "Đã nghiệm thu"} />
+      ) : tab === "dong-tien" ? (
+        <DongTienTab maCongTrinh={maCongTrinh} />
       ) : tab === "bao-cao" ? (
         <BaoCaoTab maCongTrinh={maCongTrinh} loai={loaiParam} ky={kyParam} q={q} />
       ) : tab === "evm" ? (
@@ -944,8 +949,8 @@ async function GiaoDichTab({
   return (
     <The>
       <TheDau
-        tieuDe="Giao dịch"
-        moTa="Bảng nhập giao dịch (doanh thu – chi phí) như Excel — nguồn số liệu cho tab Doanh thu và Chi phí."
+        tieuDe="Giao dịch (sổ dòng tiền)"
+        moTa="Sổ dòng tiền thu – chi (mã Doanh thu / Chi phí) nhập như Excel — nguồn cho tab Chi phí và Dòng tiền."
       />
       <BangGiaoDich
         maCongTrinh={maCongTrinh}
@@ -955,6 +960,12 @@ async function GiaoDichTab({
       />
     </The>
   );
+}
+
+// ---------------------------------------------------------------- Dòng tiền
+async function DongTienTab({ maCongTrinh }: { maCongTrinh: string }) {
+  const chuoi = await dongTienTheoThang(maCongTrinh);
+  return <KhoiDongTien chuoi={chuoi} />;
 }
 
 // ---------------------------------------------------------------- Báo cáo

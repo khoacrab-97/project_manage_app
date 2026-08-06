@@ -121,6 +121,68 @@ export function BieuDoXuHuong({
   );
 }
 
+// ---------------------------------------------------------------- Dòng tiền
+export interface DiemDongTien {
+  thang: string;
+  thu: number;
+  chi: number;
+  luyKe: number;
+}
+
+/**
+ * Dòng tiền theo tháng: Tiền thu / Tiền chi (cột) và Dòng tiền ròng lũy kế (đường).
+ * Một trục giá trị (VNĐ). Bill KHÔNG tính vào đây — chỉ mã Doanh thu và Chi phí.
+ */
+export function BieuDoDongTien({
+  data,
+  loaiKy = "thang",
+}: {
+  data: DiemDongTien[];
+  loaiKy?: "thang" | "quy";
+}) {
+  const toi = useDark();
+  const mau = bangMau(toi);
+  const c = chrome(toi);
+  const nhanTruc = loaiKy === "quy" ? nhanQuy : nhanThang;
+
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: 8 }}>
+        <CartesianGrid stroke={c.luoi} vertical={false} />
+        <XAxis
+          dataKey="thang"
+          tickFormatter={nhanTruc}
+          tick={{ fontSize: 11, fill: c.chuMo }}
+          axisLine={{ stroke: c.truc }}
+          tickLine={false}
+        />
+        <YAxis
+          tickFormatter={(v) => tienGon(v as number)}
+          tick={{ fontSize: 11, fill: c.chuMo }}
+          axisLine={false}
+          tickLine={false}
+          width={72}
+        />
+        <Tooltip
+          content={<KhungTooltip nhanTruc={nhanTruc} />}
+          cursor={{ fill: toi ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)" }}
+        />
+        <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} iconType="square" iconSize={9} />
+        <Bar dataKey="thu" name="Tiền thu" fill={mau[0]} radius={[4, 4, 0, 0]} barSize={18} />
+        <Bar dataKey="chi" name="Tiền chi" fill={mau[1]} radius={[4, 4, 0, 0]} barSize={18} />
+        <Line
+          dataKey="luyKe"
+          name="Dòng tiền ròng lũy kế"
+          stroke={mau[2]}
+          strokeWidth={2}
+          dot={{ r: 3, strokeWidth: 0, fill: mau[2] }}
+          activeDot={{ r: 5 }}
+        />
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
+
 // ---------------------------------------------------------------- Cơ cấu chi phí
 export interface DongCoCauChart {
   ma: string;

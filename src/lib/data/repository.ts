@@ -739,6 +739,53 @@ export const chuoiTheoQuy = cache(async (): Promise<(TongHop & { ky: string })[]
     .map(([ky, v]) => ({ ky, ...ghepTongHop(v.dt, v.cp) }));
 });
 
+// ------------------------------------------------------------ Dòng tiền
+/**
+ * Dòng tiền theo tháng: tiền THU (mã Doanh thu: Tạm ứng/Thanh toán/Quyết toán) và
+ * tiền CHI (mã Chi phí) trên SỔ GIAO DỊCH. Bill (Giá trị thực hiện) KHÔNG phải dòng
+ * tiền nên bỏ qua. `luyKe` = dòng tiền ròng cộng dồn (số dư).
+ *
+ * Không truyền `maCongTrinh` = toàn công ty theo phạm vi người dùng.
+ */
+export async function dongTienTheoThang(
+  maCongTrinh?: string
+): Promise<{ thang: string; thu: number; chi: number; rong: number; luyKe: number }[]> {
+  const loai = await banDoLoai();
+  let where: Record<string, unknown>;
+  if (maCongTrinh) {
+    const ct = (await layCongTrinh()).find((c) => c.maCongTrinh === maCongTrinh);
+    if (!ct) return [];
+    where = { projectId: ct.id };
+  } else {
+    where = await locTheoProjectId();
+  }
+
+  const rows = await db.transaction.groupBy({
+    by: ["thangThucHien", "maDTCP"],
+    _sum: { soTien: true },
+    where,
+  });
+
+  const gom = new Map<string, { thu: number; chi: number }>();
+  for (const r of rows) {
+    const l = loai.get(r.maDTCP);
+    if (l !== "Doanh thu" && l !== "Chi phí") continue; // bỏ Bill (Giá trị thực hiện)
+    const o = gom.get(r.thangThucHien) ?? { thu: 0, chi: 0 };
+    if (l === "Doanh thu") o.thu += r._sum.soTien ?? 0;
+    else o.chi += r._sum.soTien ?? 0;
+    gom.set(r.thangThucHien, o);
+  }
+
+  let luyKe = 0;
+  return [...gom.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([thang, v]) => {
+      const rong = v.thu - v.chi;
+      luyKe += rong;
+      return { thang, thu: v.thu, chi: v.chi, rong, luyKe };
+    });
+}
+
 // ------------------------------------------------------------ Kế hoạch
 /** Kế hoạch lũy kế theo từng công trình. Một truy vấn cho tất cả. */
 const keHoachTatCa = cache(async () => {

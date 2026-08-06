@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
+  Banknote,
   Building2,
   ClipboardCheck,
   FileSpreadsheet,
@@ -28,6 +29,7 @@ const BIEU_TUONG: Record<string, LucideIcon> = {
   "tong-quan": LayoutDashboard,
   "cong-trinh": Building2,
   "chi-phi": PieChart,
+  "dong-tien": Banknote,
   "ke-hoach": Wallet,
   "cong-nhan": HardHat,
   "nhap-du-lieu": Upload,

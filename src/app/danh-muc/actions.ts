@@ -147,6 +147,28 @@ export async function xoaMa(formData: FormData): Promise<KetQuaAction> {
   });
 }
 
+/**
+ * Lưu thứ tự hiển thị danh mục mã sau khi kéo-thả. Nhận danh sách `ma` theo đúng
+ * thứ tự mới rồi đặt `thuTuHienThi` = vị trí. Cây (cha–con) do `maCha` quyết định
+ * nên đổi thứ tự không phá cấu trúc, chỉ đổi trình tự hiển thị anh em.
+ */
+export async function sapXepDanhMuc(formData: FormData): Promise<KetQuaAction> {
+  return withServerActionLogging("sap_xep_danh_muc", [formData], async () => {
+    const thuTu = formData.getAll("ma").map(String);
+    if (!thuTu.length) return { ok: false, thongDiep: "Danh sách rỗng." };
+
+    const co = new Set((await db.costRevenueCode.findMany({ select: { ma: true } })).map((c) => c.ma));
+    const ops = thuTu
+      .filter((m) => co.has(m))
+      .map((m, i) => db.costRevenueCode.update({ where: { ma: m }, data: { thuTuHienThi: i } }));
+    if (!ops.length) return { ok: false, thongDiep: "Không có mã hợp lệ." };
+
+    await db.$transaction(ops);
+    revalidatePath("/danh-muc");
+    return { ok: true, thongDiep: "Đã lưu thứ tự." };
+  });
+}
+
 export async function themMa(formData: FormData): Promise<KetQuaAction> {
   return withServerActionLogging("them_ma", [formData], async () => {
     const ma = String(formData.get("ma") ?? "").trim();
