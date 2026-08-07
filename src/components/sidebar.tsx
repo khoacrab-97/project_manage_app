@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Banknote,
   Building2,
@@ -41,27 +41,23 @@ function dangChon(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** Logo Hoàng Lam (thu gọn thành icon): mái nhà đỏ + vòng tròn HL vàng/xanh. */
-function LogoHoangLam({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 64 64" className={className} aria-label="Hoàng Lam" role="img">
-      <path d="M32 5 L60 39 H52 V56 H12 V39 H4 Z" fill="#ED1C24" />
-      <circle cx="32" cy="33" r="15.5" fill="#fff" />
-      <circle cx="32" cy="33" r="13.5" fill="#FFD200" />
-      <path d="M32 33 V46.5 A13.5 13.5 0 0 1 18.5 33 Z" fill="#009444" />
-      <text
-        x="32"
-        y="30"
-        textAnchor="middle"
-        fontFamily="Arial, sans-serif"
-        fontWeight="700"
-        fontSize="11"
-        fill="#ED1C24"
-      >
-        HL
-      </text>
-    </svg>
-  );
+/** Đồng hồ Thứ · Ngày · Giờ cập nhật mỗi giây. null khi chưa mount (tránh lệch SSR). */
+function useDongHo() {
+  const [gio, setGio] = useState<{ thu: string; ngay: string; gio: string } | null>(null);
+  useEffect(() => {
+    const capNhat = () => {
+      const d = new Date();
+      setGio({
+        thu: d.toLocaleDateString("vi-VN", { weekday: "long" }),
+        ngay: d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }),
+        gio: d.toLocaleTimeString("vi-VN", { hour12: false }),
+      });
+    };
+    capNhat();
+    const id = setInterval(capNhat, 1000);
+    return () => clearInterval(id);
+  }, []);
+  return gio;
 }
 
 export function Sidebar({ menuDuocThay }: { menuDuocThay: string[] }) {
@@ -70,13 +66,17 @@ export function Sidebar({ menuDuocThay }: { menuDuocThay: string[] }) {
   // nằm ở layout phía máy chủ, đây chỉ là phần nhìn.
   const mucHienThi = MENU.filter((m) => menuDuocThay.includes(m.id));
   const [mo, setMo] = useState(false);
+  const gio = useDongHo();
 
   const noiDung = (
     <nav className="flex h-full flex-col">
       <div className="flex items-center gap-2.5 px-4 py-4">
-        <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-white p-0.5">
-          <LogoHoangLam className="size-full" />
-        </div>
+        {/* biome-ignore lint/performance/noImgElement: logo tĩnh trong public, không cần next/image */}
+        <img
+          src="/logo-hoang-lam.png"
+          alt="Hoàng Lam"
+          className="size-11 shrink-0 rounded-lg bg-white object-contain p-0.5"
+        />
         <div className="min-w-0 leading-tight">
           <p className="text-sm font-semibold text-sidebarsang">CEM Platform</p>
           <p className="text-[11px] text-sidebarchu">
@@ -110,6 +110,20 @@ export function Sidebar({ menuDuocThay }: { menuDuocThay: string[] }) {
           );
         })}
       </ul>
+
+      {/* Đồng hồ Thứ · Ngày · Giờ ở góc dưới trái, cập nhật mỗi giây. */}
+      <div className="border-t border-white/10 px-4 py-3">
+        {gio ? (
+          <div className="text-[11px] leading-relaxed text-sidebarchu">
+            <p className="font-medium text-sidebarsang capitalize">{gio.thu}</p>
+            <p>
+              {gio.ngay} · <span className="tabular-nums">{gio.gio}</span>
+            </p>
+          </div>
+        ) : (
+          <p className="text-[11px] text-sidebarchu">&nbsp;</p>
+        )}
+      </div>
     </nav>
   );
 
