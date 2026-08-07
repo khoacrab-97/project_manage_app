@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import { BieuDoCoCau, BieuDoEVM, BieuDoXuHuong } from "@/components/charts";
 import { TheKPI } from "@/components/kpi-card";
+import { ChonNavi } from "@/components/chon-navi";
 import {
   Bang,
   CanhBaoBox,
@@ -17,7 +18,7 @@ import {
   Th,
   ThanhTyLe,
 } from "@/components/ui";
-import { nhanNam, nhanQuy, nhanThang, phanTram, tien, tienGon } from "@/lib/format";
+import { khoaQuy, nhanNam, nhanQuy, nhanThang, phanTram, tien, tienGon } from "@/lib/format";
 import {
   chiSoEVM,
   chuoiEVM,
@@ -28,19 +29,32 @@ import {
   demSucKhoe,
   diemChatLuong,
   layCanhBao,
+  maTranTheoCongTrinh,
+  maTranTongHop,
   thangMoiNhat,
   tinhTrangNopDuLieu,
   tongQuanCongTy,
   topLoiNhuan,
   topRuiRo,
 } from "@/lib/data/repository";
-import { bienDong } from "@/lib/kpi";
 import { motGiaTri } from "@/lib/search-params";
 import { MA_DOANH_THU_DIEU_HANH } from "@/lib/thresholds";
 
+/** Nhãn kỳ dùng chung cho tab Tổng kết phân tích chi phí. */
+const nhanKyBC = (ky: "thang" | "quy" | "nam", c: string) =>
+  ky === "quy" ? nhanQuy(c) : ky === "nam" ? nhanNam(c) : nhanThang(c);
+
+const KY_BC = [
+  { id: "thang", nhan: "Tháng" },
+  { id: "quy", nhan: "Quý" },
+  { id: "nam", nhan: "Năm" },
+] as const;
+
 export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
   const sp = await searchParams;
-  /** Xem tổng quan theo Năm / Quý / Tháng. Mặc định tháng. */
+  const muc = motGiaTri(sp.muc) ?? "dashboard"; // dashboard | chung | tong-ket
+
+  /** Dashboard: xem theo Năm / Quý / Tháng. Mặc định tháng. */
   const kyParam = motGiaTri(sp.ky);
   const kyXem: "thang" | "quy" | "nam" =
     kyParam === "quy" ? "quy" : kyParam === "nam" ? "nam" : "thang";
@@ -52,7 +66,6 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
     chuoiQuy,
     suckhoe,
     canhBao,
-    coCau,
     danhMuc,
     nop,
     diem,
@@ -67,7 +80,6 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
     chuoiTheoQuy(),
     demSucKhoe(),
     layCanhBao(),
-    coCauChiPhiTheoNhom(),
     danhMucSucKhoe(),
     tinhTrangNopDuLieu(),
     diemChatLuong(),
@@ -93,21 +105,12 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
     )
   ).map((a) => ({ ...a, bienLN: a.doanhThu ? a.loiNhuan / a.doanhThu : 0 }));
 
-  // Biểu đồ và bảng dùng chung một bộ dữ liệu; chỉ đổi khóa và cách gắn nhãn.
+  // Chuỗi + nhãn theo granularity đang chọn (chung cho biểu đồ xu hướng).
   const chuoiXem =
     kyXem === "quy" ? chuoiQuy.map((r) => ({ ...r, thang: r.ky })) : kyXem === "nam" ? chuoiNam : chuoi;
   const nhanKy = kyXem === "quy" ? nhanQuy : kyXem === "nam" ? nhanNam : nhanThang;
   const tenKy = kyXem === "quy" ? "quý" : kyXem === "nam" ? "năm" : "tháng";
 
-  /*
-   * Kỳ gần nhất và kỳ liền trước, lấy từ CHÍNH chuỗi đang xem.
-   * Nhờ vậy chọn Quý thì thẻ KPI so quý này với quý trước, chọn Tháng thì so
-   * tháng này với tháng trước — một đường tính duy nhất cho cả hai chế độ.
-   */
-  const kyNay = chuoiXem.at(-1);
-  const kyTruoc = chuoiXem.at(-2);
-  const delta = (nay: number, truoc: number | undefined) =>
-    truoc === undefined ? null : bienDong(nay, truoc);
   const canhBaoP0 = canhBao.filter((c) => c.mucDo === "P0");
   const khongDoanhThu = danhMuc.filter((d) => d.doanhThu === 0 && d.chiPhi > 0);
 
@@ -119,14 +122,41 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
   const evmVAC = evm.reduce((a, d) => a + (d.vac ?? 0), 0);
   const evmBaoDong = evm.filter((d) => (d.cpi ?? 1) < 0.9).length;
 
-  // Xếp theo số tiền lệch, không theo phần trăm: công trình nhỏ lệch 24% vẫn ít
-  // đáng lo hơn công trình lớn lệch 7,5% mà mất 305 triệu.
+  // EV/AC gộp theo granularity: chuỗi LŨY TIẾN nên lấy điểm CUỐI mỗi kỳ.
+  const goiKy = (t: string) => (kyXem === "quy" ? khoaQuy(t) : kyXem === "nam" ? t.slice(0, 4) : t);
+  const chuoiEVxem =
+    kyXem === "thang"
+      ? chuoiEV
+      : [
+          ...new Map(
+            [...chuoiEV]
+              .sort((a, b) => a.thang.localeCompare(b.thang))
+              .map((r) => [goiKy(r.thang), { thang: goiKy(r.thang), ev: r.ev, ac: r.ac }])
+          ).values(),
+        ];
+
+  // Xếp theo số tiền lệch, không theo phần trăm.
   const lechNganSach = danhMuc
     .filter((d) => d.cpKeHoach > 0)
     .sort((a, b) => a.chenhLechCP - b.chenhLechCP)
     .slice(0, 10);
 
-  // Cơ cấu chi phí: giữ 8 nhóm lớn nhất, phần đuôi gộp "Khác" (không sinh thêm màu).
+  // ---- Dashboard: Cơ cấu chi phí theo KỲ (Năm = cả năm hiện tại; Quý/Tháng = kỳ chọn) ----
+  const allThang = chuoi.map((r) => r.thang);
+  const namHienTai = allThang.at(-1)?.slice(0, 4) ?? "";
+  const kyCoCauCo = kyXem === "nam" ? [] : [...new Set(allThang.map(goiKy))];
+  const kyChonTho = motGiaTri(sp.kyChon);
+  const kyChonCoCau =
+    kyXem === "nam"
+      ? namHienTai
+      : kyChonTho && kyCoCauCo.includes(kyChonTho)
+        ? kyChonTho
+        : (kyCoCauCo.at(-1) ?? "");
+  const thangCoCau =
+    kyXem === "nam"
+      ? allThang.filter((t) => t.slice(0, 4) === namHienTai)
+      : allThang.filter((t) => goiKy(t) === kyChonCoCau);
+  const coCau = muc === "dashboard" ? await coCauChiPhiTheoNhom({ thangs: thangCoCau }) : [];
   const top8 = coCau.slice(0, 8);
   const conLai = coCau.slice(8);
   const duLieuCoCau = [
@@ -141,6 +171,32 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
           },
         ]
       : []),
+  ];
+
+  // ---- Tổng kết phân tích chi phí (chỉ nạp khi ở tab đó) ----
+  const tkKyParam = motGiaTri(sp.tkKy);
+  const tkKy: "thang" | "quy" | "nam" =
+    tkKyParam === "quy" ? "quy" : tkKyParam === "nam" ? "nam" : "thang";
+  const tkCt = motGiaTri(sp.tkCt) ?? "all";
+  const tkData =
+    muc === "tong-ket"
+      ? tkCt === "all"
+        ? await maTranTongHop(tkKy)
+        : await maTranTheoCongTrinh(tkCt, tkKy)
+      : { cot: [] as string[], hangs: [] as Awaited<ReturnType<typeof maTranTongHop>>["hangs"] };
+  const tkKyChonTho = motGiaTri(sp.tkKyChon);
+  const tkKyChon =
+    tkKyChonTho && tkData.cot.includes(tkKyChonTho) ? tkKyChonTho : tkData.cot.at(-1);
+  const tkIdx = tkKyChon ? tkData.cot.indexOf(tkKyChon) : -1;
+  const tkTongChung = tkData.hangs.reduce((a, h) => a + h.tong, 0);
+  const tkKyVal = tkIdx >= 0 ? tkData.hangs.reduce((a, h) => a + h.giaTri[tkIdx], 0) : 0;
+  const tkTuyChon = [
+    { value: "all", nhan: "Tổng hợp tất cả công trình", href: `/?muc=tong-ket&tkKy=${tkKy}&tkCt=all` },
+    ...danhMuc.map((r) => ({
+      value: r.congTrinh.maCongTrinh,
+      nhan: r.congTrinh.tenRutGon || r.congTrinh.maCongTrinh,
+      href: `/?muc=tong-ket&tkKy=${tkKy}&tkCt=${encodeURIComponent(r.congTrinh.maCongTrinh)}`,
+    })),
   ];
 
   return (
@@ -161,489 +217,590 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
         }
       />
 
-      {/* ---- Bộ lọc Năm / Quý / Tháng, khóa cố định dưới thanh trên khi cuộn ---- */}
-      <div className="sticky top-[52px] z-20 -mx-4 mb-4 flex flex-wrap items-center gap-1.5 border-b border-vien bg-the/90 px-4 py-2 backdrop-blur">
-        <span className="mr-1 text-xs font-medium text-chunhat">Xem theo:</span>
-        <LocLink href="/?ky=nam" dangChon={kyXem === "nam"}>
-          Năm
+      {/* ---- Chuyển mục ---- */}
+      <div className="mb-4 flex flex-wrap gap-1.5">
+        <LocLink href="/" dangChon={muc === "dashboard"}>
+          Dashboard
         </LocLink>
-        <LocLink href="/?ky=quy" dangChon={kyXem === "quy"}>
-          Quý
+        <LocLink href="/?muc=chung" dangChon={muc === "chung"}>
+          Chung
         </LocLink>
-        <LocLink href="/" dangChon={kyXem === "thang"}>
-          Tháng
+        <LocLink href="/?muc=tong-ket" dangChon={muc === "tong-ket"}>
+          Tổng kết phân tích chi phí
         </LocLink>
       </div>
 
-      {/* ---- Cảnh báo nổi bật nhất, đặt trên đầu vì CEO cần thấy trước ---- */}
-      {khongDoanhThu.length > 0 ? (
-        <div className="mb-5">
-          <CanhBaoBox
-            bienThe="do"
-            tieuDe={`${khongDoanhThu.length} công trình đã phát sinh chi phí nhưng chưa ghi nhận giá trị thực hiện nào`}
-          >
-            <p>
-              Tổng chi phí đang treo:{" "}
-              <strong className="so">
-                {tien(khongDoanhThu.reduce((a, d) => a + d.chiPhi, 0))} đ
-              </strong>
-              . Cần xác minh đây là chưa tới kỳ ra bill hay là thiếu dữ liệu giá trị thực hiện.
-            </p>
-          </CanhBaoBox>
-        </div>
-      ) : null}
-
-      {/*
-        Hai hàng thẻ tách bạch LŨY KẾ và THÁNG.
-        Không gắn delta tháng vào con số lũy kế — hai đại lượng khác nhau, ghép
-        chung sẽ đọc thành "doanh thu lũy kế giảm 43,9%", điều đó vô nghĩa.
-      */}
-      <p className="mb-2 text-xs font-semibold tracking-wide text-chunhat uppercase">
-        Lũy kế từ đầu năm
-      </p>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TheKPI
-          nhan="Giá trị thực hiện lũy kế"
-          giaTri={luyKe.doanhThu}
-          phuChu="Bill nội bộ"
-          chiDan="Lũy kế giá trị thực hiện (Bill nội bộ theo mã điều hành) của tất cả công trình từ đầu năm. Đây là giá trị thực hiện, không phải tiền thu (dòng tiền)."
-        />
-        <TheKPI
-          nhan="Chi phí lũy kế"
-          giaTri={luyKe.chiPhi}
-          phuChu="Tổng các mã chi phí"
-          chiDan="Tổng mọi giao dịch thuộc mã Chi phí của tất cả công trình, lũy kế từ đầu năm."
-        />
-        <TheKPI
-          nhan="Lợi nhuận gộp"
-          giaTri={luyKe.loiNhuan}
-          phuChu="Giá trị thực hiện − Chi phí"
-          chiDan="Lợi nhuận gộp = Giá trị thực hiện lũy kế − Chi phí lũy kế, cộng gộp toàn công ty."
-        />
-        <TheKPI
-          nhan="Biên lợi nhuận gộp"
-          giaTri={luyKe.bienLN}
-          dinhDang="phanTram"
-          phuChu="Lợi nhuận / Giá trị thực hiện"
-          chiDan="Biên lợi nhuận gộp = Lợi nhuận gộp / Giá trị thực hiện lũy kế của toàn công ty."
-        />
-      </div>
-
-      <p className="mt-5 mb-2 text-xs font-semibold tracking-wide text-chunhat uppercase">
-        Riêng {nhanKy(kyNay?.thang ?? "")}
-        <span className="ml-2 font-normal normal-case">
-          (kỳ chưa kết thúc — số liệu chốt đến ngày 20)
-        </span>
-      </p>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TheKPI
-          nhan={`Giá trị thực hiện trong ${tenKy}`}
-          giaTri={kyNay?.doanhThu ?? null}
-          delta={delta(kyNay?.doanhThu ?? 0, kyTruoc?.doanhThu)}
-          tangLaTot
-          phuChu={kyTruoc ? `so với ${nhanKy(kyTruoc.thang)}` : "chưa có kỳ trước"}
-        />
-        <TheKPI
-          nhan={`Chi phí trong ${tenKy}`}
-          giaTri={kyNay?.chiPhi ?? null}
-          delta={delta(kyNay?.chiPhi ?? 0, kyTruoc?.chiPhi)}
-          tangLaTot={false}
-          phuChu={kyTruoc ? `so với ${nhanKy(kyTruoc.thang)}` : "chưa có kỳ trước"}
-        />
-        <TheKPI
-          nhan={`Lợi nhuận trong ${tenKy}`}
-          giaTri={kyNay?.loiNhuan ?? null}
-          delta={delta(kyNay?.loiNhuan ?? 0, kyTruoc?.loiNhuan)}
-          tangLaTot
-          phuChu={kyTruoc ? `so với ${nhanKy(kyTruoc.thang)}` : "chưa có kỳ trước"}
-        />
-        <TheKPI
-          nhan={`Biên lợi nhuận ${tenKy}`}
-          giaTri={kyNay?.bienLN ?? null}
-          dinhDang="phanTram"
-          phuChu="Lợi nhuận / Giá trị thực hiện"
-        />
-      </div>
-
-      {/* ---- EVM ---- */}
-      {evm.length ? (
+      {muc === "dashboard" ? (
         <>
-          <p className="mt-5 mb-2 text-xs font-semibold tracking-wide text-chunhat uppercase">
-            EVM — giá trị thu được
-            <span className="ml-2 font-normal normal-case">
-              (chỉ {evm.length}/{danhMuc.length} công trình đã nhập BOQ · không có SPI/SV vì kế hoạch
-              chưa rải theo thời gian)
-            </span>
+          {/* Bộ lọc Năm / Quý / Tháng, khóa cố định dưới thanh trên khi cuộn */}
+          <div className="sticky top-[52px] z-20 -mx-4 mb-4 flex flex-wrap items-center gap-1.5 border-b border-vien bg-the/90 px-4 py-2 backdrop-blur">
+            <span className="mr-1 text-xs font-medium text-chunhat">Xem theo:</span>
+            <LocLink href="/?ky=nam" dangChon={kyXem === "nam"}>
+              Năm
+            </LocLink>
+            <LocLink href="/?ky=quy" dangChon={kyXem === "quy"}>
+              Quý
+            </LocLink>
+            <LocLink href="/" dangChon={kyXem === "thang"}>
+              Tháng
+            </LocLink>
+          </div>
+
+          {/* EV/AC */}
+          {evm.length ? (
+            <The className="mb-4">
+              <TheDau
+                tieuDe="Giá trị thu được (EV) so với Chi phí thực tế (AC)"
+                moTa={`Theo ${tenKy}`}
+                chiDan="Lũy tiến, gộp các công trình có BOQ. Khoảng cách giữa hai đường chính là CV (chênh lệch chi phí). EV = % hoàn thành vật lý × ngân sách chi phí. Quý/Năm lấy giá trị lũy tiến cuối kỳ."
+              />
+              <div className="p-3">
+                <BieuDoEVM data={chuoiEVxem} loaiKy={kyXem} />
+                <div className="mt-2 border-t border-vien pt-1">
+                  <Bang>
+                    <thead>
+                      <tr>
+                        <Th>{kyXem === "quy" ? "Quý" : kyXem === "nam" ? "Năm" : "Tháng"}</Th>
+                        <Th phai>EV lũy tiến</Th>
+                        <Th phai>AC lũy tiến</Th>
+                        <Th phai>CV = EV − AC</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {chuoiEVxem.map((r) => (
+                        <tr key={r.thang} className="hover:bg-nen">
+                          <Td className="whitespace-nowrap">{nhanKy(r.thang)}</Td>
+                          <Td phai>{tien(r.ev)}</Td>
+                          <Td phai>{tien(r.ac)}</Td>
+                          <Td phai>
+                            <O_So am={r.ev - r.ac < 0}>{tien(r.ev - r.ac)}</O_So>
+                          </Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Bang>
+                </div>
+              </div>
+            </The>
+          ) : null}
+
+          {/* Xu hướng theo kỳ */}
+          <The className="mb-4">
+            <TheDau
+              tieuDe={`Giá trị thực hiện – Chi phí – Lợi nhuận theo ${tenKy}`}
+              moTa="Cùng một trục giá trị (VNĐ) để so sánh trực tiếp"
+            />
+            <div className="p-3">
+              <BieuDoXuHuong data={chuoiXem} loaiKy={kyXem} />
+              <div className="mt-2 border-t border-vien pt-1">
+                <Bang>
+                  <thead>
+                    <tr>
+                      <Th>{kyXem === "quy" ? "Quý" : kyXem === "nam" ? "Năm" : "Tháng"}</Th>
+                      <Th phai>Giá trị thực hiện</Th>
+                      <Th phai>Chi phí</Th>
+                      <Th phai>Lợi nhuận gộp</Th>
+                      <Th phai>Biên LN</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {chuoiXem.map((r) => (
+                      <tr key={r.thang} className="hover:bg-nen">
+                        <Td className="font-medium whitespace-nowrap">{nhanKy(r.thang)}</Td>
+                        <Td phai>{tien(r.doanhThu)}</Td>
+                        <Td phai>{tien(r.chiPhi)}</Td>
+                        <Td phai>
+                          <O_So am={r.loiNhuan < 0}>{tien(r.loiNhuan)}</O_So>
+                        </Td>
+                        <Td phai>{phanTram(r.bienLN)}</Td>
+                      </tr>
+                    ))}
+                    <tr className="bg-nen font-semibold">
+                      <Td>Lũy kế</Td>
+                      <Td phai>{tien(luyKe.doanhThu)}</Td>
+                      <Td phai>{tien(luyKe.chiPhi)}</Td>
+                      <Td phai>
+                        <O_So am={luyKe.loiNhuan < 0}>{tien(luyKe.loiNhuan)}</O_So>
+                      </Td>
+                      <Td phai>{phanTram(luyKe.bienLN)}</Td>
+                    </tr>
+                  </tbody>
+                </Bang>
+              </div>
+            </div>
+          </The>
+
+          {/* Cơ cấu chi phí theo kỳ + Tỷ trọng */}
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+            <The className="xl:col-span-2">
+              <TheDau
+                tieuDe="Cơ cấu chi phí theo nhóm"
+                moTa={kyXem === "nam" ? `Năm ${namHienTai}` : nhanKy(kyChonCoCau)}
+                phai={
+                  <Link
+                    href="/chi-phi"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-nhan hover:underline"
+                  >
+                    Phân tích chi tiết <ArrowRight className="size-3" />
+                  </Link>
+                }
+              />
+              {kyXem !== "nam" ? (
+                <div className="flex flex-wrap items-center gap-1 border-b border-vien px-4 py-2">
+                  <span className="mr-1 text-xs font-medium text-chunhat">
+                    {kyXem === "quy" ? "Quý:" : "Tháng:"}
+                  </span>
+                  {kyCoCauCo.map((k) => (
+                    <LocLink
+                      key={k}
+                      href={`/?ky=${kyXem}&kyChon=${encodeURIComponent(k)}`}
+                      dangChon={k === kyChonCoCau}
+                    >
+                      {nhanKy(k)}
+                    </LocLink>
+                  ))}
+                </div>
+              ) : null}
+              <div className="p-3">
+                <BieuDoCoCau data={duLieuCoCau} />
+              </div>
+            </The>
+
+            <The>
+              <TheDau
+                tieuDe="Tỷ trọng trên tổng chi phí"
+                moTa={kyXem === "nam" ? `Năm ${namHienTai}` : nhanKy(kyChonCoCau)}
+              />
+              <Bang>
+                <thead>
+                  <tr>
+                    <Th>Nhóm</Th>
+                    <Th phai>Số tiền</Th>
+                    <Th phai>%</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {duLieuCoCau.map((c) => (
+                    <tr key={c.ma} className="hover:bg-nen">
+                      <Td className="max-w-40 truncate text-xs" title={c.ten}>
+                        {c.ten}
+                      </Td>
+                      <Td phai className="text-xs">
+                        {tienGon(c.soTien)}
+                      </Td>
+                      <Td phai className="text-xs">
+                        {phanTram(c.tyTrong)}
+                      </Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Bang>
+            </The>
+          </div>
+        </>
+      ) : muc === "chung" ? (
+        <>
+          {/* Cảnh báo nổi bật nhất */}
+          {khongDoanhThu.length > 0 ? (
+            <div className="mb-5">
+              <CanhBaoBox
+                bienThe="do"
+                tieuDe={`${khongDoanhThu.length} công trình đã phát sinh chi phí nhưng chưa ghi nhận giá trị thực hiện nào`}
+              >
+                <p>
+                  Tổng chi phí đang treo:{" "}
+                  <strong className="so">
+                    {tien(khongDoanhThu.reduce((a, d) => a + d.chiPhi, 0))} đ
+                  </strong>
+                  . Cần xác minh đây là chưa tới kỳ ra bill hay là thiếu dữ liệu giá trị thực hiện.
+                </p>
+              </CanhBaoBox>
+            </div>
+          ) : null}
+
+          <p className="mb-2 text-xs font-semibold tracking-wide text-chunhat uppercase">
+            Lũy kế từ đầu năm
           </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <TheKPI
-              nhan="CPI cả nhóm"
-              giaTri={evmCPI}
-              dinhDang="so"
-              phuChu={
-                evmCPI && evmCPI < 1 ? "Dưới 1 — đang vượt chi" : "Từ 1 trở lên — trong ngân sách"
-              }
-              chiDan="CPI (Chỉ số hiệu quả chi phí) = Giá trị thu được (EV) / Chi phí thực tế (AC). Dưới 1 = đang vượt chi; từ 1 trở lên = trong ngân sách."
+              nhan="Giá trị thực hiện lũy kế"
+              giaTri={luyKe.doanhThu}
+              phuChu="Bill nội bộ"
+              chiDan="Lũy kế giá trị thực hiện (Bill nội bộ theo mã điều hành) của tất cả công trình từ đầu năm. Đây là giá trị thực hiện, không phải tiền thu (dòng tiền)."
             />
             <TheKPI
-              nhan="Ngân sách (BAC)"
-              giaTri={evmBAC}
-              phuChu={`${evm.length} công trình`}
-              chiDan="BAC (Budget At Completion) = tổng ngân sách khi hoàn thành — ở đây lấy tổng giá trị hợp đồng BOQ của các công trình đã nhập BOQ."
+              nhan="Chi phí lũy kế"
+              giaTri={luyKe.chiPhi}
+              phuChu="Tổng các mã chi phí"
+              chiDan="Tổng mọi giao dịch thuộc mã Chi phí của tất cả công trình, lũy kế từ đầu năm."
             />
             <TheKPI
-              nhan="Dự báo lệch (VAC)"
-              giaTri={evmVAC}
-              phuChu={evmVAC < 0 ? "Âm — dự báo vượt ngân sách" : "Dương — dự báo còn dư"}
-              chiDan="VAC (Variance At Completion) = BAC − Dự báo chi phí khi hoàn thành (EAC). Âm = dự báo vượt ngân sách; dương = dự báo còn dư."
+              nhan="Lợi nhuận gộp"
+              giaTri={luyKe.loiNhuan}
+              phuChu="Giá trị thực hiện − Chi phí"
+              chiDan="Lợi nhuận gộp = Giá trị thực hiện lũy kế − Chi phí lũy kế, cộng gộp toàn công ty."
             />
             <TheKPI
-              nhan="Công trình báo động"
-              giaTri={evmBaoDong}
-              dinhDang="so"
-              phuChu="CPI dưới 0,9"
+              nhan="Biên lợi nhuận gộp"
+              giaTri={luyKe.bienLN}
+              dinhDang="phanTram"
+              phuChu="Lợi nhuận / Giá trị thực hiện"
+              chiDan="Biên lợi nhuận gộp = Lợi nhuận gộp / Giá trị thực hiện lũy kế của toàn công ty."
             />
+          </div>
+
+          {evm.length ? (
+            <>
+              <p className="mt-5 mb-2 text-xs font-semibold tracking-wide text-chunhat uppercase">
+                EVM — giá trị thu được
+                <span className="ml-2 font-normal normal-case">
+                  (chỉ {evm.length}/{danhMuc.length} công trình đã nhập BOQ · không có SPI/SV vì kế
+                  hoạch chưa rải theo thời gian)
+                </span>
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <TheKPI
+                  nhan="CPI cả nhóm"
+                  giaTri={evmCPI}
+                  dinhDang="so"
+                  phuChu={
+                    evmCPI && evmCPI < 1 ? "Dưới 1 — đang vượt chi" : "Từ 1 trở lên — trong ngân sách"
+                  }
+                  chiDan="CPI (Chỉ số hiệu quả chi phí) = Giá trị thu được (EV) / Chi phí thực tế (AC). Dưới 1 = đang vượt chi; từ 1 trở lên = trong ngân sách."
+                />
+                <TheKPI
+                  nhan="Ngân sách (BAC)"
+                  giaTri={evmBAC}
+                  phuChu={`${evm.length} công trình`}
+                  chiDan="BAC (Budget At Completion) = tổng ngân sách khi hoàn thành — ở đây lấy tổng giá trị hợp đồng BOQ của các công trình đã nhập BOQ."
+                />
+                <TheKPI
+                  nhan="Dự báo lệch (VAC)"
+                  giaTri={evmVAC}
+                  phuChu={evmVAC < 0 ? "Âm — dự báo vượt ngân sách" : "Dương — dự báo còn dư"}
+                  chiDan="VAC (Variance At Completion) = BAC − Dự báo chi phí khi hoàn thành (EAC). Âm = dự báo vượt ngân sách; dương = dự báo còn dư."
+                />
+                <TheKPI
+                  nhan="Công trình báo động"
+                  giaTri={evmBaoDong}
+                  dinhDang="so"
+                  phuChu="CPI dưới 0,9"
+                />
+              </div>
+            </>
+          ) : null}
+
+          <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <The>
+              <TheDau
+                tieuDe="Sức khỏe danh mục"
+                moTa={`${danhMuc.length} công trình`}
+                chiDan="Đỏ khi vượt ngân sách, lợi nhuận âm, quá hạn cập nhật hoặc chưa có doanh thu. Ngưỡng đặt tập trung tại src/lib/thresholds.ts."
+              />
+              <div className="space-y-2 p-4">
+                {(["Xanh", "Vàng", "Đỏ"] as const).map((s) => {
+                  const n = suckhoe[s];
+                  const pct = danhMuc.length ? (n / danhMuc.length) * 100 : 0;
+                  const mau =
+                    s === "Xanh" ? "bg-emerald-500" : s === "Vàng" ? "bg-amber-500" : "bg-rose-500";
+                  return (
+                    <div key={s} className="flex items-center gap-3">
+                      <span className="w-12 shrink-0 text-xs font-medium">{s}</span>
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-nen">
+                        <div className={`h-full rounded-full ${mau}`} style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="so w-8 shrink-0 text-right text-xs font-semibold">{n}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </The>
+
+            <The>
+              <TheDau
+                tieuDe="Cảnh báo cần xử lý"
+                moTa={
+                  canhBao.length > 5
+                    ? `${canhBaoP0.length} cảnh báo P0 · hiện 5 trong ${canhBao.length}`
+                    : `${canhBaoP0.length} cảnh báo P0 · ${canhBao.length} cảnh báo`
+                }
+              />
+              <ul className="divide-y divide-vien">
+                {canhBao.slice(0, 5).map((c) => (
+                  <li key={c.id} className="flex items-start gap-2 px-4 py-2.5">
+                    <AlertTriangle
+                      className={`mt-0.5 size-3.5 shrink-0 ${c.mucDo === "P0" ? "text-rose-500" : "text-amber-500"}`}
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-medium">{c.tieuDe}</p>
+                      <p className="truncate text-[11px] text-chunhat">
+                        {c.maCongTrinh ?? "Tất cả công trình"} · {c.nguoiChiuTrachNhiem}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </The>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <The>
+              <TheDau tieuDe="Top 10 công trình lợi nhuận cao nhất" />
+              <Bang>
+                <thead>
+                  <tr>
+                    <Th>Công trình</Th>
+                    <Th phai>Lợi nhuận</Th>
+                    <Th phai>Biên LN</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topLoiNhuanDs.map((r) => (
+                    <tr key={r.congTrinh.id} className="hover:bg-nen">
+                      <Td>
+                        <Link
+                          href={`/cong-trinh/${encodeURIComponent(r.congTrinh.maCongTrinh)}`}
+                          className="font-medium text-nhan hover:underline"
+                        >
+                          {r.congTrinh.maCongTrinh}
+                        </Link>
+                      </Td>
+                      <Td phai>
+                        <O_So am={r.loiNhuan < 0}>{tienGon(r.loiNhuan)}</O_So>
+                      </Td>
+                      <Td phai>{phanTram(r.bienLN)}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Bang>
+            </The>
+
+            <The>
+              <TheDau tieuDe="Top 10 công trình rủi ro vượt chi phí" />
+              <Bang>
+                <thead>
+                  <tr>
+                    <Th>Công trình</Th>
+                    <Th phai>Chi phí</Th>
+                    <Th>Dùng ngân sách</Th>
+                    <Th>Sức khỏe</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topRuiRoDs.map((r) => (
+                    <tr key={r.congTrinh.id} className="hover:bg-nen">
+                      <Td>
+                        <Link
+                          href={`/cong-trinh/${encodeURIComponent(r.congTrinh.maCongTrinh)}`}
+                          className="font-medium text-nhan hover:underline"
+                        >
+                          {r.congTrinh.maCongTrinh}
+                        </Link>
+                      </Td>
+                      <Td phai>{tienGon(r.chiPhi)}</Td>
+                      <Td>
+                        <ThanhTyLe tyLe={r.tyLeNganSach} />
+                      </Td>
+                      <Td>
+                        <NhanSucKhoe sucKhoe={r.sucKhoe} lyDo={r.lyDo} />
+                      </Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Bang>
+            </The>
           </div>
 
           <The className="mt-4">
             <TheDau
-              tieuDe="Giá trị thu được (EV) so với Chi phí thực tế (AC)"
-              chiDan="Lũy tiến theo tháng, gộp các công trình có BOQ. Khoảng cách giữa hai đường chính là CV (chênh lệch chi phí). EV = % hoàn thành vật lý × ngân sách chi phí, phần trăm lấy từ khối lượng BOQ đã xác nhận. Chỉ số của từng công trình xem ở mục EVM trong chi tiết công trình."
+              tieuDe="Top công trình lệch ngân sách (TOP 10)"
+              moTa="Chênh lệch = Kế hoạch − Thực hiện · âm là đã vượt · xếp theo số tiền lệch"
+              chiDan="% lệch = Chênh lệch / Kế hoạch. Chỉ gồm công trình đã được cấp ngân sách; công trình chưa lập kế hoạch không có mẫu số để so."
             />
-            <div className="p-3">
-              <BieuDoEVM data={chuoiEV} />
-            </div>
-            {/* Bảng số liệu đi kèm biểu đồ là bắt buộc theo quy tắc bảng màu. */}
             <Bang>
               <thead>
                 <tr>
-                  <Th>Tháng</Th>
-                  <Th phai>EV lũy tiến</Th>
-                  <Th phai>AC lũy tiến</Th>
-                  <Th phai>CV = EV − AC</Th>
+                  <Th>Mã</Th>
+                  <Th>Tên công trình</Th>
+                  <Th phai>Kế hoạch</Th>
+                  <Th phai>Thực hiện</Th>
+                  <Th phai>Chênh lệch</Th>
+                  <Th phai>% lệch</Th>
                 </tr>
               </thead>
               <tbody>
-                {chuoiEV.map((r) => (
-                  <tr key={r.thang} className="hover:bg-nen">
-                    <Td className="whitespace-nowrap">{nhanThang(r.thang)}</Td>
-                    <Td phai>{tien(r.ev)}</Td>
-                    <Td phai>{tien(r.ac)}</Td>
+                {lechNganSach.map((d) => (
+                  <tr key={d.congTrinh.maCongTrinh} className="hover:bg-nen">
+                    <Td className="whitespace-nowrap">
+                      <Link
+                        href={`/cong-trinh/${encodeURIComponent(d.congTrinh.maCongTrinh)}`}
+                        className="font-medium text-nhan hover:underline"
+                      >
+                        {d.congTrinh.maCongTrinh}
+                      </Link>
+                    </Td>
+                    <Td className="max-w-70 truncate text-xs" title={d.congTrinh.tenCongTrinh}>
+                      {d.congTrinh.tenCongTrinh}
+                    </Td>
+                    <Td phai>{tien(d.cpKeHoach)}</Td>
+                    <Td phai>{tien(d.chiPhi)}</Td>
                     <Td phai>
-                      <O_So am={r.ev - r.ac < 0}>{tien(r.ev - r.ac)}</O_So>
+                      <O_So am={d.chenhLechCP < 0}>{tien(d.chenhLechCP)}</O_So>
+                    </Td>
+                    <Td phai>
+                      <O_So am={d.chenhLechCP < 0}>{phanTram(d.chenhLechCP / d.cpKeHoach, 1)}</O_So>
                     </Td>
                   </tr>
                 ))}
               </tbody>
             </Bang>
           </The>
-        </>
-      ) : null}
 
-      {/* ---- Xu hướng + sức khỏe ---- */}
-      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <The className="xl:col-span-2">
-          <TheDau
-            tieuDe={`Giá trị thực hiện – Chi phí – Lợi nhuận theo ${tenKy}`}
-            moTa="Cùng một trục giá trị (VNĐ) để so sánh trực tiếp"
-          />
-          <div className="p-3">
-            <BieuDoXuHuong data={chuoiXem} loaiKy={kyXem} />
-            {/* Bảng số liệu đi kèm là bắt buộc: bảng màu light-mode có cảnh báo
-                tương phản, nên biểu đồ phải có kênh đọc thứ hai. */}
-            <div className="mt-2 border-t border-vien pt-1">
-              <Bang>
-                <thead>
-                  <tr>
-                    <Th>{kyXem === "quy" ? "Quý" : kyXem === "nam" ? "Năm" : "Tháng"}</Th>
-                    <Th phai>Giá trị thực hiện</Th>
-                    <Th phai>Chi phí</Th>
-                    <Th phai>Lợi nhuận gộp</Th>
-                    <Th phai>Biên LN</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {chuoiXem.map((r) => (
-                    <tr key={r.thang} className="hover:bg-nen">
-                      <Td className="font-medium whitespace-nowrap">{nhanKy(r.thang)}</Td>
-                      <Td phai>{tien(r.doanhThu)}</Td>
-                      <Td phai>{tien(r.chiPhi)}</Td>
-                      <Td phai>
-                        <O_So am={r.loiNhuan < 0}>{tien(r.loiNhuan)}</O_So>
-                      </Td>
-                      <Td phai>{phanTram(r.bienLN)}</Td>
-                    </tr>
-                  ))}
-                  <tr className="bg-nen font-semibold">
-                    <Td>Lũy kế</Td>
-                    <Td phai>{tien(luyKe.doanhThu)}</Td>
-                    <Td phai>{tien(luyKe.chiPhi)}</Td>
-                    <Td phai>
-                      <O_So am={luyKe.loiNhuan < 0}>{tien(luyKe.loiNhuan)}</O_So>
+          <The className="mt-4">
+            <TheDau
+              tieuDe="Tình trạng cập nhật dữ liệu của công trình"
+              moTa="Đo bằng số ngày kể từ lần nộp gần nhất (Data Freshness §21)"
+            />
+            <Bang>
+              <thead>
+                <tr>
+                  <Th>Mã công trình</Th>
+                  <Th>Tên công trình</Th>
+                  <Th>Chỉ huy trưởng</Th>
+                  <Th phai>Số ngày chưa cập nhật</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {nop.slice(0, 10).map((r) => (
+                  <tr key={r.congTrinh.id} className="hover:bg-nen">
+                    <Td className="whitespace-nowrap">
+                      <NhanCongTrinh
+                        tenRutGon={r.congTrinh.tenRutGon}
+                        ma={r.congTrinh.maCongTrinh}
+                        href={`/cong-trinh/${encodeURIComponent(r.congTrinh.maCongTrinh)}`}
+                      />
                     </Td>
-                    <Td phai>{phanTram(luyKe.bienLN)}</Td>
+                    <Td className="max-w-80 truncate text-xs" title={r.congTrinh.tenCongTrinh}>
+                      {r.congTrinh.tenCongTrinh}
+                    </Td>
+                    <Td className="text-xs whitespace-nowrap">{r.congTrinh.chiHuyTruong}</Td>
+                    <Td phai>{r.ngayTre}</Td>
                   </tr>
-                </tbody>
-              </Bang>
-            </div>
-          </div>
-        </The>
-
-        <div className="space-y-4">
-          <The>
-            <TheDau
-              tieuDe="Sức khỏe danh mục"
-              moTa={`${danhMuc.length} công trình`}
-              chiDan="Đỏ khi vượt ngân sách, lợi nhuận âm, quá hạn cập nhật hoặc chưa có doanh thu. Ngưỡng đặt tập trung tại src/lib/thresholds.ts."
-            />
-            <div className="space-y-2 p-4">
-              {(["Xanh", "Vàng", "Đỏ"] as const).map((s) => {
-                const n = suckhoe[s];
-                const pct = danhMuc.length ? (n / danhMuc.length) * 100 : 0;
-                const mau =
-                  s === "Xanh" ? "bg-emerald-500" : s === "Vàng" ? "bg-amber-500" : "bg-rose-500";
-                return (
-                  <div key={s} className="flex items-center gap-3">
-                    <span className="w-12 shrink-0 text-xs font-medium">{s}</span>
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-nen">
-                      <div className={`h-full rounded-full ${mau}`} style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="so w-8 shrink-0 text-right text-xs font-semibold">{n}</span>
-                  </div>
-                );
-              })}
-            </div>
+                ))}
+              </tbody>
+            </Bang>
           </The>
-
-          <The>
-            {/* Trang Cảnh báo riêng đã bỏ, nên phải ghi rõ số chưa hiện — không
-                thì 5 dòng đầu trông như là toàn bộ. */}
-            <TheDau
-              tieuDe="Cảnh báo cần xử lý"
-              moTa={
-                canhBao.length > 5
-                  ? `${canhBaoP0.length} cảnh báo P0 · hiện 5 trong ${canhBao.length}`
-                  : `${canhBaoP0.length} cảnh báo P0 · ${canhBao.length} cảnh báo`
-              }
-            />
-            <ul className="divide-y divide-vien">
-              {canhBao.slice(0, 5).map((c) => (
-                <li key={c.id} className="flex items-start gap-2 px-4 py-2.5">
-                  <AlertTriangle
-                    className={`mt-0.5 size-3.5 shrink-0 ${c.mucDo === "P0" ? "text-rose-500" : "text-amber-500"}`}
-                  />
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-medium">{c.tieuDe}</p>
-                    <p className="truncate text-[11px] text-chunhat">
-                      {c.maCongTrinh ?? "Tất cả công trình"} · {c.nguoiChiuTrachNhiem}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </The>
-        </div>
-      </div>
-
-      {/* ---- Cơ cấu chi phí ---- */}
-      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <The className="xl:col-span-2">
-          <TheDau
-            tieuDe="Cơ cấu chi phí theo nhóm"
-            moTa="Lũy kế tất cả công trình"
-            phai={
-              <Link
-                href="/chi-phi"
-                className="inline-flex items-center gap-1 text-xs font-medium text-nhan hover:underline"
-              >
-                Phân tích chi tiết <ArrowRight className="size-3" />
-              </Link>
-            }
-          />
-          <div className="p-3">
-            <BieuDoCoCau data={duLieuCoCau} />
-          </div>
-        </The>
-
-        <The>
-          <TheDau tieuDe="Tỷ trọng trên tổng chi phí" moTa="Bảng đi kèm biểu đồ" />
-          <Bang>
-            <thead>
-              <tr>
-                <Th>Nhóm</Th>
-                <Th phai>Số tiền</Th>
-                <Th phai>%</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {duLieuCoCau.map((c) => (
-                <tr key={c.ma} className="hover:bg-nen">
-                  <Td className="max-w-40 truncate text-xs" title={c.ten}>
-                    {c.ten}
-                  </Td>
-                  <Td phai className="text-xs">
-                    {tienGon(c.soTien)}
-                  </Td>
-                  <Td phai className="text-xs">
-                    {phanTram(c.tyTrong)}
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </Bang>
-        </The>
-      </div>
-
-      {/* ---- Xếp hạng ---- */}
-      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <The>
-          <TheDau tieuDe="Top 10 công trình lợi nhuận cao nhất" />
-          <Bang>
-            <thead>
-              <tr>
-                <Th>Công trình</Th>
-                <Th phai>Lợi nhuận</Th>
-                <Th phai>Biên LN</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {topLoiNhuanDs.map((r) => (
-                <tr key={r.congTrinh.id} className="hover:bg-nen">
-                  <Td>
-                    <Link
-                      href={`/cong-trinh/${encodeURIComponent(r.congTrinh.maCongTrinh)}`}
-                      className="font-medium text-nhan hover:underline"
-                    >
-                      {r.congTrinh.maCongTrinh}
-                    </Link>
-                  </Td>
-                  <Td phai>
-                    <O_So am={r.loiNhuan < 0}>{tienGon(r.loiNhuan)}</O_So>
-                  </Td>
-                  <Td phai>{phanTram(r.bienLN)}</Td>
-                </tr>
-              ))}
-            </tbody>
-          </Bang>
-        </The>
-
-        <The>
-          <TheDau tieuDe="Top 10 công trình rủi ro vượt chi phí" />
-          <Bang>
-            <thead>
-              <tr>
-                <Th>Công trình</Th>
-                <Th phai>Chi phí</Th>
-                <Th>Dùng ngân sách</Th>
-                <Th>Sức khỏe</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {topRuiRoDs.map((r) => (
-                <tr key={r.congTrinh.id} className="hover:bg-nen">
-                  <Td>
-                    <Link
-                      href={`/cong-trinh/${encodeURIComponent(r.congTrinh.maCongTrinh)}`}
-                      className="font-medium text-nhan hover:underline"
-                    >
-                      {r.congTrinh.maCongTrinh}
-                    </Link>
-                  </Td>
-                  <Td phai>{tienGon(r.chiPhi)}</Td>
-                  <Td>
-                    <ThanhTyLe tyLe={r.tyLeNganSach} />
-                  </Td>
-                  <Td>
-                    <NhanSucKhoe sucKhoe={r.sucKhoe} lyDo={r.lyDo} />
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </Bang>
-        </The>
-      </div>
-
-      {/* ---- Lệch ngân sách ---- */}
-      <The className="mt-4">
-        <TheDau
-          tieuDe="Top công trình lệch ngân sách (TOP 10)"
-          moTa="Chênh lệch = Kế hoạch − Thực hiện · âm là đã vượt · xếp theo số tiền lệch"
-          chiDan="% lệch = Chênh lệch / Kế hoạch. Chỉ gồm công trình đã được cấp ngân sách; công trình chưa lập kế hoạch không có mẫu số để so."
-        />
-        <Bang>
-          <thead>
-            <tr>
-              <Th>Mã</Th>
-              <Th>Tên công trình</Th>
-              <Th phai>Kế hoạch</Th>
-              <Th phai>Thực hiện</Th>
-              <Th phai>Chênh lệch</Th>
-              <Th phai>% lệch</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {lechNganSach.map((d) => (
-              <tr key={d.congTrinh.maCongTrinh} className="hover:bg-nen">
-                <Td className="whitespace-nowrap">
-                  <Link
-                    href={`/cong-trinh/${encodeURIComponent(d.congTrinh.maCongTrinh)}`}
-                    className="font-medium text-nhan hover:underline"
+        </>
+      ) : (
+        <>
+          {/* ---- Tổng kết phân tích chi phí ---- */}
+          <div className="mb-4 divide-y divide-vien rounded-xl border border-vien bg-the px-3 py-0.5">
+            <div className="flex items-start gap-2 py-1.5">
+              <span className="w-20 shrink-0 pt-1 text-xs font-medium text-chunhat">Kỳ</span>
+              <div className="flex flex-wrap gap-1">
+                {KY_BC.map((l) => (
+                  <LocLink
+                    key={l.id}
+                    href={`/?muc=tong-ket&tkCt=${encodeURIComponent(tkCt)}&tkKy=${l.id}`}
+                    dangChon={tkKy === l.id}
                   >
-                    {d.congTrinh.maCongTrinh}
-                  </Link>
-                </Td>
-                <Td className="max-w-70 truncate text-xs" title={d.congTrinh.tenCongTrinh}>
-                  {d.congTrinh.tenCongTrinh}
-                </Td>
-                <Td phai>{tien(d.cpKeHoach)}</Td>
-                <Td phai>{tien(d.chiPhi)}</Td>
-                <Td phai>
-                  <O_So am={d.chenhLechCP < 0}>{tien(d.chenhLechCP)}</O_So>
-                </Td>
-                <Td phai>
-                  <O_So am={d.chenhLechCP < 0}>{phanTram(d.chenhLechCP / d.cpKeHoach, 1)}</O_So>
-                </Td>
-              </tr>
-            ))}
-          </tbody>
-        </Bang>
-      </The>
+                    {l.nhan}
+                  </LocLink>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-start gap-2 py-1.5">
+              <span className="w-20 shrink-0 pt-1 text-xs font-medium text-chunhat">Thời điểm</span>
+              <div className="flex max-h-19 flex-wrap gap-1 overflow-y-auto">
+                {tkData.cot.length ? (
+                  tkData.cot.map((c) => (
+                    <LocLink
+                      key={c}
+                      href={`/?muc=tong-ket&tkCt=${encodeURIComponent(tkCt)}&tkKy=${tkKy}&tkKyChon=${encodeURIComponent(c)}`}
+                      dangChon={tkKyChon === c}
+                    >
+                      {nhanKyBC(tkKy, c)}
+                    </LocLink>
+                  ))
+                ) : (
+                  <span className="pt-1 text-xs text-chunhat">Chưa có dữ liệu</span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 py-1.5">
+              <span className="w-20 shrink-0 text-xs font-medium text-chunhat">Công trình</span>
+              <ChonNavi giaTri={tkCt} tuyChon={tkTuyChon} />
+            </div>
+          </div>
 
-      {/* ---- Tình trạng nộp dữ liệu ---- */}
-      <The className="mt-4">
-        <TheDau
-          tieuDe="Tình trạng cập nhật dữ liệu của công trình"
-          moTa="Đo bằng số ngày kể từ lần nộp gần nhất (Data Freshness §21)"
-        />
-        <Bang>
-          <thead>
-            <tr>
-              <Th>Mã công trình</Th>
-              <Th>Tên công trình</Th>
-              <Th>Chỉ huy trưởng</Th>
-              <Th phai>Số ngày chưa cập nhật</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {nop.slice(0, 10).map((r) => (
-              <tr key={r.congTrinh.id} className="hover:bg-nen">
-                <Td className="whitespace-nowrap">
-                  <NhanCongTrinh
-                    tenRutGon={r.congTrinh.tenRutGon}
-                    ma={r.congTrinh.maCongTrinh}
-                    href={`/cong-trinh/${encodeURIComponent(r.congTrinh.maCongTrinh)}`}
-                  />
-                </Td>
-                <Td className="max-w-80 truncate text-xs" title={r.congTrinh.tenCongTrinh}>
-                  {r.congTrinh.tenCongTrinh}
-                </Td>
-                <Td className="text-xs whitespace-nowrap">{r.congTrinh.chiHuyTruong}</Td>
-                <Td phai>{r.ngayTre}</Td>
-              </tr>
-            ))}
-          </tbody>
-        </Bang>
-      </The>
+          <The>
+            <TheDau
+              tieuDe={tkCt === "all" ? "Tổng hợp tất cả công trình" : tkTuyChon.find((o) => o.value === tkCt)?.nhan ?? tkCt}
+              moTa={`${tkKyChon ? nhanKyBC(tkKy, tkKyChon) : "—"} · ${tkData.hangs.length} mã · tổng lũy kế ${tien(tkTongChung)} đ`}
+              chiDan="Cột Tổng là lũy kế mọi kỳ (không đổi theo Thời điểm). Cột giá trị kỳ là số của đúng Thời điểm đang chọn. Tỷ trọng = Tổng của dòng / Tổng toàn bảng. Dòng Bill là giá trị thực hiện (BOQ)."
+            />
+            <Bang>
+              <thead>
+                <tr>
+                  <Th className="sticky left-0 z-20 min-w-22.5">Mã</Th>
+                  <Th className="sticky left-22.5 z-20 min-w-55">Nội dung</Th>
+                  <Th phai className="min-w-32.5 bg-nen">
+                    Tổng
+                  </Th>
+                  {tkKyChon ? (
+                    <Th phai className="min-w-30">
+                      {nhanKyBC(tkKy, tkKyChon)}
+                    </Th>
+                  ) : null}
+                  <Th phai className="min-w-24">
+                    Tỷ trọng
+                  </Th>
+                </tr>
+              </thead>
+              <tbody>
+                {tkData.hangs.map((h) => {
+                  const nhomCha = !h.maCha;
+                  const kyVal = tkIdx >= 0 ? h.giaTri[tkIdx] : 0;
+                  const tyTrong = tkTongChung ? h.tong / tkTongChung : 0;
+                  return (
+                    <tr key={h.ma} className={nhomCha ? "bg-nen/60 hover:bg-nen" : "hover:bg-nen"}>
+                      <Td
+                        className={`sticky left-0 z-10 text-xs whitespace-nowrap ${nhomCha ? "bg-nen/60 font-semibold" : "bg-the pl-7"}`}
+                      >
+                        {h.ma}
+                      </Td>
+                      <Td
+                        className={`sticky left-22.5 z-10 max-w-55 truncate text-xs ${nhomCha ? "bg-nen/60 font-semibold" : "bg-the"}`}
+                        title={h.ten}
+                      >
+                        {h.loai === "Chi phí" ? h.ten : <span className="text-nhan">{h.ten}</span>}
+                      </Td>
+                      <Td phai className="bg-nen font-semibold">
+                        {tien(h.tong)}
+                      </Td>
+                      {tkKyChon ? (
+                        <Td phai className={kyVal ? "" : "text-chunhat"}>
+                          {kyVal ? tien(kyVal) : "—"}
+                        </Td>
+                      ) : null}
+                      <Td phai className="text-xs">
+                        {h.tong ? phanTram(tyTrong) : "—"}
+                      </Td>
+                    </tr>
+                  );
+                })}
+                <tr className="bg-nen font-semibold">
+                  <Td className="sticky left-0 z-10 bg-nen">TỔNG</Td>
+                  <Td className="sticky left-22.5 z-10 bg-nen" />
+                  <Td phai>{tien(tkTongChung)}</Td>
+                  {tkKyChon ? <Td phai>{tien(tkKyVal)}</Td> : null}
+                  <Td phai>{tkTongChung ? "100%" : "—"}</Td>
+                </tr>
+              </tbody>
+            </Bang>
+          </The>
+        </>
+      )}
     </>
   );
 }

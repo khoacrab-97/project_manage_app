@@ -285,10 +285,17 @@ export function BieuDoKHTH({
  *
  * Một trục giá trị duy nhất, cả hai đều là VNĐ.
  */
-export function BieuDoEVM({ data }: { data: { thang: string; ev: number; ac: number }[] }) {
+export function BieuDoEVM({
+  data,
+  loaiKy = "thang",
+}: {
+  data: { thang: string; ev: number; ac: number }[];
+  loaiKy?: "thang" | "quy" | "nam";
+}) {
   const toi = useDark();
   const mau = bangMau(toi);
   const c = chrome(toi);
+  const nhanTruc = loaiKy === "quy" ? nhanQuy : loaiKy === "nam" ? nhanNam : nhanThang;
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -296,7 +303,7 @@ export function BieuDoEVM({ data }: { data: { thang: string; ev: number; ac: num
         <CartesianGrid stroke={c.luoi} vertical={false} />
         <XAxis
           dataKey="thang"
-          tickFormatter={nhanThang}
+          tickFormatter={nhanTruc}
           tick={{ fontSize: 11, fill: c.chuMo }}
           axisLine={{ stroke: c.truc }}
           tickLine={false}
@@ -309,7 +316,7 @@ export function BieuDoEVM({ data }: { data: { thang: string; ev: number; ac: num
           width={72}
         />
         <Tooltip
-          content={<KhungTooltip nhanTruc={nhanThang} />}
+          content={<KhungTooltip nhanTruc={nhanTruc} />}
           cursor={{ fill: toi ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)" }}
         />
         <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} iconType="square" iconSize={9} />

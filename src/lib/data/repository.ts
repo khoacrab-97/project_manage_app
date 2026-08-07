@@ -493,6 +493,8 @@ export interface BoLocGiaoDich {
   maCongTrinh?: string;
   maDTCP?: string;
   thang?: string;
+  /** Lọc theo NHIỀU tháng (VD 3 tháng của một quý). Ưu tiên hơn `thang`. */
+  thangs?: string[];
   loai?: LoaiMa;
 }
 
@@ -504,7 +506,8 @@ async function dieuKien(loc: BoLocGiaoDich) {
     w.projectId = maSangId.get(loc.maCongTrinh) ?? "__khong_ton_tai__";
   }
   if (loc.maDTCP) w.maDTCP = loc.maDTCP;
-  if (loc.thang) w.thangThucHien = loc.thang;
+  if (loc.thangs) w.thangThucHien = { in: loc.thangs };
+  else if (loc.thang) w.thangThucHien = loc.thang;
   if (loc.loai) {
     const ds = await layDanhMucMa();
     w.maDTCP = { in: ds.filter((c) => c.loai === loc.loai).map((c) => c.ma) };
@@ -1209,6 +1212,66 @@ export async function cacKy(ky: KyBaoCao): Promise<string[]> {
   if (ky === "thang") return t;
   if (ky === "quy") return [...new Set(t.map(khoaQuy))];
   return [...new Set(t.map((x) => x.slice(0, 4)))];
+}
+
+/**
+ * Ma trận TỔNG HỢP toàn công ty (trong phạm vi): hàng = mã, cột = kỳ. Cùng bố cục
+ * với `maTranTheoCongTrinh` nhưng gộp mọi công trình. Dòng Bill = giá trị thực
+ * hiện (BOQ) gộp mọi công trình, không phải tổng giao dịch mã Bill.
+ */
+export async function maTranTongHop(ky: KyBaoCao) {
+  const [danhMuc, { theoThang: billBOQ }, { idSangMa }, congTrinh] = await Promise.all([
+    hangDanhMucMaTran(),
+    billTuBOQ(),
+    banDoCongTrinh(),
+    layCongTrinh(),
+  ]);
+  const trongPhamVi = new Set(congTrinh.map((c) => c.maCongTrinh));
+
+  const rows = await db.transaction.groupBy({
+    by: ["maDTCP", "thangThucHien"],
+    _sum: { soTien: true },
+    where: await locTheoProjectId(),
+  });
+  const khoaKy = (thang: string) =>
+    ky === "thang" ? thang : ky === "quy" ? khoaQuy(thang) : thang.slice(0, 4);
+
+  // Bill công ty theo kỳ = gộp giá trị thực hiện mọi công trình trong phạm vi.
+  const billKy = new Map<string, number>();
+  for (const [khoa, v] of billBOQ) {
+    const [pid, thang] = khoa.split("|");
+    const maCT = idSangMa.get(pid);
+    if (!maCT || !trongPhamVi.has(maCT)) continue;
+    const k = khoaKy(thang);
+    billKy.set(k, (billKy.get(k) ?? 0) + v);
+  }
+
+  const cot = [...new Set([...rows.map((r) => khoaKy(r.thangThucHien)), ...billKy.keys()])].sort();
+  const o = new Map<string, Map<string, number>>();
+  for (const r of rows) {
+    const k = khoaKy(r.thangThucHien);
+    let hang = o.get(r.maDTCP);
+    if (!hang) {
+      hang = new Map();
+      o.set(r.maDTCP, hang);
+    }
+    hang.set(k, (hang.get(k) ?? 0) + (r._sum.soTien ?? 0));
+  }
+  o.set(MA_DOANH_THU_DIEU_HANH, billKy);
+
+  const hangs = danhMuc.map((c) => {
+    const hang = o.get(c.ma) ?? new Map<string, number>();
+    const giaTri = cot.map((k) => hang.get(k) ?? 0);
+    return {
+      ma: c.ma,
+      ten: c.ten,
+      loai: c.loai,
+      maCha: c.maCha,
+      giaTri,
+      tong: giaTri.reduce((a, b) => a + b, 0),
+    };
+  });
+  return { cot, hangs };
 }
 
 // ------------------------------------------------------------ Chất lượng dữ liệu
