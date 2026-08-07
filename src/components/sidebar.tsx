@@ -82,7 +82,9 @@ export function Sidebar({ menuDuocThay }: { menuDuocThay: string[] }) {
           <p className="text-[11px] text-sidebarchu">
             Nền tảng Quản lý Chi phí &amp; Doanh thu Xây dựng
           </p>
-          <p className="text-[11px] text-sidebarchu">Phòng Dự Án</p>
+          <p className="mt-0.5 text-[11px] font-semibold tracking-wide text-sidebarsang uppercase">
+            Phòng Dự Án
+          </p>
         </div>
       </div>
 
