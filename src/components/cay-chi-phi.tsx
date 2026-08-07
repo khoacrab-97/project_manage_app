@@ -3,6 +3,7 @@
 import { Fragment, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Bang, Nhan, Td, Th } from "@/components/ui";
+import { ChiDan } from "@/components/chi-dan";
 import { phanTram, tien } from "@/lib/format";
 
 export interface DongCP {
@@ -87,8 +88,24 @@ export function CayChiPhi({
             <Th>Mã</Th>
             <Th>Hạng mục</Th>
             <Th phai>Số tiền</Th>
-            <Th phai>% tổng CP</Th>
-            <Th phai>% trên DT</Th>
+            <Th phai>
+              <span className="inline-flex items-center gap-1">
+                % tổng CP
+                <ChiDan tieuDe="% trên tổng chi phí">
+                  Tỷ trọng của nhóm này trên TỔNG CHI PHÍ toàn bộ (Số tiền của nhóm / tổng chi phí).
+                  Cho biết nhóm chi phí nào chiếm phần lớn.
+                </ChiDan>
+              </span>
+            </Th>
+            <Th phai>
+              <span className="inline-flex items-center gap-1">
+                % trên DT
+                <ChiDan tieuDe="% trên doanh thu">
+                  Tỷ trọng của nhóm này trên DOANH THU ghi nhận (Số tiền của nhóm / doanh thu). Cho
+                  biết mỗi đồng doanh thu tốn bao nhiêu cho nhóm chi phí này.
+                </ChiDan>
+              </span>
+            </Th>
             {coBienDong ? <Th phai>Biến động</Th> : null}
           </tr>
         </thead>

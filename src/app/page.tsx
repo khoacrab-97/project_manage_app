@@ -737,7 +737,7 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
             <TheDau
               tieuDe={tkCt === "all" ? "Tổng hợp tất cả công trình" : tkTuyChon.find((o) => o.value === tkCt)?.nhan ?? tkCt}
               moTa={`${tkKyChon ? nhanKyBC(tkKy, tkKyChon) : "—"} · ${tkData.hangs.length} mã · tổng lũy kế ${tien(tkTongChung)} đ`}
-              chiDan="Cột Tổng là lũy kế mọi kỳ (không đổi theo Thời điểm). Cột giá trị kỳ là số của đúng Thời điểm đang chọn. Tỷ trọng = Tổng của dòng / Tổng toàn bảng. Dòng Bill là giá trị thực hiện (BOQ)."
+              chiDan="Cột Tổng là lũy kế mọi kỳ (không đổi theo Thời điểm). Cột giá trị kỳ là số của đúng Thời điểm đang chọn. Tỷ trọng = Giá trị kỳ / Tổng của dòng (kỳ này chiếm bao nhiêu phần trăm tổng lũy kế). Dòng Bill là giá trị thực hiện (BOQ)."
             />
             <Bang>
               <thead>
@@ -761,7 +761,8 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
                 {tkData.hangs.map((h) => {
                   const nhomCha = !h.maCha;
                   const kyVal = tkIdx >= 0 ? h.giaTri[tkIdx] : 0;
-                  const tyTrong = tkTongChung ? h.tong / tkTongChung : 0;
+                  // Tỷ trọng = giá trị của kỳ đang chọn / Tổng lũy kế của chính dòng đó.
+                  const tyTrong = h.tong ? kyVal / h.tong : 0;
                   return (
                     <tr key={h.ma} className={nhomCha ? "bg-nen/60 hover:bg-nen" : "hover:bg-nen"}>
                       <Td
@@ -794,7 +795,7 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
                   <Td className="sticky left-22.5 z-10 bg-nen" />
                   <Td phai>{tien(tkTongChung)}</Td>
                   {tkKyChon ? <Td phai>{tien(tkKyVal)}</Td> : null}
-                  <Td phai>{tkTongChung ? "100%" : "—"}</Td>
+                  <Td phai>{tkTongChung ? phanTram(tkKyVal / tkTongChung) : "—"}</Td>
                 </tr>
               </tbody>
             </Bang>

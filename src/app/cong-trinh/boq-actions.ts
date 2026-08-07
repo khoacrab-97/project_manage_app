@@ -355,7 +355,7 @@ export async function themDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
     const khoiLuong = so(String(formData.get("khoiLuong") ?? "0"));
     const donGia = so(String(formData.get("donGia") ?? "0"));
 
-    if (!stt) return { ok: false, thongDiep: "STT không được để trống." };
+    // STT không bắt buộc: có dòng là tên lẻ của hạng mục, không mang số thứ tự.
     if (!noiDung) return { ok: false, thongDiep: "Nội dung công việc không được để trống." };
     if (!Number.isFinite(khoiLuong) || khoiLuong < 0) {
       return { ok: false, thongDiep: "Khối lượng phải là số không âm." };
@@ -380,7 +380,7 @@ export async function themDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
     });
 
     revalidatePath(`/cong-trinh/${maCongTrinh}`);
-    return { ok: true, thongDiep: `Đã thêm công tác "${stt} — ${noiDung}".` };
+    return { ok: true, thongDiep: `Đã thêm công tác "${stt ? `${stt} — ` : ""}${noiDung}".` };
   });
 }
 
@@ -432,22 +432,20 @@ export async function themNhieuDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
       const stt = stts[i];
       const noiDung = noiDungs[i] ?? "";
       if (!stt && !noiDung) continue; // dòng trống hoàn toàn
-      if (!stt) {
-        loi.push(`Dòng ${i + 1}: thiếu STT`);
-        continue;
-      }
+      // STT không bắt buộc: dòng tên lẻ của hạng mục có thể không có số thứ tự.
+      const nhan = stt || `Dòng ${i + 1}`;
       if (!noiDung) {
-        loi.push(`${stt}: thiếu nội dung`);
+        loi.push(`${nhan}: thiếu nội dung`);
         continue;
       }
       const khoiLuong = kls[i] ? so(kls[i]) : 0;
       const donGia = dgs[i] ? so(dgs[i]) : 0;
       if (!Number.isFinite(khoiLuong) || khoiLuong < 0) {
-        loi.push(`${stt}: khối lượng phải là số không âm`);
+        loi.push(`${nhan}: khối lượng phải là số không âm`);
         continue;
       }
       if (!Number.isFinite(donGia) || donGia < 0) {
-        loi.push(`${stt}: đơn giá phải là số không âm`);
+        loi.push(`${nhan}: đơn giá phải là số không âm`);
         continue;
       }
       dsMoi.push({ projectId: ct.id, stt, noiDung, dvt: dvts[i] || null, khoiLuong, donGia, thuTu: thuTu++ });
@@ -526,18 +524,19 @@ export async function suaNhieuDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
     for (let i = 0; i < ids.length; i++) {
       if (!cua.has(ids[i])) continue;
       const stt = stts[i];
-      if (!stt) return { ok: false, thongDiep: `Dòng ${i + 1}: STT không được để trống.` };
+      // STT không bắt buộc: dòng tên lẻ của hạng mục có thể không có số thứ tự.
+      const nhan = stt || `Dòng ${i + 1}`;
       const noiDung = locDinhDang(noiDungs[i] ?? "");
       if (noiDung.replace(/<[^>]*>/g, "").trim() === "") {
-        return { ok: false, thongDiep: `${stt}: nội dung không được để trống.` };
+        return { ok: false, thongDiep: `${nhan}: nội dung không được để trống.` };
       }
       const khoiLuong = kls[i] ? so(kls[i]) : 0;
       const donGia = dgs[i] ? so(dgs[i]) : 0;
       if (!Number.isFinite(khoiLuong) || khoiLuong < 0) {
-        return { ok: false, thongDiep: `${stt}: khối lượng phải là số không âm.` };
+        return { ok: false, thongDiep: `${nhan}: khối lượng phải là số không âm.` };
       }
       if (!Number.isFinite(donGia) || donGia < 0) {
-        return { ok: false, thongDiep: `${stt}: đơn giá phải là số không âm.` };
+        return { ok: false, thongDiep: `${nhan}: đơn giá phải là số không âm.` };
       }
       dsSua.push({ id: ids[i], stt, noiDung, dvt: dvts[i] || null, khoiLuong, donGia });
     }

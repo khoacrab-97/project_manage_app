@@ -983,9 +983,9 @@ export function ImportBOQ({
                 <span className="text-chunhat">= …</span> là giá trị số sẽ lưu (dấu <strong>,</strong> là
                 thập phân, <strong>.</strong> là ngăn nghìn). Dòng{" "}
                 <span className="rounded bg-rose-100 px-1 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
-                  thiếu STT hoặc nội dung
+                  thiếu nội dung
                 </span>{" "}
-                bị bỏ khi lưu.
+                bị bỏ khi lưu. STT có thể để trống (dòng tên lẻ của hạng mục).
               </p>
               {daCoBOQ ? (
                 <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -1018,7 +1018,7 @@ export function ImportBOQ({
                 </thead>
                 <tbody ref={luoiRef}>
                   {dongs.map((d, i) => {
-                    const thieu = !d.stt.trim() || !d.noiDung.trim();
+                    const thieu = !d.noiDung.trim();
                     return (
                       <tr key={i} className={thieu ? "bg-rose-50 dark:bg-rose-950/20" : ""}>
                         {COT_BOQ.map((c, ci) => {
