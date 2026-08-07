@@ -173,21 +173,26 @@ export function DauTrang({
   moTa,
   phai,
   chiDan,
+  moTaRong,
 }: {
   tieuDe: string;
   moTa?: ReactNode;
   phai?: ReactNode;
   /** Nội dung giải thích dồn vào icon (i) cạnh tiêu đề, thay cho mô tả dài. */
   chiDan?: ReactNode;
+  /** Cho phần mô tả trải hết bề ngang tới sát khối bên phải (bỏ giới hạn max-w). */
+  moTaRong?: boolean;
 }) {
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-      <div>
+      <div className={moTaRong ? "min-w-0 flex-1" : undefined}>
         <div className="flex items-center gap-1.5">
           <h1 className="text-xl font-semibold tracking-tight">{tieuDe}</h1>
           {chiDan ? <ChiDan tieuDe={tieuDe}>{chiDan}</ChiDan> : null}
         </div>
-        {moTa ? <p className="mt-1 max-w-3xl text-sm text-chunhat">{moTa}</p> : null}
+        {moTa ? (
+          <p className={`mt-1 text-sm text-chunhat ${moTaRong ? "" : "max-w-3xl"}`}>{moTa}</p>
+        ) : null}
       </div>
       {phai ? <div className="flex shrink-0 flex-wrap gap-2">{phai}</div> : null}
     </div>

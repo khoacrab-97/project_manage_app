@@ -169,6 +169,7 @@ export default async function TrangChiTietCongTrinh({
       </Link>
 
       <DauTrang
+        moTaRong
         tieuDe={ct.tenRutGon || maCongTrinh}
         moTa={
           <>
