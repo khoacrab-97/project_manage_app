@@ -723,7 +723,7 @@ export function LuoiNhapBOQ({
               <thead className="sticky top-0 bg-the">
                 <tr>
                   <th className="border-b border-vien px-2 py-1.5 text-left text-xs font-semibold text-chunhat">
-                    STT *
+                    STT
                   </th>
                   <th className="border-b border-vien px-2 py-1.5 text-left text-xs font-semibold text-chunhat">
                     Nội dung công việc *

@@ -198,10 +198,11 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
       href: `/?muc=tong-ket&tkKy=${tkKy}&tkCt=${encodeURIComponent(r.congTrinh.maCongTrinh)}`,
     })),
   ];
-  // Dòng tiêu đề bảng Tổng kết khóa (sticky) ngay dưới thanh trên khi CUỘN TRANG —
-  // nhờ vậy "Tổng quan điều hành" + bộ lọc cuộn đi, chỉ dòng "Mã" ở lại.
+  // Dòng tiêu đề bảng Tổng kết khóa (sticky) ở đỉnh HỘP CUỘN của bảng — chỉ phần
+  // thân bảng cuộn trong hộp, mọi thứ từ dòng "Mã" trở lên (tiêu đề, tab, bộ lọc)
+  // đứng yên vì trang không cuộn (hộp vừa khít khung nhìn).
   const thTK =
-    "sticky top-[52px] z-20 border-b border-vien bg-nen px-3 py-2 text-xs font-semibold whitespace-nowrap text-chunhat";
+    "sticky top-0 z-20 border-b border-vien bg-nen px-3 py-2 text-xs font-semibold whitespace-nowrap text-chunhat";
 
   return (
     <>
@@ -752,7 +753,8 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
               moTa={`${tkKyChon ? nhanKyBC(tkKy, tkKyChon) : "—"} · ${tkData.hangs.length} mã · tổng lũy kế ${tien(tkTongChung)} đ`}
               chiDan="Cột Tổng là lũy kế mọi kỳ (không đổi theo Thời điểm). Cột giá trị kỳ là số của đúng Thời điểm đang chọn. Tỷ trọng = Giá trị kỳ / Tổng của dòng (kỳ này chiếm bao nhiêu phần trăm tổng lũy kế). Dòng Bill là giá trị thực hiện (BOQ)."
             />
-            <table className="w-full border-collapse text-sm">
+            <div className="cuon-ngang max-h-[calc(100vh-26rem)]">
+              <table className="w-full border-collapse text-sm">
               <thead>
                 <tr>
                   <th className={`${thTK} text-left`}>Mã</th>
@@ -803,7 +805,8 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
                   <Td phai>{tkTongChung ? phanTram(tkKyVal / tkTongChung) : "—"}</Td>
                 </tr>
               </tbody>
-            </table>
+              </table>
+            </div>
           </The>
         </>
       )}
