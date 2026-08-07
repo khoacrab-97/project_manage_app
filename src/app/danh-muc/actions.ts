@@ -13,6 +13,8 @@
  */
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { nguoiDungHienTai } from "@/lib/auth/phien";
+import { batBuocQuyen } from "@/lib/auth/quyen";
 import { withServerActionLogging } from "@/lib/logger";
 
 export interface KetQuaAction {
@@ -47,6 +49,7 @@ async function ghiAudit(
 
 export async function suaMa(formData: FormData): Promise<KetQuaAction> {
   return withServerActionLogging("sua_ma", [formData], async () => {
+    batBuocQuyen(await nguoiDungHienTai(), "sua_danh_muc");
     const ma = String(formData.get("ma") ?? "").trim();
     const ten = String(formData.get("ten") ?? "").trim();
     const loai = String(formData.get("loai") ?? "").trim();
@@ -106,6 +109,7 @@ export async function suaMa(formData: FormData): Promise<KetQuaAction> {
  */
 export async function xoaMa(formData: FormData): Promise<KetQuaAction> {
   return withServerActionLogging("xoa_ma", [formData], async () => {
+    batBuocQuyen(await nguoiDungHienTai(), "sua_danh_muc");
     const ma = String(formData.get("ma") ?? "").trim();
     if (!ma) return { ok: false, thongDiep: "Thiếu mã." };
 
@@ -154,6 +158,7 @@ export async function xoaMa(formData: FormData): Promise<KetQuaAction> {
  */
 export async function sapXepDanhMuc(formData: FormData): Promise<KetQuaAction> {
   return withServerActionLogging("sap_xep_danh_muc", [formData], async () => {
+    batBuocQuyen(await nguoiDungHienTai(), "sua_danh_muc");
     const thuTu = formData.getAll("ma").map(String);
     if (!thuTu.length) return { ok: false, thongDiep: "Danh sách rỗng." };
 
@@ -171,6 +176,7 @@ export async function sapXepDanhMuc(formData: FormData): Promise<KetQuaAction> {
 
 export async function themMa(formData: FormData): Promise<KetQuaAction> {
   return withServerActionLogging("them_ma", [formData], async () => {
+    batBuocQuyen(await nguoiDungHienTai(), "sua_danh_muc");
     const ma = String(formData.get("ma") ?? "").trim();
     const ten = String(formData.get("ten") ?? "").trim();
     const loai = String(formData.get("loai") ?? "").trim();

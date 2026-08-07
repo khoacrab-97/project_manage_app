@@ -1,12 +1,21 @@
 import { Bang, DauTrang, GhiChuNguon, Nhan, The, TheDau, Th } from "@/components/ui";
 import { demGiaoDichTheoMa, layDanhMucMa } from "@/lib/data/repository";
+import { nguoiDungHienTai } from "@/lib/auth/phien";
+import { coQuyen } from "@/lib/auth/quyen";
 import { FormThemMa } from "@/components/sua-ma";
 import { CayMaKeo } from "@/components/cay-ma-keo";
 
 export const metadata = { title: "Danh mục mã DT–CP" };
 
 export default async function TrangDanhMuc() {
-  const [danhMuc, phatSinh] = await Promise.all([layDanhMucMa(), demGiaoDichTheoMa()]);
+  const [danhMuc, phatSinh, nguoiDung] = await Promise.all([
+    layDanhMucMa(),
+    demGiaoDichTheoMa(),
+    nguoiDungHienTai(),
+  ]);
+  // Chỉ Quản trị hệ thống được thêm/sửa/xoá/sắp xếp danh mục — còn lại chỉ xem.
+  // Chốt chặn thật nằm trong các Server Action; đây chỉ để ẩn nút.
+  const duocSua = coQuyen(nguoiDung, "sua_danh_muc");
 
   // Số mã con của từng mã nhóm — nút xoá phải biết để chặn xoá nhóm còn con.
   const soCon = new Map<string, number>();
@@ -66,19 +75,25 @@ export default async function TrangDanhMuc() {
         </div>
       </div>
 
-      <div className="mb-4">
-        <FormThemMa danhMuc={danhMuc} />
-      </div>
+      {duocSua ? (
+        <div className="mb-4">
+          <FormThemMa danhMuc={danhMuc} />
+        </div>
+      ) : null}
 
       <The>
         <TheDau
           tieuDe="Cây mã 2 cấp"
-          moTa="Kéo biểu tượng ⋮⋮ để sắp xếp: mã nhóm kéo kèm mã con; mã con chỉ đổi thứ tự trong nhóm cha."
+          moTa={
+            duocSua
+              ? "Kéo biểu tượng ⋮⋮ để sắp xếp: mã nhóm kéo kèm mã con; mã con chỉ đổi thứ tự trong nhóm cha."
+              : "Chỉ Quản trị hệ thống được thêm, sửa, xoá hoặc sắp xếp danh mục — bạn đang ở chế độ chỉ xem."
+          }
         />
         <Bang>
           <thead>
             <tr>
-              <Th className="w-10" />
+              {duocSua ? <Th className="w-10" /> : null}
               <Th>Mã</Th>
               <Th>Tên mã</Th>
               <Th>Loại</Th>
@@ -88,6 +103,7 @@ export default async function TrangDanhMuc() {
             </tr>
           </thead>
           <CayMaKeo
+            duocSua={duocSua}
             hang={hang.map(({ ma, con }) => ({
               ma,
               con,

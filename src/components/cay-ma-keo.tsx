@@ -57,7 +57,14 @@ function xepLai(hang: HangCay[], src: number, dst: number): HangCay[] | null {
  * Thân bảng danh mục mã có KÉO-THẢ sắp xếp. Kéo mã nhóm sẽ mang theo các mã con;
  * mã con chỉ đổi thứ tự trong nhóm cha. Lưu ngay `thuTuHienThi` khi thả.
  */
-export function CayMaKeo({ hang: hangBanDau }: { hang: HangCay[] }) {
+export function CayMaKeo({
+  hang: hangBanDau,
+  duocSua,
+}: {
+  hang: HangCay[];
+  /** Chỉ Quản trị mới kéo-sắp-xếp và có nút sửa/xoá; còn lại chỉ xem. */
+  duocSua: boolean;
+}) {
   const [hang, setHang] = useState(hangBanDau);
   const [keo, setKeo] = useState<number | null>(null);
   const [kq, setKq] = useState<KetQuaAction | null>(null);
@@ -86,19 +93,21 @@ export function CayMaKeo({ hang: hangBanDau }: { hang: HangCay[] }) {
       {hang.map((h, i) => (
         <tr
           key={h.ma.ma}
-          draggable
-          onDragStart={() => setKeo(i)}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={() => tha(i)}
+          draggable={duocSua}
+          onDragStart={duocSua ? () => setKeo(i) : undefined}
+          onDragOver={duocSua ? (e) => e.preventDefault() : undefined}
+          onDrop={duocSua ? () => tha(i) : undefined}
           className={`${h.con ? "hover:bg-nen" : "bg-nen/60 hover:bg-nen"} ${keo === i ? "opacity-40" : ""}`}
         >
-          <Td className="px-2">
-            <div className="flex flex-col items-center gap-0.5">
-              <GripVertical className="size-3.5 cursor-grab text-chunhat" />
-              <NutSuaMa ma={h.ma} soGiaoDich={h.soGiaoDich} />
-              <NutXoaMa ma={h.ma} soGiaoDich={h.soGiaoDich} soCon={h.soCon} />
-            </div>
-          </Td>
+          {duocSua ? (
+            <Td className="px-2">
+              <div className="flex flex-col items-center gap-0.5">
+                <GripVertical className="size-3.5 cursor-grab text-chunhat" />
+                <NutSuaMa ma={h.ma} soGiaoDich={h.soGiaoDich} />
+                <NutXoaMa ma={h.ma} soGiaoDich={h.soGiaoDich} soCon={h.soCon} />
+              </div>
+            </Td>
+          ) : null}
           <Td className={`text-xs ${h.con ? "pl-8" : "font-semibold"}`}>{h.ma.ma}</Td>
           <Td className={`text-xs ${h.con ? "" : "font-semibold"}`}>{h.ma.ten}</Td>
           <Td>
@@ -124,7 +133,7 @@ export function CayMaKeo({ hang: hangBanDau }: { hang: HangCay[] }) {
       {kq ? (
         <tr>
           <td
-            colSpan={7}
+            colSpan={duocSua ? 7 : 6}
             className={`px-3 py-1.5 text-xs ${kq.ok ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}
           >
             {kq.thongDiep}
