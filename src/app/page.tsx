@@ -198,6 +198,10 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
       href: `/?muc=tong-ket&tkKy=${tkKy}&tkCt=${encodeURIComponent(r.congTrinh.maCongTrinh)}`,
     })),
   ];
+  // Dòng tiêu đề bảng Tổng kết khóa (sticky) ngay dưới thanh trên khi CUỘN TRANG —
+  // nhờ vậy "Tổng quan điều hành" + bộ lọc cuộn đi, chỉ dòng "Mã" ở lại.
+  const thTK =
+    "sticky top-[52px] z-20 border-b border-vien bg-nen px-3 py-2 text-xs font-semibold whitespace-nowrap text-chunhat";
 
   return (
     <>
@@ -748,23 +752,16 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
               moTa={`${tkKyChon ? nhanKyBC(tkKy, tkKyChon) : "—"} · ${tkData.hangs.length} mã · tổng lũy kế ${tien(tkTongChung)} đ`}
               chiDan="Cột Tổng là lũy kế mọi kỳ (không đổi theo Thời điểm). Cột giá trị kỳ là số của đúng Thời điểm đang chọn. Tỷ trọng = Giá trị kỳ / Tổng của dòng (kỳ này chiếm bao nhiêu phần trăm tổng lũy kế). Dòng Bill là giá trị thực hiện (BOQ)."
             />
-            <div className="cuon-ngang max-h-[65vh]">
-              <table className="w-full border-collapse text-sm">
+            <table className="w-full border-collapse text-sm">
               <thead>
                 <tr>
-                  <Th className="sticky left-0 top-0 z-30 min-w-22.5">Mã</Th>
-                  <Th className="sticky left-22.5 top-0 z-30 min-w-55">Nội dung</Th>
-                  <Th phai className="min-w-32.5 bg-nen">
-                    Tổng
-                  </Th>
+                  <th className={`${thTK} text-left`}>Mã</th>
+                  <th className={`${thTK} text-left`}>Nội dung</th>
+                  <th className={`${thTK} text-right`}>Tổng</th>
                   {tkKyChon ? (
-                    <Th phai className="min-w-30">
-                      {nhanKyBC(tkKy, tkKyChon)}
-                    </Th>
+                    <th className={`${thTK} text-right`}>{nhanKyBC(tkKy, tkKyChon)}</th>
                   ) : null}
-                  <Th phai className="min-w-24">
-                    Tỷ trọng
-                  </Th>
+                  <th className={`${thTK} text-right`}>Tỷ trọng</th>
                 </tr>
               </thead>
               <tbody>
@@ -775,13 +772,11 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
                   const tyTrong = h.tong ? kyVal / h.tong : 0;
                   return (
                     <tr key={h.ma} className={nhomCha ? "bg-nen/60 hover:bg-nen" : "hover:bg-nen"}>
-                      <Td
-                        className={`sticky left-0 z-10 text-xs whitespace-nowrap ${nhomCha ? "bg-nen/60 font-semibold" : "bg-the pl-7"}`}
-                      >
+                      <Td className={`text-xs whitespace-nowrap ${nhomCha ? "font-semibold" : "pl-7"}`}>
                         {h.ma}
                       </Td>
                       <Td
-                        className={`sticky left-22.5 z-10 max-w-55 truncate text-xs ${nhomCha ? "bg-nen/60 font-semibold" : "bg-the"}`}
+                        className={`max-w-70 truncate text-xs ${nhomCha ? "font-semibold" : ""}`}
                         title={h.ten}
                       >
                         {h.loai === "Chi phí" ? h.ten : <span className="text-nhan">{h.ten}</span>}
@@ -801,15 +796,14 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
                   );
                 })}
                 <tr className="bg-nen font-semibold">
-                  <Td className="sticky left-0 z-10 bg-nen">TỔNG</Td>
-                  <Td className="sticky left-22.5 z-10 bg-nen" />
+                  <Td>TỔNG</Td>
+                  <Td />
                   <Td phai>{tien(tkTongChung)}</Td>
                   {tkKyChon ? <Td phai>{tien(tkKyVal)}</Td> : null}
                   <Td phai>{tkTongChung ? phanTram(tkKyVal / tkTongChung) : "—"}</Td>
                 </tr>
               </tbody>
-              </table>
-            </div>
+            </table>
           </The>
         </>
       )}
