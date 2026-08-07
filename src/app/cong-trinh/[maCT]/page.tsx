@@ -169,10 +169,12 @@ export default async function TrangChiTietCongTrinh({
         moTaRong
         tieuDe={ct.tenRutGon || maCongTrinh}
         moTa={
-          <>
+          // Thông tin nổi hơn (text-chu) nhưng vẫn dưới tên rút gọn (h1 to + đậm).
+          // Mã công trình giữ nguyên định dạng cũ (mờ, text-chunhat).
+          <span className="text-chu">
             {ct.tenRutGon ? (
               <>
-                {maCongTrinh}
+                <span className="text-chunhat">{maCongTrinh}</span>
                 <br />
               </>
             ) : null}
@@ -183,7 +185,7 @@ export default async function TrangChiTietCongTrinh({
             {ct.chuDauTu}
             <br />
             Chỉ huy trưởng <strong>{ct.chiHuyTruong}</strong> · Khởi công {ngay(ct.ngayBatDau)}
-          </>
+          </span>
         }
         phai={
           <>
