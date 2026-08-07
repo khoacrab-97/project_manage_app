@@ -10,6 +10,7 @@ import {
   xoaCot,
   type KetQuaBOQ,
 } from "@/app/cong-trinh/boq-actions";
+import { type MaKieuDonGia, TEN_THANH_PHAN, THANH_PHAN_THEO_KIEU } from "@/lib/boq-thanh-phan";
 
 const O = "rounded-md border border-vien bg-the px-2 py-1 text-xs";
 
@@ -189,13 +190,16 @@ export function ONhapCot({
 export function NutThemDong({
   maCongTrinh,
   dongs,
+  kieu = "DON",
 }: {
   maCongTrinh: string;
   dongs: { id: string; stt: string; noiDung: string }[];
+  kieu?: MaKieuDonGia;
 }) {
   const [mo, setMo] = useState(false);
   const [kq, setKq] = useState<KetQuaBOQ | null>(null);
   const [dangChay, batDau] = useTransition();
+  const tps = THANH_PHAN_THEO_KIEU[kieu];
 
   if (!mo) {
     return (
@@ -239,10 +243,19 @@ export function NutThemDong({
           <span className="mb-0.5 block text-chunhat">KL hợp đồng</span>
           <input name="khoiLuong" inputMode="decimal" placeholder="0" className={`${O} w-full`} />
         </label>
-        <label className="text-xs sm:col-span-2">
-          <span className="mb-0.5 block text-chunhat">Đơn giá (đ)</span>
-          <input name="donGia" inputMode="numeric" placeholder="0" className={`${O} w-full`} />
-        </label>
+        {tps.length ? (
+          tps.map((tp) => (
+            <label key={tp} className="text-xs sm:col-span-2">
+              <span className="mb-0.5 block text-chunhat">Đơn giá {TEN_THANH_PHAN[tp]} (đ)</span>
+              <input name={`dg_${tp}`} inputMode="numeric" placeholder="0" className={`${O} w-full`} />
+            </label>
+          ))
+        ) : (
+          <label className="text-xs sm:col-span-2">
+            <span className="mb-0.5 block text-chunhat">Đơn giá (đ)</span>
+            <input name="donGia" inputMode="numeric" placeholder="0" className={`${O} w-full`} />
+          </label>
+        )}
         <label className="text-xs sm:col-span-4">
           <span className="mb-0.5 block text-chunhat">Chèn vào vị trí</span>
           <select name="sauDongId" defaultValue={dongs.at(-1)?.id ?? ""} className={`${O} w-full`}>

@@ -22,6 +22,12 @@ import {
   type KetQuaSucKhoe,
 } from "../kpi";
 import { khoaQuy } from "../format";
+import {
+  type MaKieuDonGia,
+  type MaThanhPhan,
+  THANH_PHAN_THEO_KIEU,
+  kieuHopLe,
+} from "../boq-thanh-phan";
 import { MA_DOANH_THU_DIEU_HANH, NGUONG } from "../thresholds";
 import type {
   CanhBao,
@@ -202,6 +208,120 @@ export function ttThanhTien(khoiLuong: number, donGia: number, lamTron: boolean)
   return lamTron ? Math.round(v) : v;
 }
 
+/** Đơn giá từng thành phần của một dòng BOQ (chỉ khi kiểu ≠ DON). */
+export type DonGiaTP = Partial<Record<MaThanhPhan, number>>;
+
+/**
+ * Thiết lập VAT của một công trình dùng để tính Bill chưa VAT.
+ * `vatTP` là VAT (%) đã fallback cho từng thành phần (null → vatPhanTram).
+ */
+export interface ThongTinVATBOQ {
+  donGiaGomVAT: boolean;
+  vatPhanTram: number;
+  kieu: MaKieuDonGia;
+  vatTP: Record<MaThanhPhan, number>;
+}
+
+/** Dựng ThongTinVATBOQ từ các trường VAT thô của Project (null → vatPhanTram). */
+export function thongTinVATBOQ(p: {
+  donGiaGomVAT: boolean;
+  vatPhanTram: number;
+  kieuDonGiaBOQ: string;
+  vatVT: number | null;
+  vatVTK: number | null;
+  vatNC: number | null;
+  vatMTC: number | null;
+  vatNCMTC: number | null;
+}): ThongTinVATBOQ {
+  const v = p.vatPhanTram || 0;
+  return {
+    donGiaGomVAT: p.donGiaGomVAT,
+    vatPhanTram: v,
+    kieu: kieuHopLe(p.kieuDonGiaBOQ),
+    vatTP: {
+      VT: p.vatVT ?? v,
+      VTK: p.vatVTK ?? v,
+      NC: p.vatNC ?? v,
+      MTC: p.vatMTC ?? v,
+      NCMTC: p.vatNCMTC ?? v,
+    },
+  };
+}
+
+/**
+ * Thành tiền GỘP một dòng cho một khối lượng = tổng thành tiền các thành phần
+ * (kiểu tách) hoặc khối lượng × đơn giá (kiểu DON). Đây là "thành tiền" dùng cho
+ * cột hiển thị, giảm giá và cả gộp tổng — để mọi cột luôn cộng khớp.
+ */
+export function ttDongGop(
+  khoiLuong: number,
+  donGia: number,
+  donGiaTP: DonGiaTP,
+  kieu: MaKieuDonGia,
+  lamTron: boolean
+): number {
+  const tps = THANH_PHAN_THEO_KIEU[kieu];
+  if (!tps.length) return ttThanhTien(khoiLuong, donGia, lamTron);
+  let s = 0;
+  for (const tp of tps) s += ttThanhTien(khoiLuong, donGiaTP[tp] ?? 0, lamTron);
+  return s;
+}
+
+/**
+ * Bill của một dòng cho một khối lượng, trả [gộp, chưa VAT].
+ *  - gộp = tổng thành tiền các thành phần (theo đơn giá đang lưu, gồm/chưa VAT y như nhập).
+ *  - chưa VAT = mỗi thành phần chia (1 + VAT_TP%) nếu đơn giá đã gồm VAT, rồi cộng.
+ * Nhờ tính riêng từng thành phần, mỗi thành phần một mức VAT khác nhau vẫn đúng.
+ */
+function billMotDong(
+  khoiLuong: number,
+  donGia: number,
+  donGiaTP: DonGiaTP,
+  tt: ThongTinVATBOQ,
+  lamTron: boolean
+): [number, number] {
+  const tps = THANH_PHAN_THEO_KIEU[tt.kieu];
+  if (!tps.length) {
+    const g = ttThanhTien(khoiLuong, donGia, lamTron);
+    return [g, tt.donGiaGomVAT ? g / (1 + tt.vatPhanTram / 100) : g];
+  }
+  let gop = 0;
+  let chua = 0;
+  for (const tp of tps) {
+    const g = ttThanhTien(khoiLuong, donGiaTP[tp] ?? 0, lamTron);
+    gop += g;
+    chua += tt.donGiaGomVAT ? g / (1 + (tt.vatTP[tp] || 0) / 100) : g;
+  }
+  return [gop, chua];
+}
+
+/**
+ * Giá trị Bill chưa VAT của MỘT tháng từ danh sách dòng (theo đúng thứ tự BOQ).
+ * Chiết khấu trừ trên thành tiền GỘP theo phạm vi dòng, rồi quy về chưa VAT theo
+ * tỷ lệ chưa-VAT/gộp của tháng. Chỉ làm tròn khi đơn giá gồm VAT (giữ y hệt cách
+ * cũ cho kiểu DON không gồm VAT: không làm tròn).
+ */
+function billMotThang(
+  rows: { khoiLuong: number; donGia: number; donGiaTP: DonGiaTP }[],
+  tt: ThongTinVATBOQ,
+  giamGia: { tuStt: number; denStt: number; phanTram: number }[],
+  lamTron: boolean
+): number {
+  const gop: number[] = [];
+  let tongGop = 0;
+  let tongChua = 0;
+  for (const r of rows) {
+    const [g, c] = billMotDong(r.khoiLuong, r.donGia, r.donGiaTP, tt, lamTron);
+    gop.push(g);
+    tongGop += g;
+    tongChua += c;
+  }
+  const giam = giamGia.reduce((a, g) => a + giaTriMotGiamGia(gop, g), 0);
+  const giamChua = tongGop ? giam * (tongChua / tongGop) : 0;
+  const v = tongChua - giamChua;
+  return tt.donGiaGomVAT ? Math.round(v) : v;
+}
+
 export function giaTriMotGiamGia(
   tt: number[],
   g: { tuStt: number; denStt: number; phanTram: number }
@@ -225,47 +345,76 @@ export function giaTriMotGiamGia(
  */
 const billTuBOQ = cache(async () => {
   const lines = await db.bOQLine.findMany({
-    select: { id: true, projectId: true, donGia: true },
+    select: {
+      id: true,
+      projectId: true,
+      donGia: true,
+      dgVT: true,
+      dgVTK: true,
+      dgNC: true,
+      dgMTC: true,
+      dgNCMTC: true,
+    },
     orderBy: { thuTu: "asc" },
   });
   const duAnCoBOQ = new Set(lines.map((l) => l.projectId));
   const theoThang = new Map<string, number>(); // khóa `projectId|thang`
   if (!duAnCoBOQ.size) return { duAnCoBOQ, theoThang };
 
-  // Vị trí 1-based của mỗi dòng trong công trình + số dòng mỗi công trình.
+  // Dòng của mỗi công trình theo đúng thứ tự BOQ (khớp vị trí chiết khấu = cột ID).
+  const dongTheoDA = new Map<string, (typeof lines)[number][]>();
   const viTri = new Map<string, number>();
-  const soDong = new Map<string, number>();
+  const traLine = new Map(lines.map((l) => [l.id, l]));
   for (const l of lines) {
-    const n = (soDong.get(l.projectId) ?? 0) + 1;
-    soDong.set(l.projectId, n);
-    viTri.set(l.id, n);
+    const arr = dongTheoDA.get(l.projectId) ?? [];
+    arr.push(l);
+    dongTheoDA.set(l.projectId, arr);
+    viTri.set(l.id, arr.length - 1);
   }
-  const tra = new Map(lines.map((l) => [l.id, l]));
-
-  // Thiết lập theo công trình: hệ số quy chưa-VAT + có làm tròn thành tiền không.
-  const projs = await db.project.findMany({
-    select: { id: true, donGiaGomVAT: true, vatPhanTram: true, lamTronThanhTien: true },
+  const donGiaTP = (l: (typeof lines)[number]): DonGiaTP => ({
+    VT: l.dgVT ?? undefined,
+    VTK: l.dgVTK ?? undefined,
+    NC: l.dgNC ?? undefined,
+    MTC: l.dgMTC ?? undefined,
+    NCMTC: l.dgNCMTC ?? undefined,
   });
-  const heSo = new Map(
-    projs.map((p) => [p.id, p.donGiaGomVAT ? 1 / (1 + (p.vatPhanTram || 0) / 100) : 1])
-  );
+
+  // Thiết lập theo công trình: VAT (kể cả riêng từng thành phần) + có làm tròn không.
+  const projs = await db.project.findMany({
+    select: {
+      id: true,
+      donGiaGomVAT: true,
+      vatPhanTram: true,
+      lamTronThanhTien: true,
+      kieuDonGiaBOQ: true,
+      vatVT: true,
+      vatVTK: true,
+      vatNC: true,
+      vatMTC: true,
+      vatNCMTC: true,
+    },
+  });
+  const ttVAT = new Map(projs.map((p) => [p.id, thongTinVATBOQ(p)]));
   const lamTron = new Map(projs.map((p) => [p.id, p.lamTronThanhTien]));
 
   // Không còn bước xác nhận: mọi khối lượng thực hiện đã nhập đều vào KPI.
-  const ttTheoThang = new Map<string, number[]>();
+  // Gom khối lượng thực hiện theo từng dòng, từng tháng.
+  const klTheoThang = new Map<string, number[]>(); // `pid|thang` -> KL theo vị trí dòng
   const ds = await db.bOQThucHien.findMany({
     select: { boqLineId: true, thang: true, khoiLuong: true },
   });
   for (const t of ds) {
-    const l = tra.get(t.boqLineId);
+    const pos = viTri.get(t.boqLineId);
+    if (pos === undefined) continue;
+    const l = traLine.get(t.boqLineId);
     if (!l) continue;
     const k = `${l.projectId}|${t.thang}`;
-    let arr = ttTheoThang.get(k);
+    let arr = klTheoThang.get(k);
     if (!arr) {
-      arr = new Array(soDong.get(l.projectId) ?? 0).fill(0);
-      ttTheoThang.set(k, arr);
+      arr = new Array(dongTheoDA.get(l.projectId)?.length ?? 0).fill(0);
+      klTheoThang.set(k, arr);
     }
-    arr[viTri.get(l.id)! - 1] += ttThanhTien(t.khoiLuong, l.donGia, lamTron.get(l.projectId) ?? true);
+    arr[pos] += t.khoiLuong;
   }
 
   // Chiết khấu theo công trình.
@@ -276,13 +425,20 @@ const billTuBOQ = cache(async () => {
     ggByProject.set(g.projectId, arr);
   }
 
-  for (const [k, arr] of ttTheoThang) {
+  for (const [k, arrKL] of klTheoThang) {
     const pid = k.split("|")[0];
-    const gom = arr.reduce((a, b) => a + b, 0);
-    const giam = (ggByProject.get(pid) ?? []).reduce((a, g) => a + giaTriMotGiamGia(arr, g), 0);
-    const sauGiam = gom - giam;
-    const f = heSo.get(pid) ?? 1;
-    theoThang.set(k, f === 1 ? sauGiam : Math.round(sauGiam * f));
+    const dongs = dongTheoDA.get(pid) ?? [];
+    const tt = ttVAT.get(pid);
+    if (!tt) continue;
+    const rows = dongs.map((l, i) => ({
+      khoiLuong: arrKL[i] ?? 0,
+      donGia: l.donGia,
+      donGiaTP: donGiaTP(l),
+    }));
+    theoThang.set(
+      k,
+      billMotThang(rows, tt, ggByProject.get(pid) ?? [], lamTron.get(pid) ?? true)
+    );
   }
   return { duAnCoBOQ, theoThang };
 });
@@ -319,7 +475,10 @@ export interface DongBOQ {
   dvt: string;
   /** Khối lượng và giá trị theo hợp đồng. */
   klHopDong: number;
+  /** Đơn giá TỔNG (kiểu tách = tổng các thành phần). */
   donGia: number;
+  /** Đơn giá từng thành phần (rỗng khi kiểu DON). */
+  donGiaTP: DonGiaTP;
   ttHopDong: number;
   /** Khối lượng thực hiện theo từng tháng, khóa là yyyy-MM. */
   klTheoThang: Record<string, number>;
@@ -355,7 +514,17 @@ export async function layBOQ(
   vatPhanTram: number;
   lamTronThanhTien: boolean;
   giamGia: GiamGiaBOQ[];
+  /** Thiết lập kiểu đơn giá + VAT từng thành phần (để tính Bill chưa VAT). */
+  vatInfo: ThongTinVATBOQ;
+  /** VAT thô từng thành phần (null = dùng VAT chung) — cho form thiết lập. */
+  vatTPRaw: Record<MaThanhPhan, number | null>;
 }> {
+  const macDinhVAT: ThongTinVATBOQ = {
+    donGiaGomVAT: false,
+    vatPhanTram: 10,
+    kieu: "DON",
+    vatTP: { VT: 10, VTK: 10, NC: 10, MTC: 10, NCMTC: 10 },
+  };
   const ct = (await layCongTrinh()).find((c) => c.maCongTrinh === maCongTrinh);
   if (!ct)
     return {
@@ -366,13 +535,26 @@ export async function layBOQ(
       vatPhanTram: 10,
       lamTronThanhTien: true,
       giamGia: [],
+      vatInfo: macDinhVAT,
+      vatTPRaw: { VT: null, VTK: null, NC: null, MTC: null, NCMTC: null },
     };
 
   const tls = await db.project.findUnique({
     where: { id: ct.id },
-    select: { donGiaGomVAT: true, vatPhanTram: true, lamTronThanhTien: true },
+    select: {
+      donGiaGomVAT: true,
+      vatPhanTram: true,
+      lamTronThanhTien: true,
+      kieuDonGiaBOQ: true,
+      vatVT: true,
+      vatVTK: true,
+      vatNC: true,
+      vatMTC: true,
+      vatNCMTC: true,
+    },
   });
   const lamTron = tls?.lamTronThanhTien ?? true;
+  const vatInfo = tls ? thongTinVATBOQ(tls) : macDinhVAT;
 
   const ds = await db.bOQLine.findMany({
     where: { projectId: ct.id },
@@ -399,10 +581,18 @@ export async function layBOQ(
     nguoiXacNhan: b.nguoiXacNhan ?? "",
   }));
 
+  const kieu = vatInfo.kieu;
   const dongs = ds.map((l) => {
     const klTheoThang: Record<string, number> = {};
     for (const t of l.thucHien) klTheoThang[t.thang] = t.khoiLuong;
     const klLuyKe = l.thucHien.reduce((a, t) => a + t.khoiLuong, 0);
+    const donGiaTP: DonGiaTP = {
+      VT: l.dgVT ?? undefined,
+      VTK: l.dgVTK ?? undefined,
+      NC: l.dgNC ?? undefined,
+      MTC: l.dgMTC ?? undefined,
+      NCMTC: l.dgNCMTC ?? undefined,
+    };
     return {
       id: l.id,
       stt: l.stt,
@@ -410,10 +600,11 @@ export async function layBOQ(
       dvt: l.dvt ?? "",
       klHopDong: l.khoiLuong,
       donGia: l.donGia,
-      ttHopDong: ttThanhTien(l.khoiLuong, l.donGia, lamTron),
+      donGiaTP,
+      ttHopDong: ttDongGop(l.khoiLuong, l.donGia, donGiaTP, kieu, lamTron),
       klTheoThang,
       klLuyKe,
-      ttLuyKe: ttThanhTien(klLuyKe, l.donGia, lamTron),
+      ttLuyKe: ttDongGop(klLuyKe, l.donGia, donGiaTP, kieu, lamTron),
       giaTriCot: Object.fromEntries(l.giaTriCot.map((g) => [g.cotId, g.giaTri])),
       hoanThanh: l.hoanThanh,
     };
@@ -437,26 +628,44 @@ export async function layBOQ(
     vatPhanTram: tls?.vatPhanTram ?? 10,
     lamTronThanhTien: lamTron,
     giamGia,
+    vatInfo,
+    vatTPRaw: {
+      VT: tls?.vatVT ?? null,
+      VTK: tls?.vatVTK ?? null,
+      NC: tls?.vatNC ?? null,
+      MTC: tls?.vatMTC ?? null,
+      NCMTC: tls?.vatNCMTC ?? null,
+    },
   };
 }
 
 /**
- * Giá trị Bill của một tháng = tổng thành tiền khối lượng thực hiện tháng đó.
- * `heSoChuaVAT` < 1 khi đơn giá đã gồm VAT (Bill lấy chưa VAT); mặc định 1.
+ * Giá trị Bill (chưa VAT) của một tháng = tổng thành tiền khối lượng thực hiện
+ * tháng đó, trừ chiết khấu, quy chưa VAT theo từng thành phần.
+ *
+ * `vatInfo` bỏ trống = kiểu DON không quy VAT (giá trị gộp thô) — dùng cho xuất
+ * Bill .xlsx. Có `vatInfo` thì tính đúng theo kiểu + VAT từng thành phần.
  */
 export function giaTriBillThang(
   dongs: DongBOQ[],
   thang: string,
-  heSoChuaVAT = 1,
+  vatInfo?: ThongTinVATBOQ,
   giamGia: GiamGiaBOQ[] = [],
   lamTron = true
 ): number {
+  const tt: ThongTinVATBOQ = vatInfo ?? {
+    donGiaGomVAT: false,
+    vatPhanTram: 0,
+    kieu: "DON",
+    vatTP: { VT: 0, VTK: 0, NC: 0, MTC: 0, NCMTC: 0 },
+  };
   // `dongs` phải theo thứ tự BOQ (thuTu) để khớp vị trí chiết khấu — layBOQ đã sắp.
-  const tt = dongs.map((d) => ttThanhTien(d.klTheoThang[thang] ?? 0, d.donGia, lamTron));
-  const gom = tt.reduce((a, b) => a + b, 0);
-  const giam = giamGia.reduce((a, g) => a + giaTriMotGiamGia(tt, g), 0);
-  const sauGiam = gom - giam;
-  return heSoChuaVAT === 1 ? sauGiam : Math.round(sauGiam * heSoChuaVAT);
+  const rows = dongs.map((d) => ({
+    khoiLuong: d.klTheoThang[thang] ?? 0,
+    donGia: d.donGia,
+    donGiaTP: d.donGiaTP,
+  }));
+  return billMotThang(rows, tt, giamGia, lamTron);
 }
 
 /**

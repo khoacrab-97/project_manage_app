@@ -2,22 +2,30 @@
  * Đọc file Excel BOQ do người dùng nhập theo file mẫu (/api/mau-boq).
  *
  * Dò cột theo TÊN (không chốt cứng vị trí) để người dùng chèn thêm cột mô tả vẫn
- * đọc được: tìm trong 15 dòng đầu một dòng có đủ "khối lượng" + "đơn giá" làm dòng
- * tiêu đề, rồi ánh xạ 5 cột STT / Nội dung / ĐVT / Khối lượng / Đơn giá.
+ * đọc được. Kiểu đơn giá quyết định đọc MỘT cột "Đơn giá" (DON) hay nhiều cột
+ * thành phần (Vật tư / Nhân công / Máy…).
  *
  * Trả về MỌI dòng có dữ liệu (kể cả dòng thiếu STT/nội dung) — bước review trên app
  * cho người dùng sửa trực tiếp trước khi lưu, nên không loại ngầm ở đây.
  */
 import ExcelJS from "exceljs";
+import {
+  type MaKieuDonGia,
+  type MaThanhPhan,
+  THANH_PHAN_THEO_KIEU,
+} from "@/lib/boq-thanh-phan";
 
 export interface DongBOQDoc {
   stt: string;
   noiDung: string;
   dvt: string;
   /** GIÁ TRỊ THÔ đúng như trong file — bước review (transform data) tự đọc số theo
-   * kiểu cột người dùng chọn, không chuẩn hoá sẵn ở đây (tránh đoán sai dấu số). */
+   * quy ước Việt, không chuẩn hoá sẵn ở đây (tránh đoán sai dấu số). */
   khoiLuong: string;
+  /** Đơn giá đơn (kiểu DON). Kiểu tách thì để rỗng. */
   donGia: string;
+  /** Đơn giá từng thành phần (kiểu tách), giá trị thô. */
+  dgTP: Partial<Record<MaThanhPhan, string>>;
 }
 
 export interface KetQuaDocBOQ {
@@ -34,6 +42,15 @@ const chuanHoa = (s: string) =>
     .replace(/đ/g, "d")
     .replace(/\s+/g, " ")
     .trim();
+
+/** Nhận diện cột đơn giá của từng thành phần theo tên tiêu đề đã chuẩn hoá. */
+const KHOP_TP: Record<MaThanhPhan, (t: string) => boolean> = {
+  VTK: (t) => t.includes("vat tu") && t.includes("khac"),
+  VT: (t) => t.includes("vat tu") && !t.includes("khac"),
+  NCMTC: (t) => t.includes("nhan cong") && t.includes("may"),
+  NC: (t) => t.includes("nhan cong") && !t.includes("may"),
+  MTC: (t) => t.includes("may") && !t.includes("nhan cong"),
+};
 
 /** Ô công thức thì lấy result đã tính; còn lại lấy value thô. */
 function oGiaTri(cell: ExcelJS.Cell): unknown {
@@ -59,11 +76,17 @@ function oSo(cell: ExcelJS.Cell): string {
   return v === null || v === undefined ? "" : String(v).trim();
 }
 
-export async function docBOQTuExcel(buffer: ArrayBuffer): Promise<KetQuaDocBOQ> {
+export async function docBOQTuExcel(
+  buffer: ArrayBuffer,
+  kieu: MaKieuDonGia = "DON"
+): Promise<KetQuaDocBOQ> {
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buffer);
   const ws = wb.worksheets[0];
   if (!ws) return { dongs: [], loi: "File không có sheet nào." };
+
+  const tps = THANH_PHAN_THEO_KIEU[kieu];
+  const tach = tps.length > 0;
 
   // --- Dò dòng tiêu đề + ánh xạ cột theo tên ---
   let dongTieuDe = 0;
@@ -72,12 +95,14 @@ export async function docBOQTuExcel(buffer: ArrayBuffer): Promise<KetQuaDocBOQ> 
   let cDvt = 0;
   let cKL = 0;
   let cDG = 0;
+  const cTP: Partial<Record<MaThanhPhan, number>> = {};
   for (let r = 1; r <= Math.min(ws.rowCount, 15); r++) {
     let kl = 0;
     let dg = 0;
     let stt = 0;
     let nd = 0;
     let dvt = 0;
+    const tp: Partial<Record<MaThanhPhan, number>> = {};
     for (let c = 1; c <= ws.columnCount; c++) {
       const t = chuanHoa(String(ws.getRow(r).getCell(c).value ?? ""));
       if (!t) continue;
@@ -85,22 +110,29 @@ export async function docBOQTuExcel(buffer: ArrayBuffer): Promise<KetQuaDocBOQ> 
       else if (!nd && (t.includes("noi dung") || t.includes("mo ta") || t.includes("hang muc"))) nd = c;
       else if (!dvt && (t.includes("don vi") || t === "dvt")) dvt = c;
       else if (!kl && t.includes("khoi luong")) kl = c;
-      else if (!dg && t.includes("don gia")) dg = c;
+      else if (tach) {
+        // Kiểu tách: bắt các cột thành phần theo tên (thử theo thứ tự cụ thể trước).
+        for (const m of tps) if (!tp[m] && KHOP_TP[m](t)) tp[m] = c;
+      } else if (!dg && t.includes("don gia")) dg = c;
     }
-    if (kl && dg) {
+    const duCot = tach ? kl && tp.VT : kl && dg;
+    if (duCot) {
       dongTieuDe = r;
       cStt = stt;
       cNoiDung = nd;
       cDvt = dvt;
       cKL = kl;
       cDG = dg;
+      Object.assign(cTP, tp);
       break;
     }
   }
-  if (!cKL || !cDG) {
+  if (!cKL || (tach ? !cTP.VT : !cDG)) {
     return {
       dongs: [],
-      loi: 'Không tìm thấy cột "Khối lượng" và "Đơn giá". Hãy tải file mẫu và điền theo đúng cột.',
+      loi: tach
+        ? 'Không tìm thấy cột "Khối lượng" và các cột đơn giá thành phần. Hãy tải đúng file mẫu của kiểu đơn giá này.'
+        : 'Không tìm thấy cột "Khối lượng" và "Đơn giá". Hãy tải file mẫu và điền theo đúng cột.',
     };
   }
 
@@ -112,10 +144,18 @@ export async function docBOQTuExcel(buffer: ArrayBuffer): Promise<KetQuaDocBOQ> 
     const noiDung = cNoiDung ? oChuoi(row.getCell(cNoiDung)) : "";
     const dvt = cDvt ? oChuoi(row.getCell(cDvt)) : "";
     const khoiLuong = oSo(row.getCell(cKL));
-    const donGia = oSo(row.getCell(cDG));
+    const donGia = tach || !cDG ? "" : oSo(row.getCell(cDG));
+    const dgTP: Partial<Record<MaThanhPhan, string>> = {};
+    let coTP = false;
+    for (const m of tps) {
+      const cc = cTP[m];
+      const val = cc ? oSo(row.getCell(cc)) : "";
+      dgTP[m] = val;
+      if (val) coTP = true;
+    }
     // Dòng trống hoàn toàn thì bỏ.
-    if (!stt && !noiDung && !dvt && !khoiLuong && !donGia) continue;
-    dongs.push({ stt, noiDung, dvt, khoiLuong, donGia });
+    if (!stt && !noiDung && !dvt && !khoiLuong && !donGia && !coTP) continue;
+    dongs.push({ stt, noiDung, dvt, khoiLuong, donGia, dgTP });
   }
 
   if (!dongs.length) {

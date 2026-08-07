@@ -47,8 +47,19 @@ model Project {
   /// Đơn giá trong BOQ đã bao gồm VAT hay chưa. Nếu true, giá trị Bill (doanh thu)
   /// được quy về CHƯA VAT = tổng / (1 + vatPhanTram/100).
   donGiaGomVAT       Boolean   @default(false)
-  /// Thuế suất VAT (%) áp cho BOQ của công trình này.
+  /// Thuế suất VAT (%) áp cho BOQ của công trình này. Khi đơn giá tách thành phần,
+  /// đây là VAT mặc định cho thành phần nào chưa khai VAT riêng.
   vatPhanTram        Float     @default(10)
+  /// Kiểu đơn giá BOQ: DON (một số, mặc định) hoặc tách thành phần —
+  /// VT_VTK_NCMTC | VT_NCMTC | VT_NC_MTC | VT_NC (xem src/lib/boq-thanh-phan.ts).
+  kieuDonGiaBOQ      String    @default("DON")
+  /// VAT (%) riêng của từng thành phần đơn giá. null = dùng vatPhanTram.
+  /// Chỉ dùng khi kieuDonGiaBOQ ≠ DON.
+  vatVT              Float?
+  vatVTK             Float?
+  vatNC              Float?
+  vatMTC             Float?
+  vatNCMTC           Float?
   /// Có làm tròn cột Thành tiền (khối lượng × đơn giá) về đồng hay không. Admin
   /// chỉnh theo từng công trình. false = giữ nguyên số lẻ, không làm tròn.
   lamTronThanhTien   Boolean   @default(true)
@@ -89,7 +100,16 @@ model BOQLine {
   dvt       String?
   /// Khối lượng theo hợp đồng.
   khoiLuong Float
+  /// Đơn giá TỔNG. Khi đơn giá tách thành phần (Project.kieuDonGiaBOQ ≠ DON) thì
+  /// donGia = tổng các dg* — giữ làm nguồn chuẩn để Thành tiền/giảm giá tính như cũ.
   donGia    Float
+  /// Đơn giá từng thành phần (chỉ khi tách): Vật tư / Vật tư khác / Nhân công /
+  /// Máy thi công / Nhân công & Máy thi công. null = kiểu này không dùng thành phần đó.
+  dgVT      Float?
+  dgVTK     Float?
+  dgNC      Float?
+  dgMTC     Float?
+  dgNCMTC   Float?
   thuTu     Int
   /// Công tác đã thi công xong — chỉ huy trưởng tích khi cập nhật khối lượng.
   hoanThanh Boolean @default(false)

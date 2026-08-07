@@ -21,6 +21,14 @@ import { nguoiDungHienTai } from "@/lib/auth/phien";
 import { batBuocQuyen } from "@/lib/auth/quyen";
 import { layCongTrinh } from "@/lib/data/repository";
 import { docBOQTuExcel, type DongBOQDoc } from "@/lib/excel/parse-boq";
+import {
+  type MaKieuDonGia,
+  type MaThanhPhan,
+  CAC_KIEU,
+  THANH_PHAN_THEO_KIEU,
+  kieuHopLe,
+  truongDonGia,
+} from "@/lib/boq-thanh-phan";
 import { withServerActionLogging } from "@/lib/logger";
 
 export interface KetQuaBOQ {
@@ -65,6 +73,51 @@ async function congTrinhChoGhi(
     };
   }
   return { ct };
+}
+
+/** Đọc số theo quy ước Việt (dấu "." ngăn nghìn, "," thập phân). Rỗng → 0. */
+const soVN = (t: string) =>
+  Number(String(t).replace(/\s/g, "").replace(/\./g, "").replace(",", "."));
+
+/** Kiểu đơn giá của một công trình (mặc định DON). */
+async function kieuDonGiaCua(projectId: string): Promise<MaKieuDonGia> {
+  const p = await db.project.findUnique({
+    where: { id: projectId },
+    select: { kieuDonGiaBOQ: true },
+  });
+  return kieuHopLe(p?.kieuDonGiaBOQ);
+}
+
+/** Các cột dg* trên BOQLine, đặt null hết (để reset cột thành phần không dùng). */
+const DG_RONG = { dgVT: null, dgVTK: null, dgNC: null, dgMTC: null, dgNCMTC: null } as const;
+
+/**
+ * Từ giá trị thô một dòng (đơn giá đơn + các thành phần), trả về { donGia, dg* }.
+ *  - Kiểu DON: donGia = số đơn đã nhập; mọi dg* = null.
+ *  - Kiểu tách: đọc từng thành phần của kiểu; donGia = TỔNG các thành phần; các
+ *    thành phần không thuộc kiểu để null. Trả `loi` nếu số không hợp lệ.
+ */
+function donGiaTheoKieu(
+  kieu: MaKieuDonGia,
+  donGiaDon: string,
+  tp: (t: MaThanhPhan) => string
+): { donGia: number; dg: typeof DG_RONG | Record<string, number | null>; loi?: string } {
+  const tps = THANH_PHAN_THEO_KIEU[kieu];
+  if (!tps.length) {
+    const dg = donGiaDon.trim() ? soVN(donGiaDon) : 0;
+    if (!Number.isFinite(dg) || dg < 0) return { donGia: 0, dg: DG_RONG, loi: "đơn giá phải là số không âm" };
+    return { donGia: dg, dg: DG_RONG };
+  }
+  const out: Record<string, number | null> = { ...DG_RONG };
+  let tong = 0;
+  for (const t of tps) {
+    const raw = tp(t);
+    const v = raw.trim() ? soVN(raw) : 0;
+    if (!Number.isFinite(v) || v < 0) return { donGia: 0, dg: DG_RONG, loi: `đơn giá ${t} phải là số không âm` };
+    out[truongDonGia(t)] = v;
+    tong += v;
+  }
+  return { donGia: tong, dg: out };
 }
 
 export async function themBillThang(formData: FormData): Promise<KetQuaBOQ> {
@@ -351,22 +404,23 @@ export async function themDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
     const dvt = String(formData.get("dvt") ?? "").trim();
     const sauDongId = String(formData.get("sauDongId") ?? "").trim();
 
-    const so = (t: string) => Number(String(t).replace(/\s/g, "").replace(/\./g, "").replace(",", "."));
-    const khoiLuong = so(String(formData.get("khoiLuong") ?? "0"));
-    const donGia = so(String(formData.get("donGia") ?? "0"));
+    const khoiLuong = soVN(String(formData.get("khoiLuong") ?? "0"));
 
     // STT không bắt buộc: có dòng là tên lẻ của hạng mục, không mang số thứ tự.
     if (!noiDung) return { ok: false, thongDiep: "Nội dung công việc không được để trống." };
     if (!Number.isFinite(khoiLuong) || khoiLuong < 0) {
       return { ok: false, thongDiep: "Khối lượng phải là số không âm." };
     }
-    if (!Number.isFinite(donGia) || donGia < 0) {
-      return { ok: false, thongDiep: "Đơn giá phải là số không âm." };
-    }
 
     const kq = await congTrinhChoGhi(maCongTrinh);
     if ("loi" in kq) return { ok: false, thongDiep: kq.loi };
     const ct = kq.ct;
+
+    const kieu = await kieuDonGiaCua(ct.id);
+    const dg = donGiaTheoKieu(kieu, String(formData.get("donGia") ?? "0"), (t) =>
+      String(formData.get(`dg_${t}`) ?? "")
+    );
+    if (dg.loi) return { ok: false, thongDiep: `Dòng mới: ${dg.loi}.` };
 
     const ds = await db.bOQLine.findMany({ where: { projectId: ct.id }, orderBy: { thuTu: "asc" } });
     const viTri = sauDongId ? ds.findIndex((d) => d.id === sauDongId) + 1 : 0;
@@ -376,7 +430,16 @@ export async function themDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
       await db.bOQLine.update({ where: { id: ds[k].id }, data: { thuTu: k + 1 } });
     }
     await db.bOQLine.create({
-      data: { projectId: ct.id, stt, noiDung, dvt: dvt || null, khoiLuong, donGia, thuTu: viTri },
+      data: {
+        projectId: ct.id,
+        stt,
+        noiDung,
+        dvt: dvt || null,
+        khoiLuong,
+        donGia: dg.donGia,
+        ...dg.dg,
+        thuTu: viTri,
+      },
     });
 
     revalidatePath(`/cong-trinh/${maCongTrinh}`);
@@ -403,8 +466,10 @@ export async function themNhieuDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
     const dvts = formData.getAll("dvt").map((v) => String(v).trim());
     const kls = formData.getAll("khoiLuong").map((v) => String(v));
     const dgs = formData.getAll("donGia").map((v) => String(v));
-
-    const so = (t: string) => Number(String(t).replace(/\s/g, "").replace(/\./g, "").replace(",", "."));
+    const kieu = await kieuDonGiaCua(ct.id);
+    // Mảng đơn giá từng thành phần (song song với stt) — chỉ có khi kiểu tách.
+    const dgTP: Partial<Record<MaThanhPhan, string[]>> = {};
+    for (const t of THANH_PHAN_THEO_KIEU[kieu]) dgTP[t] = formData.getAll(`dg_${t}`).map(String);
 
     // Ghi đè: xoá sạch BOQ cũ (cascade luôn khối lượng thực hiện + giá trị cột) rồi
     // nhập lại từ đầu. Nối tiếp (mặc định): thêm vào sau dòng cuối.
@@ -426,6 +491,11 @@ export async function themNhieuDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
       dvt: string | null;
       khoiLuong: number;
       donGia: number;
+      dgVT: number | null;
+      dgVTK: number | null;
+      dgNC: number | null;
+      dgMTC: number | null;
+      dgNCMTC: number | null;
       thuTu: number;
     }[] = [];
     for (let i = 0; i < stts.length; i++) {
@@ -438,17 +508,30 @@ export async function themNhieuDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
         loi.push(`${nhan}: thiếu nội dung`);
         continue;
       }
-      const khoiLuong = kls[i] ? so(kls[i]) : 0;
-      const donGia = dgs[i] ? so(dgs[i]) : 0;
+      const khoiLuong = kls[i] ? soVN(kls[i]) : 0;
       if (!Number.isFinite(khoiLuong) || khoiLuong < 0) {
         loi.push(`${nhan}: khối lượng phải là số không âm`);
         continue;
       }
-      if (!Number.isFinite(donGia) || donGia < 0) {
-        loi.push(`${nhan}: đơn giá phải là số không âm`);
+      const dg = donGiaTheoKieu(kieu, dgs[i] ?? "", (t) => dgTP[t]?.[i] ?? "");
+      if (dg.loi) {
+        loi.push(`${nhan}: ${dg.loi}`);
         continue;
       }
-      dsMoi.push({ projectId: ct.id, stt, noiDung, dvt: dvts[i] || null, khoiLuong, donGia, thuTu: thuTu++ });
+      dsMoi.push({
+        projectId: ct.id,
+        stt,
+        noiDung,
+        dvt: dvts[i] || null,
+        khoiLuong,
+        donGia: dg.donGia,
+        dgVT: dg.dg.dgVT ?? null,
+        dgVTK: dg.dg.dgVTK ?? null,
+        dgNC: dg.dg.dgNC ?? null,
+        dgMTC: dg.dg.dgMTC ?? null,
+        dgNCMTC: dg.dg.dgNCMTC ?? null,
+        thuTu: thuTu++,
+      });
     }
 
     // Ghi MỘT lệnh thay vì create từng dòng tuần tự — import file vài trăm dòng lên
@@ -506,7 +589,9 @@ export async function suaNhieuDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
     const dvts = formData.getAll("dvt").map((v) => String(v).trim());
     const kls = formData.getAll("khoiLuong").map(String);
     const dgs = formData.getAll("donGia").map(String);
-    const so = (t: string) => Number(String(t).replace(/\s/g, "").replace(/\./g, "").replace(",", "."));
+    const kieu = await kieuDonGiaCua(ct.id);
+    const dgTP: Partial<Record<MaThanhPhan, string[]>> = {};
+    for (const t of THANH_PHAN_THEO_KIEU[kieu]) dgTP[t] = formData.getAll(`dg_${t}`).map(String);
 
     // Chỉ cho sửa dòng THUỘC công trình này (chống sửa xuyên công trình qua id đoán mò).
     const cua = new Set(
@@ -520,6 +605,11 @@ export async function suaNhieuDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
       dvt: string | null;
       khoiLuong: number;
       donGia: number;
+      dgVT: number | null;
+      dgVTK: number | null;
+      dgNC: number | null;
+      dgMTC: number | null;
+      dgNCMTC: number | null;
     }[] = [];
     for (let i = 0; i < ids.length; i++) {
       if (!cua.has(ids[i])) continue;
@@ -530,15 +620,25 @@ export async function suaNhieuDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
       if (noiDung.replace(/<[^>]*>/g, "").trim() === "") {
         return { ok: false, thongDiep: `${nhan}: nội dung không được để trống.` };
       }
-      const khoiLuong = kls[i] ? so(kls[i]) : 0;
-      const donGia = dgs[i] ? so(dgs[i]) : 0;
+      const khoiLuong = kls[i] ? soVN(kls[i]) : 0;
       if (!Number.isFinite(khoiLuong) || khoiLuong < 0) {
         return { ok: false, thongDiep: `${nhan}: khối lượng phải là số không âm.` };
       }
-      if (!Number.isFinite(donGia) || donGia < 0) {
-        return { ok: false, thongDiep: `${nhan}: đơn giá phải là số không âm.` };
-      }
-      dsSua.push({ id: ids[i], stt, noiDung, dvt: dvts[i] || null, khoiLuong, donGia });
+      const dg = donGiaTheoKieu(kieu, dgs[i] ?? "", (t) => dgTP[t]?.[i] ?? "");
+      if (dg.loi) return { ok: false, thongDiep: `${nhan}: ${dg.loi}.` };
+      dsSua.push({
+        id: ids[i],
+        stt,
+        noiDung,
+        dvt: dvts[i] || null,
+        khoiLuong,
+        donGia: dg.donGia,
+        dgVT: dg.dg.dgVT ?? null,
+        dgVTK: dg.dg.dgVTK ?? null,
+        dgNC: dg.dg.dgNC ?? null,
+        dgMTC: dg.dg.dgMTC ?? null,
+        dgNCMTC: dg.dg.dgNCMTC ?? null,
+      });
     }
 
     if (!dsSua.length) return { ok: false, thongDiep: "Không có dòng nào để sửa." };
@@ -546,7 +646,18 @@ export async function suaNhieuDongBOQ(formData: FormData): Promise<KetQuaBOQ> {
       dsSua.map((u) =>
         db.bOQLine.update({
           where: { id: u.id },
-          data: { stt: u.stt, noiDung: u.noiDung, dvt: u.dvt, khoiLuong: u.khoiLuong, donGia: u.donGia },
+          data: {
+            stt: u.stt,
+            noiDung: u.noiDung,
+            dvt: u.dvt,
+            khoiLuong: u.khoiLuong,
+            donGia: u.donGia,
+            dgVT: u.dgVT,
+            dgVTK: u.dgVTK,
+            dgNC: u.dgNC,
+            dgMTC: u.dgMTC,
+            dgNCMTC: u.dgNCMTC,
+          },
         })
       )
     );
@@ -574,8 +685,9 @@ export async function docFileBOQ(formData: FormData): Promise<KetQuaDocFileBOQ> 
       return { ok: false, thongDiep: "Chưa chọn file Excel.", dongs: [] };
     }
 
+    const kieu = await kieuDonGiaCua(kq.ct.id);
     const buf = await file.arrayBuffer();
-    const doc = await docBOQTuExcel(buf);
+    const doc = await docBOQTuExcel(buf, kieu);
     if (doc.loi) return { ok: false, thongDiep: doc.loi, dongs: [] };
     return { ok: true, thongDiep: `Đã đọc ${doc.dongs.length} dòng từ file.`, dongs: doc.dongs };
   });
@@ -600,9 +712,39 @@ export async function luuThietLapVAT(formData: FormData): Promise<KetQuaBOQ> {
       return { ok: false, thongDiep: "VAT (%) phải là số từ 0 đến 100." };
     }
 
+    const kieuRaw = String(formData.get("kieuDonGiaBOQ") ?? "DON");
+    if (!CAC_KIEU.includes(kieuRaw as MaKieuDonGia)) {
+      return { ok: false, thongDiep: "Kiểu đơn giá không hợp lệ." };
+    }
+
+    // VAT riêng từng thành phần: rỗng = null (dùng VAT chung). Số phải trong 0–100.
+    const vatTP: Record<string, number | null> = {};
+    for (const t of ["VT", "VTK", "NC", "MTC", "NCMTC"] as MaThanhPhan[]) {
+      const raw = String(formData.get(`vat_${t}`) ?? "").trim();
+      if (raw === "") {
+        vatTP[`vat${t}`] = null;
+        continue;
+      }
+      const n = Number(raw.replace(",", "."));
+      if (!Number.isFinite(n) || n < 0 || n > 100) {
+        return { ok: false, thongDiep: `VAT ${t} phải là số từ 0 đến 100.` };
+      }
+      vatTP[`vat${t}`] = n;
+    }
+
     await db.project.update({
       where: { id: kq.ct.id },
-      data: { donGiaGomVAT, vatPhanTram: vat, lamTronThanhTien },
+      data: {
+        donGiaGomVAT,
+        vatPhanTram: vat,
+        lamTronThanhTien,
+        kieuDonGiaBOQ: kieuRaw,
+        vatVT: vatTP.vatVT,
+        vatVTK: vatTP.vatVTK,
+        vatNC: vatTP.vatNC,
+        vatMTC: vatTP.vatMTC,
+        vatNCMTC: vatTP.vatNCMTC,
+      },
     });
 
     revalidatePath(`/cong-trinh/${maCongTrinh}`);

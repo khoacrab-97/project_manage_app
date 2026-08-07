@@ -18,6 +18,14 @@ import {
 import { ONhapCot, TieuDeCot } from "./cot-boq";
 import { khoiLuong as dinhDangKL, tien, tienLe } from "@/lib/format";
 import { docSoVN } from "@/lib/so-vn";
+import {
+  type MaKieuDonGia,
+  type MaThanhPhan,
+  CAC_KIEU,
+  TEN_KIEU,
+  TEN_THANH_PHAN,
+  THANH_PHAN_THEO_KIEU,
+} from "@/lib/boq-thanh-phan";
 
 const O = "rounded-md border border-vien bg-the px-2 py-1 text-xs";
 
@@ -126,6 +134,8 @@ export interface DongBill {
   noiDung: string;
   dvt: string;
   donGia: number;
+  /** Đơn giá từng thành phần (kiểu tách) — để tính thành tiền + Bill chưa VAT. */
+  donGiaTP: Partial<Record<MaThanhPhan, number>>;
   /** Luỹ kế khối lượng của các tháng TRƯỚC kỳ đang xem. */
   klKyTruoc: number;
   klHienTai: number;
@@ -154,6 +164,8 @@ export function HopThoaiBill({
   lamTronThanhTien,
   donGiaGomVAT,
   vatPhanTram,
+  kieu,
+  vatTP,
 }: {
   maCongTrinh: string;
   thang: string;
@@ -166,6 +178,8 @@ export function HopThoaiBill({
   lamTronThanhTien: boolean;
   donGiaGomVAT: boolean;
   vatPhanTram: number;
+  kieu: MaKieuDonGia;
+  vatTP: Record<MaThanhPhan, number>;
 }) {
   const router = useRouter();
   const dong = useCallback(() => router.push(`${base}?tab=boq`), [base, router]);
@@ -302,19 +316,38 @@ export function HopThoaiBill({
     const n = Number(v.replace(/\s/g, "").replace(",", "."));
     return Number.isFinite(n) ? n : 0;
   };
+  const tps = THANH_PHAN_THEO_KIEU[kieu];
+  const tach = tps.length > 0;
+  const lt = (v: number) => (lamTronThanhTien ? Math.round(v) : v);
+  // Thành tiền tháng của một dòng = tổng thành tiền các thành phần (kiểu tách) hoặc
+  // khối lượng × đơn giá (DON). Khối lượng Bill ĐƯỢC ÂM (tháng điều chỉnh).
   const ttThang = (d: DongBill) => {
-    const v = soCua(kl[d.id] ?? "") * d.donGia;
-    return lamTronThanhTien ? Math.round(v) : v;
+    const q = soCua(kl[d.id] ?? "");
+    if (tach) return tps.reduce((s, tp) => s + lt(q * (d.donGiaTP[tp] ?? 0)), 0);
+    return lt(q * d.donGia);
   };
   const tongTien = dongs.reduce((a, d) => a + ttThang(d), 0);
   // Trạng thái tích "Xong" của cả bảng — cho ô "tất cả" ở tiêu đề cột Xong.
   const soDaXong = dongs.filter((d) => xong[d.id]).length;
   const tatCaXong = dongs.length > 0 && soDaXong === dongs.length;
   // Giá trị Bill hiện theo đơn giá (gồm/chưa VAT tuỳ BOQ) kèm giá trị đối ứng VAT.
+  // Kiểu tách: quy VAT theo TỪNG thành phần rồi cộng (mỗi TP một mức VAT riêng).
   const vat = (vatPhanTram || 0) / 100;
   const nhanChinhVAT = donGiaGomVAT ? "gồm VAT" : "chưa VAT";
   const nhanPhuVAT = donGiaGomVAT ? "chưa VAT" : "gồm VAT";
-  const giaPhuVAT = donGiaGomVAT ? Math.round(tongTien / (1 + vat)) : Math.round(tongTien * (1 + vat));
+  const giaPhuVAT = (() => {
+    if (!tach) return donGiaGomVAT ? Math.round(tongTien / (1 + vat)) : Math.round(tongTien * (1 + vat));
+    let s = 0;
+    for (const d of dongs) {
+      const q = soCua(kl[d.id] ?? "");
+      for (const tp of tps) {
+        const g = lt(q * (d.donGiaTP[tp] ?? 0));
+        const vtp = (vatTP[tp] || 0) / 100;
+        s += donGiaGomVAT ? g / (1 + vtp) : g * (1 + vtp);
+      }
+    }
+    return Math.round(s);
+  })();
 
   const trongVungKL = (i: number) =>
     neoKL !== null && cuoiKL !== null && i >= Math.min(neoKL, cuoiKL) && i <= Math.max(neoKL, cuoiKL);
@@ -649,15 +682,18 @@ export function LuoiNhapBOQ({
   maCongTrinh,
   nhan = "Nhập nhiều dòng",
   noiBat = false,
+  kieu = "DON",
 }: {
   maCongTrinh: string;
   nhan?: string;
   noiBat?: boolean;
+  kieu?: MaKieuDonGia;
 }) {
   const [mo, setMo] = useState(false);
   const [soDong, setSoDong] = useState(8);
   const [kq, setKq] = useState<KetQuaBOQ | null>(null);
   const [dangChay, batDau] = useTransition();
+  const tps = THANH_PHAN_THEO_KIEU[kieu];
 
   useEffect(() => {
     if (!mo) return;
@@ -718,25 +754,33 @@ export function LuoiNhapBOQ({
           className="p-4"
         >
           <input type="hidden" name="maCongTrinh" value={maCongTrinh} />
-          <div className="max-h-[60vh] overflow-y-auto">
+          <div className="max-h-[60vh] overflow-auto">
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 bg-the">
                 <tr>
-                  <th className="border-b border-vien px-2 py-1.5 text-left text-xs font-semibold text-chunhat">
+                  <th className="border-b border-vien px-2 py-1.5 text-left text-xs font-semibold whitespace-nowrap text-chunhat">
                     STT
                   </th>
                   <th className="border-b border-vien px-2 py-1.5 text-left text-xs font-semibold text-chunhat">
                     Nội dung công việc *
                   </th>
-                  <th className="border-b border-vien px-2 py-1.5 text-left text-xs font-semibold text-chunhat">
+                  <th className="border-b border-vien px-2 py-1.5 text-left text-xs font-semibold whitespace-nowrap text-chunhat">
                     ĐVT
                   </th>
-                  <th className="border-b border-vien px-2 py-1.5 text-right text-xs font-semibold text-chunhat">
+                  <th className="border-b border-vien px-2 py-1.5 text-right text-xs font-semibold whitespace-nowrap text-chunhat">
                     Khối lượng
                   </th>
-                  <th className="border-b border-vien px-2 py-1.5 text-right text-xs font-semibold text-chunhat">
-                    Đơn giá
-                  </th>
+                  {tps.length ? (
+                    tps.map((tp) => (
+                      <th key={tp} className="border-b border-vien px-2 py-1.5 text-right text-xs font-semibold whitespace-nowrap text-chunhat">
+                        Đơn giá {TEN_THANH_PHAN[tp]}
+                      </th>
+                    ))
+                  ) : (
+                    <th className="border-b border-vien px-2 py-1.5 text-right text-xs font-semibold whitespace-nowrap text-chunhat">
+                      Đơn giá
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -754,14 +798,27 @@ export function LuoiNhapBOQ({
                     <td className="border-b border-vien px-1 py-1">
                       <input name="khoiLuong" inputMode="decimal" className={`${O} w-24 text-right`} placeholder="0" />
                     </td>
-                    <td className="border-b border-vien px-1 py-1">
-                      <input name="donGia" inputMode="decimal" className={`${O} w-28 text-right`} placeholder="0" />
-                    </td>
+                    {tps.length ? (
+                      tps.map((tp) => (
+                        <td key={tp} className="border-b border-vien px-1 py-1">
+                          <input name={`dg_${tp}`} inputMode="decimal" className={`${O} w-28 text-right`} placeholder="0" />
+                        </td>
+                      ))
+                    ) : (
+                      <td className="border-b border-vien px-1 py-1">
+                        <input name="donGia" inputMode="decimal" className={`${O} w-28 text-right`} placeholder="0" />
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          {tps.length ? (
+            <p className="mt-1 text-[11px] text-chunhat">
+              Đơn giá tổng = tổng các thành phần (tính tự động khi lưu).
+            </p>
+          ) : null}
 
           <div className="mt-3 flex items-center gap-2">
             <button
@@ -793,6 +850,8 @@ interface ODongBOQ {
   dvt: string;
   khoiLuong: string;
   donGia: string;
+  /** Đơn giá từng thành phần (kiểu tách), giá trị thô để review. */
+  dgTP: Partial<Record<MaThanhPhan, string>>;
 }
 
 /**
@@ -802,14 +861,28 @@ interface ODongBOQ {
  * Hai bước trong một hộp nổi: chưa đọc file thì hiện ô chọn file; đọc xong chuyển
  * sang lưới review controlled, sửa/xoá dòng thoải mái rồi bấm lưu.
  */
-/** 5 cột BOQ + cờ "là cột số". */
-const COT_BOQ: { key: keyof ODongBOQ; nhan: string; so: boolean }[] = [
+/** Một cột trong lưới review; `tp` có nghĩa cột đơn giá thành phần (đọc từ dgTP). */
+type ColBOQ = { key: string; nhan: string; so: boolean; tp?: MaThanhPhan };
+const COT_CO_DINH: ColBOQ[] = [
   { key: "stt", nhan: "STT", so: false },
   { key: "noiDung", nhan: "Nội dung hạng mục", so: false },
   { key: "dvt", nhan: "ĐVT", so: false },
   { key: "khoiLuong", nhan: "Khối lượng", so: true },
-  { key: "donGia", nhan: "Đơn giá", so: true },
 ];
+/** Cột đơn giá theo kiểu: một cột "Đơn giá" (DON) hoặc nhiều cột thành phần. */
+function cotBOQ(kieu: MaKieuDonGia): ColBOQ[] {
+  const tps = THANH_PHAN_THEO_KIEU[kieu];
+  if (!tps.length) return [...COT_CO_DINH, { key: "donGia", nhan: "Đơn giá", so: true }];
+  return [
+    ...COT_CO_DINH,
+    ...tps.map((tp) => ({ key: `dg_${tp}`, nhan: `Đơn giá ${TEN_THANH_PHAN[tp]}`, so: true, tp })),
+  ];
+}
+/** Đọc / ghi giá trị một ô review theo cột (thành phần đọc từ dgTP). */
+const docO = (d: ODongBOQ, c: ColBOQ): string =>
+  c.tp ? d.dgTP[c.tp] ?? "" : (d[c.key as "stt" | "noiDung" | "dvt" | "khoiLuong" | "donGia"] ?? "");
+const ghiO = (d: ODongBOQ, c: ColBOQ, v: string): ODongBOQ =>
+  c.tp ? { ...d, dgTP: { ...d.dgTP, [c.tp]: v } } : { ...d, [c.key]: v };
 
 /** Xem trước số sẽ lưu theo quy ước Việt. loi=true khi không đọc được. */
 function xemSo(raw: string): { hienThi: string; loi: boolean } {
@@ -823,11 +896,14 @@ function xemSo(raw: string): { hienThi: string; loi: boolean } {
 export function ImportBOQ({
   maCongTrinh,
   daCoBOQ = false,
+  kieu = "DON",
 }: {
   maCongTrinh: string;
   /** Công trình đã có BOQ — hiện lựa chọn Ghi đè / Nối tiếp. */
   daCoBOQ?: boolean;
+  kieu?: MaKieuDonGia;
 }) {
+  const cols = cotBOQ(kieu);
   const [mo, setMo] = useState(false);
   const [dongs, setDongs] = useState<ODongBOQ[] | null>(null);
   const [ghiDe, setGhiDe] = useState(false);
@@ -879,9 +955,7 @@ export function ImportBOQ({
     // Gửi GIÁ TRỊ THÔ; server so() đọc theo quy ước Việt. Ô số Excel đã được đọc
     // chính xác ở tầng parse ("0,444"), nên qua so() ra đúng 0.444.
     for (const d of dongs) {
-      COT_BOQ.forEach((c) => {
-        fd.append(c.key, d[c.key]);
-      });
+      for (const c of cols) fd.append(c.key, docO(d, c));
     }
     batDauLuu(async () => {
       const r = await themNhieuDongBOQ(fd);
@@ -890,11 +964,11 @@ export function ImportBOQ({
     });
   };
 
-  const suaO = (i: number, k: keyof ODongBOQ, v: string) =>
-    setDongs((s) => s!.map((d, j) => (j === i ? { ...d, [k]: v } : d)));
+  const suaO = (i: number, c: ColBOQ, v: string) =>
+    setDongs((s) => s!.map((d, j) => (j === i ? ghiO(d, c, v) : d)));
   const xoaDong = (i: number) => setDongs((s) => s!.filter((_, j) => j !== i));
   const themDong = () =>
-    setDongs((s) => [...(s ?? []), { stt: "", noiDung: "", dvt: "", khoiLuong: "", donGia: "" }]);
+    setDongs((s) => [...(s ?? []), { stt: "", noiDung: "", dvt: "", khoiLuong: "", donGia: "", dgTP: {} }]);
 
   // Di chuyển giữa các ô bằng phím mũi tên / Enter như bảng tính Excel.
   const diChuyen = (e: React.KeyboardEvent) => {
@@ -949,7 +1023,7 @@ export function ImportBOQ({
           // --- Bước 1: chọn file ---
           <div className="p-4">
             <a
-              href="/api/mau-boq"
+              href={`/api/mau-boq?kieu=${kieu}`}
               className="mb-3 inline-flex items-center gap-1.5 rounded-md border border-vien px-2.5 py-1 text-xs font-medium hover:bg-nen"
             >
               <Download className="size-3.5" /> Tải file mẫu
@@ -1005,10 +1079,10 @@ export function ImportBOQ({
               <table className="w-full border-collapse text-sm">
                 <thead className="sticky top-0 z-10 bg-the">
                   <tr>
-                    {COT_BOQ.map((c) => (
+                    {cols.map((c) => (
                       <th
                         key={c.key}
-                        className={`border border-vien bg-nen px-2 py-1.5 text-xs font-semibold text-chunhat ${c.so ? "text-right" : "text-left"}`}
+                        className={`border border-vien bg-nen px-2 py-1.5 text-xs font-semibold whitespace-nowrap text-chunhat ${c.so ? "text-right" : "text-left"}`}
                       >
                         {c.nhan}
                       </th>
@@ -1021,8 +1095,9 @@ export function ImportBOQ({
                     const thieu = !d.noiDung.trim();
                     return (
                       <tr key={i} className={thieu ? "bg-rose-50 dark:bg-rose-950/20" : ""}>
-                        {COT_BOQ.map((c, ci) => {
-                          const kq = c.so ? xemSo(d[c.key]) : null;
+                        {cols.map((c, ci) => {
+                          const val = docO(d, c);
+                          const kq = c.so ? xemSo(val) : null;
                           const loiSo = !!kq?.loi;
                           const rong =
                             c.key === "noiDung"
@@ -1038,8 +1113,8 @@ export function ImportBOQ({
                                 <input
                                   data-r={i}
                                   data-c={ci}
-                                  value={d[c.key]}
-                                  onChange={(e) => suaO(i, c.key, e.target.value)}
+                                  value={val}
+                                  onChange={(e) => suaO(i, c, e.target.value)}
                                   onKeyDown={diChuyen}
                                   inputMode={c.so ? "decimal" : undefined}
                                   className={`${O} ${rong} ${loiSo ? "border-rose-400" : ""}`}
@@ -1109,18 +1184,32 @@ export function ThietLapVAT({
   donGiaGomVAT,
   vatPhanTram,
   lamTronThanhTien,
+  kieu,
+  vatTPRaw,
 }: {
   maCongTrinh: string;
   donGiaGomVAT: boolean;
   vatPhanTram: number;
   lamTronThanhTien: boolean;
+  kieu: MaKieuDonGia;
+  vatTPRaw: Record<MaThanhPhan, number | null>;
 }) {
   const [mo, setMo] = useState(false);
   const [gom, setGom] = useState(donGiaGomVAT);
   const [vat, setVat] = useState(String(vatPhanTram));
   const [lamTron, setLamTron] = useState(lamTronThanhTien);
+  const [kieuChon, setKieuChon] = useState<MaKieuDonGia>(kieu);
+  const [vatTP, setVatTP] = useState<Record<MaThanhPhan, string>>({
+    VT: vatTPRaw.VT == null ? "" : String(vatTPRaw.VT),
+    VTK: vatTPRaw.VTK == null ? "" : String(vatTPRaw.VTK),
+    NC: vatTPRaw.NC == null ? "" : String(vatTPRaw.NC),
+    MTC: vatTPRaw.MTC == null ? "" : String(vatTPRaw.MTC),
+    NCMTC: vatTPRaw.NCMTC == null ? "" : String(vatTPRaw.NCMTC),
+  });
   const [kq, setKq] = useState<KetQuaBOQ | null>(null);
   const [dangChay, batDau] = useTransition();
+
+  const tps = THANH_PHAN_THEO_KIEU[kieuChon];
 
   if (!mo) {
     return (
@@ -1145,20 +1234,42 @@ export function ThietLapVAT({
           if (r.ok) setTimeout(() => setMo(false), 700);
         });
       }}
-      className="rounded-lg border border-nhan bg-nhannhat p-3"
+      className="w-full max-w-md rounded-lg border border-nhan bg-nhannhat p-3"
     >
       <input type="hidden" name="maCongTrinh" value={maCongTrinh} />
       <p className="mb-2 text-xs font-semibold">Thiết lập BOQ</p>
-      <label className="flex items-center gap-1.5 text-xs">
+
+      <label className="block text-xs">
+        <span className="mb-0.5 block text-chunhat">Kiểu đơn giá</span>
+        <select
+          name="kieuDonGiaBOQ"
+          value={kieuChon}
+          onChange={(e) => setKieuChon(e.target.value as MaKieuDonGia)}
+          className={`${O} w-full`}
+        >
+          {CAC_KIEU.map((k) => (
+            <option key={k} value={k}>
+              {TEN_KIEU[k]}
+            </option>
+          ))}
+        </select>
+      </label>
+      {kieuChon !== kieu ? (
+        <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+          Đổi kiểu nên làm TRƯỚC khi nhập đơn giá. Đổi sau thì phải nhập lại đơn giá theo cột mới.
+        </p>
+      ) : null}
+
+      <label className="mt-3 flex items-center gap-1.5 text-xs">
         <input type="checkbox" name="lamTronThanhTien" checked={lamTron} onChange={(e) => setLamTron(e.target.checked)} />
         Làm tròn cột Thành tiền về đồng
       </label>
       <label className="mt-2 flex items-center gap-1.5 text-xs">
         <input type="checkbox" name="donGiaGomVAT" checked={gom} onChange={(e) => setGom(e.target.checked)} />
-        Đơn giá trên đã bao gồm VAT
+        Đơn giá đã bao gồm VAT
       </label>
       <label className="mt-2 flex items-center gap-1.5 text-xs">
-        VAT (%)
+        VAT chung (%)
         <input
           name="vatPhanTram"
           value={vat}
@@ -1167,9 +1278,42 @@ export function ThietLapVAT({
           className={`${O} w-20 text-right`}
         />
       </label>
-      <p className="mt-1 text-[11px] text-chunhat">
-        Bỏ tích làm tròn = giữ nguyên số lẻ (khối lượng × đơn giá). Giá trị Bill (doanh thu) luôn lấy
-        theo giá CHƯA VAT.
+
+      {tps.length ? (
+        <div className="mt-2 rounded-md border border-vien bg-the/60 p-2">
+          <p className="mb-1 text-[11px] font-medium text-chunhat">
+            VAT riêng từng thành phần (để trống = dùng VAT chung {vat || 0}%)
+          </p>
+          <div className="grid grid-cols-2 gap-1.5">
+            {tps.map((tp) => (
+              <label key={tp} className="flex items-center justify-between gap-1 text-xs">
+                <span className="truncate text-chunhat" title={TEN_THANH_PHAN[tp]}>
+                  {TEN_THANH_PHAN[tp]}
+                </span>
+                <input
+                  name={`vat_${tp}`}
+                  value={vatTP[tp]}
+                  onChange={(e) => setVatTP((s) => ({ ...s, [tp]: e.target.value }))}
+                  inputMode="decimal"
+                  placeholder={vat || "0"}
+                  className={`${O} w-16 text-right`}
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {/* Gửi kèm ô VAT thành phần ẩn cho các thành phần KHÔNG thuộc kiểu để server
+          xoá giá trị cũ (rỗng → null). */}
+      {(["VT", "VTK", "NC", "MTC", "NCMTC"] as MaThanhPhan[])
+        .filter((tp) => !tps.includes(tp))
+        .map((tp) => (
+          <input key={tp} type="hidden" name={`vat_${tp}`} value="" />
+        ))}
+
+      <p className="mt-2 text-[11px] text-chunhat">
+        Bỏ tích làm tròn = giữ nguyên số lẻ. Giá trị Bill (doanh thu) luôn lấy theo giá CHƯA VAT —
+        mỗi thành phần quy chưa VAT theo mức riêng của nó.
       </p>
       <div className="mt-2 flex gap-2">
         <button type="submit" disabled={dangChay} className="rounded-md bg-nhan px-3 py-1 text-xs font-medium text-white disabled:opacity-60">
@@ -1322,6 +1466,7 @@ interface DongSuaBOQ {
   dvt: string;
   khoiLuong: number;
   donGia: number;
+  donGiaTP: Partial<Record<MaThanhPhan, number>>;
 }
 
 /**
@@ -1360,10 +1505,29 @@ function ONoiDung({
  * KHÔNG phải import lại — import ghi đè sẽ xoá khối lượng Bill các tháng đã nhập.
  * Nội dung có định dạng cơ bản: in đậm, nghiêng, gạch chân.
  */
-export function SuaBOQ({ maCongTrinh, dongs }: { maCongTrinh: string; dongs: DongSuaBOQ[] }) {
+export function SuaBOQ({
+  maCongTrinh,
+  dongs,
+  kieu = "DON",
+}: {
+  maCongTrinh: string;
+  dongs: DongSuaBOQ[];
+  kieu?: MaKieuDonGia;
+}) {
   const [mo, setMo] = useState(false);
+  const tps = THANH_PHAN_THEO_KIEU[kieu];
   const tuDongs = () =>
-    dongs.map((d) => ({ id: d.id, stt: d.stt, dvt: d.dvt, kl: soVN(d.khoiLuong), dg: soVN(d.donGia) }));
+    dongs.map((d) => ({
+      id: d.id,
+      stt: d.stt,
+      dvt: d.dvt,
+      kl: soVN(d.khoiLuong),
+      dg: soVN(d.donGia),
+      tp: Object.fromEntries(tps.map((t) => [t, d.donGiaTP[t] == null ? "" : soVN(d.donGiaTP[t]!)])) as Record<
+        MaThanhPhan,
+        string
+      >,
+    }));
   const [rows, setRows] = useState(tuDongs);
   const ndRefs = useRef<Record<string, HTMLDivElement | null>>({});
   // Chỉ gửi các dòng NGƯỜI DÙNG ĐÃ SỬA — tránh validate/ghi cả bảng (dòng trống sẵn
@@ -1403,6 +1567,10 @@ export function SuaBOQ({ maCongTrinh, dongs }: { maCongTrinh: string; dongs: Don
     dirtyRef.current.add(id);
     setRows((s) => s.map((r) => (r.id === id ? { ...r, [k]: v } : r)));
   };
+  const suaTP = (id: string, tp: MaThanhPhan, v: string) => {
+    dirtyRef.current.add(id);
+    setRows((s) => s.map((r) => (r.id === id ? { ...r, tp: { ...r.tp, [tp]: v } } : r)));
+  };
   const dinhDang = (lenh: "bold" | "italic" | "underline") => {
     document.execCommand(lenh, false);
     setDd(docDinhDang());
@@ -1423,6 +1591,7 @@ export function SuaBOQ({ maCongTrinh, dongs }: { maCongTrinh: string; dongs: Don
       fd.append("dvt", r.dvt);
       fd.append("khoiLuong", r.kl);
       fd.append("donGia", r.dg);
+      for (const tp of tps) fd.append(`dg_${tp}`, r.tp[tp] ?? "");
     }
     batDau(async () => {
       const res = await suaNhieuDongBOQ(fd);
@@ -1480,7 +1649,7 @@ export function SuaBOQ({ maCongTrinh, dongs }: { maCongTrinh: string; dongs: Don
           <table className="w-full border-collapse text-sm">
             <thead className="sticky top-0 z-10 bg-the">
               <tr>
-                {["STT", "Nội dung công việc", "ĐVT", "Khối lượng", "Đơn giá"].map((h, i) => (
+                {["STT", "Nội dung công việc", "ĐVT", "Khối lượng"].map((h, i) => (
                   <th
                     key={h}
                     className={`border border-vien bg-nen px-2 py-1.5 text-xs font-semibold whitespace-nowrap text-chunhat ${i >= 3 ? "text-right" : "text-left"}`}
@@ -1488,6 +1657,17 @@ export function SuaBOQ({ maCongTrinh, dongs }: { maCongTrinh: string; dongs: Don
                     {h}
                   </th>
                 ))}
+                {tps.length ? (
+                  tps.map((tp) => (
+                    <th key={tp} className="border border-vien bg-nen px-2 py-1.5 text-right text-xs font-semibold whitespace-nowrap text-chunhat">
+                      Đơn giá {TEN_THANH_PHAN[tp]}
+                    </th>
+                  ))
+                ) : (
+                  <th className="border border-vien bg-nen px-2 py-1.5 text-right text-xs font-semibold whitespace-nowrap text-chunhat">
+                    Đơn giá
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -1524,14 +1704,27 @@ export function SuaBOQ({ maCongTrinh, dongs }: { maCongTrinh: string; dongs: Don
                       className={`${O} w-28 text-right`}
                     />
                   </td>
-                  <td className="border border-vien p-1 text-right align-top">
-                    <input
-                      value={r.dg}
-                      onChange={(e) => suaO(r.id, "dg", e.target.value)}
-                      inputMode="decimal"
-                      className={`${O} w-28 text-right`}
-                    />
-                  </td>
+                  {tps.length ? (
+                    tps.map((tp) => (
+                      <td key={tp} className="border border-vien p-1 text-right align-top">
+                        <input
+                          value={r.tp[tp] ?? ""}
+                          onChange={(e) => suaTP(r.id, tp, e.target.value)}
+                          inputMode="decimal"
+                          className={`${O} w-28 text-right`}
+                        />
+                      </td>
+                    ))
+                  ) : (
+                    <td className="border border-vien p-1 text-right align-top">
+                      <input
+                        value={r.dg}
+                        onChange={(e) => suaO(r.id, "dg", e.target.value)}
+                        inputMode="decimal"
+                        className={`${O} w-28 text-right`}
+                      />
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
