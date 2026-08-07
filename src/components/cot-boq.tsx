@@ -225,7 +225,7 @@ export function NutThemDong({
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-6">
         <label className="text-xs">
           <span className="mb-0.5 block text-chunhat">STT</span>
-          <input name="stt" placeholder="1.8" className={`${O} w-full`} required />
+          <input name="stt" placeholder="1.8" className={`${O} w-full`} />
         </label>
         <label className="text-xs sm:col-span-3">
           <span className="mb-0.5 block text-chunhat">Nội dung công việc</span>
