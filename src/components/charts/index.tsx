@@ -13,7 +13,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { nhanQuy, nhanThang, tien, tienGon } from "@/lib/format";
+import { nhanNam, nhanQuy, nhanThang, tien, tienGon } from "@/lib/format";
 import { bangMau, chrome } from "./palette";
 import { useDark } from "./use-dark";
 
@@ -67,16 +67,16 @@ export function BieuDoXuHuong({
 }: {
   data: DiemXuHuong[];
   /**
-   * Khóa trong `data.thang` là tháng ("2026-01") hay quý ("2026-Q1").
+   * Khóa trong `data.thang` là tháng ("2026-01"), quý ("2026-Q1") hay năm ("2026").
    * Truyền chuỗi chứ KHÔNG truyền hàm định dạng: không thể chuyển hàm từ Server
    * Component sang Client Component, nên component tự chọn cách gắn nhãn.
    */
-  loaiKy?: "thang" | "quy";
+  loaiKy?: "thang" | "quy" | "nam";
 }) {
   const toi = useDark();
   const mau = bangMau(toi);
   const c = chrome(toi);
-  const nhanTruc = loaiKy === "quy" ? nhanQuy : nhanThang;
+  const nhanTruc = loaiKy === "quy" ? nhanQuy : loaiKy === "nam" ? nhanNam : nhanThang;
 
   return (
     <ResponsiveContainer width="100%" height={300}>

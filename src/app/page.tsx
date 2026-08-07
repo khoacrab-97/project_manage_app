@@ -17,7 +17,7 @@ import {
   Th,
   ThanhTyLe,
 } from "@/components/ui";
-import { nhanQuy, nhanThang, phanTram, tien, tienGon } from "@/lib/format";
+import { nhanNam, nhanQuy, nhanThang, phanTram, tien, tienGon } from "@/lib/format";
 import {
   chiSoEVM,
   chuoiEVM,
@@ -40,8 +40,10 @@ import { MA_DOANH_THU_DIEU_HANH } from "@/lib/thresholds";
 
 export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
   const sp = await searchParams;
-  /** Xu hướng xem theo tháng hay gộp theo quý. Mặc định tháng. */
-  const kyXem: "thang" | "quy" = motGiaTri(sp.ky) === "quy" ? "quy" : "thang";
+  /** Xem tổng quan theo Năm / Quý / Tháng. Mặc định tháng. */
+  const kyParam = motGiaTri(sp.ky);
+  const kyXem: "thang" | "quy" | "nam" =
+    kyParam === "quy" ? "quy" : kyParam === "nam" ? "nam" : "thang";
 
   const [
     luyKe,
@@ -75,13 +77,27 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
     topRuiRo(),
   ]);
 
+  // Gộp theo NĂM từ chuỗi tháng — mỗi năm một điểm, biên LN tính lại từ tổng.
+  const chuoiNam = Object.values(
+    chuoi.reduce<Record<string, { thang: string; doanhThu: number; chiPhi: number; loiNhuan: number; bienLN: number }>>(
+      (acc, r) => {
+        const y = r.thang.slice(0, 4);
+        const a = acc[y] ?? { thang: y, doanhThu: 0, chiPhi: 0, loiNhuan: 0, bienLN: 0 };
+        a.doanhThu += r.doanhThu;
+        a.chiPhi += r.chiPhi;
+        a.loiNhuan += r.loiNhuan;
+        acc[y] = a;
+        return acc;
+      },
+      {}
+    )
+  ).map((a) => ({ ...a, bienLN: a.doanhThu ? a.loiNhuan / a.doanhThu : 0 }));
+
   // Biểu đồ và bảng dùng chung một bộ dữ liệu; chỉ đổi khóa và cách gắn nhãn.
   const chuoiXem =
-    kyXem === "quy"
-      ? chuoiQuy.map((r) => ({ ...r, thang: r.ky }))
-      : chuoi;
-  const nhanKy = kyXem === "quy" ? nhanQuy : nhanThang;
-  const tenKy = kyXem === "quy" ? "quý" : "tháng";
+    kyXem === "quy" ? chuoiQuy.map((r) => ({ ...r, thang: r.ky })) : kyXem === "nam" ? chuoiNam : chuoi;
+  const nhanKy = kyXem === "quy" ? nhanQuy : kyXem === "nam" ? nhanNam : nhanThang;
+  const tenKy = kyXem === "quy" ? "quý" : kyXem === "nam" ? "năm" : "tháng";
 
   /*
    * Kỳ gần nhất và kỳ liền trước, lấy từ CHÍNH chuỗi đang xem.
@@ -144,6 +160,20 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
           </Nhan>
         }
       />
+
+      {/* ---- Bộ lọc Năm / Quý / Tháng, khóa cố định dưới thanh trên khi cuộn ---- */}
+      <div className="sticky top-[52px] z-20 -mx-4 mb-4 flex flex-wrap items-center gap-1.5 border-b border-vien bg-the/90 px-4 py-2 backdrop-blur">
+        <span className="mr-1 text-xs font-medium text-chunhat">Xem theo:</span>
+        <LocLink href="/?ky=nam" dangChon={kyXem === "nam"}>
+          Năm
+        </LocLink>
+        <LocLink href="/?ky=quy" dangChon={kyXem === "quy"}>
+          Quý
+        </LocLink>
+        <LocLink href="/" dangChon={kyXem === "thang"}>
+          Tháng
+        </LocLink>
+      </div>
 
       {/* ---- Cảnh báo nổi bật nhất, đặt trên đầu vì CEO cần thấy trước ---- */}
       {khongDoanhThu.length > 0 ? (
@@ -314,18 +344,8 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
         <The className="xl:col-span-2">
           <TheDau
-            tieuDe={`Giá trị thực hiện – Chi phí – Lợi nhuận theo ${kyXem === "quy" ? "quý" : "tháng"}`}
+            tieuDe={`Giá trị thực hiện – Chi phí – Lợi nhuận theo ${tenKy}`}
             moTa="Cùng một trục giá trị (VNĐ) để so sánh trực tiếp"
-            phai={
-              <div className="flex gap-1.5">
-                <LocLink href="/" dangChon={kyXem === "thang"}>
-                  Tháng
-                </LocLink>
-                <LocLink href="/?ky=quy" dangChon={kyXem === "quy"}>
-                  Quý
-                </LocLink>
-              </div>
-            }
           />
           <div className="p-3">
             <BieuDoXuHuong data={chuoiXem} loaiKy={kyXem} />
@@ -335,7 +355,7 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
               <Bang>
                 <thead>
                   <tr>
-                    <Th>{kyXem === "quy" ? "Quý" : "Tháng"}</Th>
+                    <Th>{kyXem === "quy" ? "Quý" : kyXem === "nam" ? "Năm" : "Tháng"}</Th>
                     <Th phai>Giá trị thực hiện</Th>
                     <Th phai>Chi phí</Th>
                     <Th phai>Lợi nhuận gộp</Th>

@@ -95,6 +95,12 @@ export function nhanQuy(ky: string): string {
   return so ? `Quý ${so}/${y}` : "—";
 }
 
+/** "2026-03" hoặc "2026" -> "Năm 2026" */
+export function nhanNam(ky: string | null | undefined): string {
+  if (!ky) return "—";
+  return `Năm ${ky.slice(0, 4)}`;
+}
+
 /** "2026-03" -> "2026-Q1" (dùng làm khóa gộp) */
 export function khoaQuy(ky: string): string {
   const [y, m] = ky.split("-");

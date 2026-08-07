@@ -12,9 +12,9 @@ import { NGAY_HIEN_TAI } from "@/lib/thresholds";
 import { ngay } from "@/lib/format";
 
 export const metadata: Metadata = {
-  title: "Quản lý Doanh thu – Chi phí Thi công Xây dựng",
+  title: "CEM Platform — Quản lý Chi phí & Doanh thu Xây dựng",
   description:
-    "Ứng dụng quản trị doanh thu, chi phí và hiệu quả thi công theo công trình, tháng, quý và năm.",
+    "Nền tảng Quản lý Chi phí & Doanh thu Xây dựng — Phòng Dự Án. Theo dõi chi phí, doanh thu và hiệu quả thi công theo công trình, tháng, quý và năm.",
 };
 
 export const dynamic = "force-dynamic";
