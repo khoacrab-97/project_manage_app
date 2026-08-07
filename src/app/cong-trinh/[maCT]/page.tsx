@@ -33,8 +33,6 @@ import {
   dongTienTheoThang,
   giaTriBillThang,
   giaTriMotGiamGia,
-  layGiaoDichChoXuLy,
-  layLoNhap,
   maTranTheoCongTrinh,
   timCongTrinh,
   type KyBaoCao,
@@ -72,7 +70,6 @@ const TABS = [
   { id: "dong-tien", nhan: "Dòng tiền" },
   { id: "bao-cao", nhan: "Báo cáo" },
   { id: "evm", nhan: "EVM" },
-  { id: "lich-su", nhan: "Lịch sử nhập" },
 ] as const;
 
 const LOAI_KY: { id: KyBaoCao; nhan: string }[] = [
@@ -233,31 +230,40 @@ export default async function TrangChiTietCongTrinh({
         ))}
       </div>
 
-      {tab === "tong-quan" ? (
-        <TongQuan dong={dong} chuoi={chuoiVongDoi} base={base} />
-      ) : tab === "boq" ? (
-        <BOQTab
-          maCongTrinh={maCongTrinh}
-          thangChon={bqParam}
-          daHoanThanh={ct.trangThai === "Đã nghiệm thu"}
-        />
-      ) : tab === "doanh-thu" ? (
-        // Bill theo tháng liệt kê từ THÁNG KHỞI CÔNG của công trình (vòng đời),
-        // không dùng dải tháng chung toàn app.
-        <DoanhThu maCongTrinh={maCongTrinh} chuoi={chuoiVongDoi} />
-      ) : tab === "chi-phi" ? (
-        <ChiPhi maCongTrinh={maCongTrinh} danhMuc={danhMuc} base={base} an0={an0Param === "1"} />
-      ) : tab === "giao-dich" ? (
-        <GiaoDichTab maCongTrinh={maCongTrinh} daHoanThanh={ct.trangThai === "Đã nghiệm thu"} />
-      ) : tab === "dong-tien" ? (
-        <DongTienTab maCongTrinh={maCongTrinh} />
-      ) : tab === "bao-cao" ? (
-        <BaoCaoTab maCongTrinh={maCongTrinh} loai={loaiParam} ky={kyParam} q={q} />
-      ) : tab === "evm" ? (
-        <EVMTab maCongTrinh={maCongTrinh} />
-      ) : (
-        <LichSu maCongTrinh={maCongTrinh} />
-      )}
+      {/* Các tab (trừ Báo cáo — tab đó tự khóa tới dòng "Mã") đưa nội dung vào
+          hộp cuộn vừa khung nhìn: trang không cuộn nên back-link + tiêu đề + tab
+          đứng yên, chỉ nội dung tab cuộn. */}
+      <div
+        className={
+          tab === "bao-cao"
+            ? undefined
+            : "-mx-4 max-h-[calc(100vh-21rem)] overflow-y-auto px-4 pt-1"
+        }
+      >
+        {tab === "tong-quan" ? (
+          <TongQuan dong={dong} chuoi={chuoiVongDoi} base={base} />
+        ) : tab === "boq" ? (
+          <BOQTab
+            maCongTrinh={maCongTrinh}
+            thangChon={bqParam}
+            daHoanThanh={ct.trangThai === "Đã nghiệm thu"}
+          />
+        ) : tab === "doanh-thu" ? (
+          // Bill theo tháng liệt kê từ THÁNG KHỞI CÔNG của công trình (vòng đời),
+          // không dùng dải tháng chung toàn app.
+          <DoanhThu maCongTrinh={maCongTrinh} chuoi={chuoiVongDoi} />
+        ) : tab === "chi-phi" ? (
+          <ChiPhi maCongTrinh={maCongTrinh} danhMuc={danhMuc} base={base} an0={an0Param === "1"} />
+        ) : tab === "giao-dich" ? (
+          <GiaoDichTab maCongTrinh={maCongTrinh} daHoanThanh={ct.trangThai === "Đã nghiệm thu"} />
+        ) : tab === "dong-tien" ? (
+          <DongTienTab maCongTrinh={maCongTrinh} />
+        ) : tab === "bao-cao" ? (
+          <BaoCaoTab maCongTrinh={maCongTrinh} loai={loaiParam} ky={kyParam} q={q} />
+        ) : (
+          <EVMTab maCongTrinh={maCongTrinh} />
+        )}
+      </div>
     </>
   );
 }
@@ -1255,66 +1261,3 @@ async function EVMTab({ maCongTrinh }: { maCongTrinh: string }) {
   );
 }
 
-// ---------------------------------------------------------------- Lịch sử nhập
-async function LichSu({ maCongTrinh }: { maCongTrinh: string }) {
-  const los = (await layLoNhap())
-    .filter((l) => l.maCongTrinh === maCongTrinh)
-    .sort((a, b) => b.thoiDiemTai.localeCompare(a.thoiDiemTai));
-  const cho = (await layGiaoDichChoXuLy()).filter((g) => g.maCongTrinh === maCongTrinh);
-
-  return (
-    <>
-      {cho.length ? (
-        <div className="mb-4">
-          <CanhBaoBox bienThe="vang" tieuDe={`${cho.length} dòng đang chờ xử lý, chưa được ghi sổ`}>
-            Các dòng này có lỗi dữ liệu nên không được cộng vào báo cáo. Xem chi tiết ở trang{" "}
-            <Link href="/kiem-tra-du-lieu" className="font-medium text-nhan underline">
-              Kiểm tra dữ liệu
-            </Link>
-            .
-          </CanhBaoBox>
-        </div>
-      ) : null}
-
-      <The>
-        <TheDau tieuDe="Lịch sử nhập và phê duyệt" moTa="Mỗi lô nhập tương ứng một lần nộp file" />
-        <Bang>
-          <thead>
-            <tr>
-              <Th>Kỳ</Th>
-              <Th>Tên file</Th>
-              <Th>Người tải</Th>
-              <Th>Thời điểm tải</Th>
-              <Th phai>Số dòng</Th>
-              <Th phai>Hợp lệ</Th>
-              <Th phai>Lỗi</Th>
-              <Th>Trạng thái</Th>
-              <Th>Người duyệt</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {los.map((l) => (
-              <tr key={l.id} className="hover:bg-nen">
-                <Td className="whitespace-nowrap">{nhanThang(l.kyDuLieu)}</Td>
-                <Td className="max-w-80 truncate text-xs" title={l.tenFile}>
-                  {l.tenFile}
-                </Td>
-                <Td className="text-xs whitespace-nowrap">{l.nguoiTai}</Td>
-                <Td className="text-xs whitespace-nowrap">{l.thoiDiemTai.replace("T", " ")}</Td>
-                <Td phai>{l.soDong}</Td>
-                <Td phai>{l.soDongHopLe}</Td>
-                <Td phai>
-                  {l.soDongLoi ? <Nhan bienThe="do">{l.soDongLoi}</Nhan> : "0"}
-                </Td>
-                <Td>
-                  <Nhan bienThe={l.trangThai === "POSTED" ? "xanh" : "do"}>{l.trangThai}</Nhan>
-                </Td>
-                <Td className="text-xs">{l.nguoiDuyet ?? "—"}</Td>
-              </tr>
-            ))}
-          </tbody>
-        </Bang>
-      </The>
-    </>
-  );
-}

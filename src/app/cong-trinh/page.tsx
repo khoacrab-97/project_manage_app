@@ -47,8 +47,7 @@ export default async function TrangDanhMucCongTrinh() {
   return (
     <>
       <DauTrang
-        tieuDe="Danh mục công trình"
-        moTa="So sánh toàn bộ công trình trên cùng một bảng theo §4.2. Bấm mã công trình để xem chi tiết và truy vết xuống từng giao dịch."
+        tieuDe="DANH MỤC CÔNG TRÌNH"
         phai={
             <>
               <Nhan bienThe="xanh">Xanh {dem.Xanh}</Nhan>

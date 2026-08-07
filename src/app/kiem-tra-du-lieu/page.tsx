@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Bang, DauTrang, GhiChuNguon, Nhan, Rong, Td, The, TheDau, Th } from "@/components/ui";
-import { ngay, nhanThang, tien } from "@/lib/format";
+import { nhanThang, tien } from "@/lib/format";
 import {
   chatLuongDuLieu,
   diemChatLuong,
@@ -20,7 +20,9 @@ export default async function TrangKiemTraDuLieu() {
     layLoNhap(),
   ]);
   const traGD = new Map(cho.map((g) => [`${g.importBatchId}|${g.sttNguon + 2}`, g]));
-  const loLoi = loNhap.filter((l) => l.trangThai === "ERROR");
+  // Lịch sử nhập (chuyển từ tab Lịch sử của chi tiết công trình về đây) — mọi lô
+  // nhập của tất cả công trình, mới nhất trước.
+  const lichSu = [...loNhap].sort((a, b) => b.thoiDiemTai.localeCompare(a.thoiDiemTai));
 
   const tongLoiNghiemTrong = chiTieu.filter((c) => c.nghiemTrong).reduce((a, c) => a + c.soLuong, 0);
 
@@ -121,7 +123,7 @@ export default async function TrangKiemTraDuLieu() {
                     <Td className="text-xs font-medium whitespace-nowrap">
                       {gd ? (
                         <Link
-                          href={`/cong-trinh/${encodeURIComponent(gd.maCongTrinh)}?tab=lich-su`}
+                          href={`/cong-trinh/${encodeURIComponent(gd.maCongTrinh)}`}
                           className="text-nhan hover:underline"
                         >
                           {gd.maCongTrinh}
@@ -154,39 +156,50 @@ export default async function TrangKiemTraDuLieu() {
       </The>
 
       <The className="mt-4">
-        <TheDau tieuDe={`Lô nhập đang có lỗi — ${loLoi.length} lô`} />
-        <Bang>
-          <thead>
-            <tr>
-              <Th>Công trình</Th>
-              <Th>Kỳ</Th>
-              <Th>Tên file</Th>
-              <Th>Người tải</Th>
-              <Th>Thời điểm</Th>
-              <Th phai>Dòng lỗi</Th>
-              <Th>Trạng thái</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {loLoi.map((l) => (
-              <tr key={l.id} className="hover:bg-nen">
-                <Td className="text-xs font-medium whitespace-nowrap">{l.maCongTrinh}</Td>
-                <Td className="text-xs whitespace-nowrap">{nhanThang(l.kyDuLieu)}</Td>
-                <Td className="max-w-80 truncate text-xs" title={l.tenFile}>
-                  {l.tenFile}
-                </Td>
-                <Td className="text-xs whitespace-nowrap">{l.nguoiTai}</Td>
-                <Td className="text-xs whitespace-nowrap">{ngay(l.thoiDiemTai.slice(0, 10))}</Td>
-                <Td phai>
-                  <Nhan bienThe="do">{l.soDongLoi}</Nhan>
-                </Td>
-                <Td>
-                  <Nhan bienThe="do">{l.trangThai}</Nhan>
-                </Td>
+        <TheDau
+          tieuDe={`Lịch sử nhập và phê duyệt — ${lichSu.length} lô`}
+          moTa="Mỗi lô nhập tương ứng một lần nộp file — tất cả công trình, mới nhất trước"
+        />
+        {lichSu.length ? (
+          <Bang>
+            <thead>
+              <tr>
+                <Th>Công trình</Th>
+                <Th>Kỳ</Th>
+                <Th>Tên file</Th>
+                <Th>Người tải</Th>
+                <Th>Thời điểm tải</Th>
+                <Th phai>Số dòng</Th>
+                <Th phai>Hợp lệ</Th>
+                <Th phai>Lỗi</Th>
+                <Th>Trạng thái</Th>
+                <Th>Người duyệt</Th>
               </tr>
-            ))}
-          </tbody>
-        </Bang>
+            </thead>
+            <tbody>
+              {lichSu.map((l) => (
+                <tr key={l.id} className="hover:bg-nen">
+                  <Td className="text-xs font-medium whitespace-nowrap">{l.maCongTrinh}</Td>
+                  <Td className="text-xs whitespace-nowrap">{nhanThang(l.kyDuLieu)}</Td>
+                  <Td className="max-w-80 truncate text-xs" title={l.tenFile}>
+                    {l.tenFile}
+                  </Td>
+                  <Td className="text-xs whitespace-nowrap">{l.nguoiTai}</Td>
+                  <Td className="text-xs whitespace-nowrap">{l.thoiDiemTai.replace("T", " ")}</Td>
+                  <Td phai>{l.soDong}</Td>
+                  <Td phai>{l.soDongHopLe}</Td>
+                  <Td phai>{l.soDongLoi ? <Nhan bienThe="do">{l.soDongLoi}</Nhan> : "0"}</Td>
+                  <Td>
+                    <Nhan bienThe={l.trangThai === "POSTED" ? "xanh" : "do"}>{l.trangThai}</Nhan>
+                  </Td>
+                  <Td className="text-xs">{l.nguoiDuyet ?? "—"}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </Bang>
+        ) : (
+          <Rong>Chưa có lô nhập nào</Rong>
+        )}
       </The>
 
       <GhiChuNguon>

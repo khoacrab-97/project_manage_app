@@ -44,7 +44,6 @@ export default async function TrangDanhMuc() {
     <>
       <DauTrang
         tieuDe="Danh mục mã doanh thu – chi phí"
-        moTa="Trích nguyên từ sheet DM_MA_DT_CP của bộ chuẩn hóa. Ứng dụng không tự sinh mã — việc thêm, sửa, khóa mã do người quản trị danh mục thực hiện (§3.4)."
         phai={
           <>
             <Nhan bienThe="nhan">{soDT} mã doanh thu</Nhan>
