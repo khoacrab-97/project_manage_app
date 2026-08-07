@@ -248,7 +248,9 @@ export default async function TrangChiTietCongTrinh({
           daHoanThanh={ct.trangThai === "Đã nghiệm thu"}
         />
       ) : tab === "doanh-thu" ? (
-        <DoanhThu maCongTrinh={maCongTrinh} chuoi={chuoi} />
+        // Bill theo tháng liệt kê từ THÁNG KHỞI CÔNG của công trình (vòng đời),
+        // không dùng dải tháng chung toàn app.
+        <DoanhThu maCongTrinh={maCongTrinh} chuoi={chuoiVongDoi} />
       ) : tab === "chi-phi" ? (
         <ChiPhi maCongTrinh={maCongTrinh} danhMuc={danhMuc} base={base} an0={an0Param === "1"} />
       ) : tab === "giao-dich" ? (

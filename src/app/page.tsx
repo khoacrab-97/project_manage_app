@@ -259,7 +259,7 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
       </div>
 
       {muc === "dashboard" ? (
-        <>
+        <div className="-mx-4 max-h-[calc(100dvh-15rem)] overflow-y-auto px-4 pt-1">
           {/* EV/AC */}
           {evm.length ? (
             <The className="mb-4">
@@ -411,9 +411,9 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
               </Bang>
             </The>
           </div>
-        </>
+        </div>
       ) : muc === "chung" ? (
-        <>
+        <div className="-mx-4 max-h-[calc(100dvh-12rem)] overflow-y-auto px-4 pt-1">
           {/* Cảnh báo nổi bật nhất */}
           {khongDoanhThu.length > 0 ? (
             <div className="mb-5">
@@ -704,7 +704,7 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
               </tbody>
             </Bang>
           </The>
-        </>
+        </div>
       ) : (
         <>
           {/* ---- Tổng kết phân tích chi phí ---- */}
