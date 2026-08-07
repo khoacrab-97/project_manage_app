@@ -201,39 +201,44 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
 
   return (
     <>
-      <DauTrang
-        tieuDe="Tổng quan điều hành"
-        chiDan={
-          <>
-            Lũy kế tất cả công trình đến hết {nhanThang(thang)}. Giá trị thực hiện lấy theo mã{" "}
-            <strong>{MA_DOANH_THU_DIEU_HANH} — bill nội bộ</strong>; theo §6.1 các trạng thái Tạm
-            ứng / Thanh toán đợt / Quyết toán (dòng tiền) không được cộng lẫn vào đây.
-          </>
+      {/* Khối tiêu đề + tab — khóa cố định khi cuộn (Dashboard: từ "Xem theo" trở
+          lên; Chung: từ Tab trở lên). Tab Tổng kết cuộn bình thường vì bảng của nó
+          tự khóa dòng tiêu đề "Mã". */}
+      <div
+        className={
+          muc === "tong-ket"
+            ? "mb-4"
+            : "sticky top-[52px] z-20 -mx-4 mb-4 border-b border-vien bg-nen px-4 pb-2"
         }
-        phai={
-          <Nhan bienThe={diem >= 85 ? "xanh" : diem >= 60 ? "vang" : "do"}>
-            Chất lượng dữ liệu {diem}/100
-          </Nhan>
-        }
-      />
-
-      {/* ---- Chuyển mục ---- */}
-      <div className="mb-4 flex flex-wrap gap-1.5">
-        <LocLink href="/" dangChon={muc === "dashboard"}>
-          Dashboard
-        </LocLink>
-        <LocLink href="/?muc=chung" dangChon={muc === "chung"}>
-          Chung
-        </LocLink>
-        <LocLink href="/?muc=tong-ket" dangChon={muc === "tong-ket"}>
-          Tổng kết phân tích chi phí
-        </LocLink>
-      </div>
-
-      {muc === "dashboard" ? (
-        <>
-          {/* Bộ lọc Năm / Quý / Tháng, khóa cố định dưới thanh trên khi cuộn */}
-          <div className="sticky top-[52px] z-20 -mx-4 mb-4 flex flex-wrap items-center gap-1.5 border-b border-vien bg-the/90 px-4 py-2 backdrop-blur">
+      >
+        <DauTrang
+          tieuDe="Tổng quan điều hành"
+          chiDan={
+            <>
+              Lũy kế tất cả công trình đến hết {nhanThang(thang)}. Giá trị thực hiện lấy theo mã{" "}
+              <strong>{MA_DOANH_THU_DIEU_HANH} — bill nội bộ</strong>; theo §6.1 các trạng thái Tạm
+              ứng / Thanh toán đợt / Quyết toán (dòng tiền) không được cộng lẫn vào đây.
+            </>
+          }
+          phai={
+            <Nhan bienThe={diem >= 85 ? "xanh" : diem >= 60 ? "vang" : "do"}>
+              Chất lượng dữ liệu {diem}/100
+            </Nhan>
+          }
+        />
+        <div className="flex flex-wrap gap-1.5">
+          <LocLink href="/" dangChon={muc === "dashboard"}>
+            Dashboard
+          </LocLink>
+          <LocLink href="/?muc=chung" dangChon={muc === "chung"}>
+            Chung
+          </LocLink>
+          <LocLink href="/?muc=tong-ket" dangChon={muc === "tong-ket"}>
+            Tổng kết phân tích chi phí
+          </LocLink>
+        </div>
+        {muc === "dashboard" ? (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-vien pt-2">
             <span className="mr-1 text-xs font-medium text-chunhat">Xem theo:</span>
             <LocLink href="/?ky=nam" dangChon={kyXem === "nam"}>
               Năm
@@ -245,7 +250,11 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
               Tháng
             </LocLink>
           </div>
+        ) : null}
+      </div>
 
+      {muc === "dashboard" ? (
+        <>
           {/* EV/AC */}
           {evm.length ? (
             <The className="mb-4">
@@ -739,11 +748,12 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
               moTa={`${tkKyChon ? nhanKyBC(tkKy, tkKyChon) : "—"} · ${tkData.hangs.length} mã · tổng lũy kế ${tien(tkTongChung)} đ`}
               chiDan="Cột Tổng là lũy kế mọi kỳ (không đổi theo Thời điểm). Cột giá trị kỳ là số của đúng Thời điểm đang chọn. Tỷ trọng = Giá trị kỳ / Tổng của dòng (kỳ này chiếm bao nhiêu phần trăm tổng lũy kế). Dòng Bill là giá trị thực hiện (BOQ)."
             />
-            <Bang>
+            <div className="cuon-ngang max-h-[65vh]">
+              <table className="w-full border-collapse text-sm">
               <thead>
                 <tr>
-                  <Th className="sticky left-0 z-20 min-w-22.5">Mã</Th>
-                  <Th className="sticky left-22.5 z-20 min-w-55">Nội dung</Th>
+                  <Th className="sticky left-0 top-0 z-30 min-w-22.5">Mã</Th>
+                  <Th className="sticky left-22.5 top-0 z-30 min-w-55">Nội dung</Th>
                   <Th phai className="min-w-32.5 bg-nen">
                     Tổng
                   </Th>
@@ -798,7 +808,8 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
                   <Td phai>{tkTongChung ? phanTram(tkKyVal / tkTongChung) : "—"}</Td>
                 </tr>
               </tbody>
-            </Bang>
+              </table>
+            </div>
           </The>
         </>
       )}
