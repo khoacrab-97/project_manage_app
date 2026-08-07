@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { TheKPI } from "@/components/kpi-card";
+import { CanhBaoNut } from "@/components/canh-bao-nut";
 import { BieuDoXuHuong } from "@/components/charts";
 import {
   Bang,
@@ -173,20 +174,27 @@ export default async function TrangChiTietCongTrinh({
           <>
             {ct.tenRutGon ? (
               <>
-                <span className="">{maCongTrinh}</span> ·{" "}
+                {maCongTrinh}
+                <br />
               </>
             ) : null}
-            {ct.tenCongTrinh} · {ct.chuDauTu}
+            {ct.tenCongTrinh}
             <br />
-            Chỉ huy trưởng <strong>{ct.chiHuyTruong}</strong> · {ct.phongPhuTrach} · {ct.diaDiem} ·
-            Khởi công {ngay(ct.ngayBatDau)} · Cập nhật gần nhất {ngay(ct.ngayCapNhatCuoi)} (
-            {dong.ngayTre} ngày trước)
+            {ct.diaDiem}
+            <br />
+            {ct.chuDauTu}
+            <br />
+            Chỉ huy trưởng <strong>{ct.chiHuyTruong}</strong> · Khởi công {ngay(ct.ngayBatDau)}
           </>
         }
         phai={
           <>
             <Nhan>{ct.trangThai}</Nhan>
-            <NhanSucKhoe sucKhoe={dong.sucKhoe} lyDo={dong.lyDo} />
+            {dong.lyDo.length ? (
+              <CanhBaoNut mucDo={dong.sucKhoe} lyDo={dong.lyDo} />
+            ) : (
+              <NhanSucKhoe sucKhoe={dong.sucKhoe} lyDo={dong.lyDo} />
+            )}
           </>
         }
       />
@@ -202,21 +210,6 @@ export default async function TrangChiTietCongTrinh({
               </Link>{" "}
               bấm Sửa và bỏ tích “Đã hoàn thành”.
             </p>
-          </CanhBaoBox>
-        </div>
-      ) : null}
-
-      {dong.lyDo.length ? (
-        <div className="mb-4">
-          <CanhBaoBox
-            bienThe={dong.sucKhoe === "Đỏ" ? "do" : "vang"}
-            tieuDe={`Lý do công trình đang ở mức ${dong.sucKhoe}`}
-          >
-            <ul className="list-disc space-y-0.5 pl-4">
-              {dong.lyDo.map((l) => (
-                <li key={l}>{l}</li>
-              ))}
-            </ul>
           </CanhBaoBox>
         </div>
       ) : null}
@@ -1025,8 +1018,39 @@ async function BaoCaoTab({
     .map((c, i) => ({ c, i }))
     .filter(({ c, i }) => hangs.some((h) => h.giaTri[i] !== 0) && (!ky || c === ky));
 
-  const tongCot = chiSo.map(({ i }) => hangs.reduce((a, h) => a + h.giaTri[i], 0));
-  const tongChung = hangs.reduce((a, h) => a + h.tong, 0);
+  // Tách riêng Bill (giá trị thực hiện) và Chi phí: Bill giữ nguyên từng dòng,
+  // thêm dòng TỔNG CHI PHÍ gộp mọi mã chi phí (đặt dưới Bill, trên CP-001).
+  const hangKhac = hangs.filter((h) => h.loai !== "Chi phí");
+  const hangCP = hangs.filter((h) => h.loai === "Chi phí");
+  const tongCPCot = chiSo.map(({ i }) => hangCP.reduce((a, h) => a + h.giaTri[i], 0));
+  const tongCPChung = hangCP.reduce((a, h) => a + h.tong, 0);
+
+  const veHang = (h: (typeof hangs)[number]) => {
+    const nhomCha = !h.maCha;
+    return (
+      <tr key={h.ma} className={nhomCha ? "bg-nen/60 hover:bg-nen" : "hover:bg-nen"}>
+        <Td
+          className={`sticky left-0 z-10 text-xs whitespace-nowrap ${nhomCha ? "bg-nen/60 font-semibold" : "bg-the pl-7"}`}
+        >
+          {h.ma}
+        </Td>
+        <Td
+          className={`sticky left-22.5 z-10 max-w-55 truncate text-xs ${nhomCha ? "bg-nen/60 font-semibold" : "bg-the"}`}
+          title={h.ten}
+        >
+          {h.loai === "Chi phí" ? h.ten : <span className="text-nhan">{h.ten}</span>}
+        </Td>
+        <Td phai className="bg-nen font-semibold">
+          {tien(h.tong)}
+        </Td>
+        {chiSo.map(({ c, i }) => (
+          <Td key={c} phai className={h.giaTri[i] ? "" : "text-chunhat"}>
+            {h.giaTri[i] ? tien(h.giaTri[i]) : "—"}
+          </Td>
+        ))}
+      </tr>
+    );
+  };
 
   return (
     <>
@@ -1059,14 +1083,14 @@ async function BaoCaoTab({
       <The>
         <TheDau
           tieuDe={ky ? nhanKyBaoCao(loai, ky) : `Toàn bộ kỳ theo ${LOAI_KY.find((l) => l.id === loai)!.nhan.toLowerCase().replace("theo ", "")}`}
-          moTa={`${hangs.length} mã · tổng lũy kế ${tien(tongChung)} đ`}
           chiDan="Liệt kê đầy đủ danh mục mã theo cây 2 cấp; dòng toàn dấu “—” là mã chưa phát sinh. Dòng Bill là giá trị thực hiện lấy từ BOQ (cùng nguồn tab Doanh thu), không phải tổng giao dịch mã Bill; TƯ, TT, QT là dòng tiền thu theo hợp đồng nên không đặt chung bảng với chi phí thực hiện. Cột Tổng luôn là lũy kế mọi kỳ, không đổi theo bộ lọc Thời điểm."
         />
-        <Bang>
+        <div className="cuon-ngang max-h-[calc(100vh-30rem)]">
+          <table className="w-full border-collapse text-sm">
           <thead>
             <tr>
-              <Th className="sticky left-0 z-20 min-w-22.5">Mã</Th>
-              <Th className="sticky left-22.5 z-20 min-w-55">Nội dung</Th>
+              <Th className="sticky left-0 top-0 z-30 min-w-22.5">Mã</Th>
+              <Th className="sticky left-22.5 top-0 z-30 min-w-55">Nội dung</Th>
               <Th phai className="min-w-32.5 bg-nen">
                 Tổng
               </Th>
@@ -1078,44 +1102,23 @@ async function BaoCaoTab({
             </tr>
           </thead>
           <tbody>
-            {hangs.map((h) => {
-              const nhomCha = !h.maCha;
-              return (
-                <tr key={h.ma} className={nhomCha ? "bg-nen/60 hover:bg-nen" : "hover:bg-nen"}>
-                  <Td
-                    className={`sticky left-0 z-10 text-xs whitespace-nowrap ${nhomCha ? "bg-nen/60 font-semibold" : "bg-the pl-7"}`}
-                  >
-                    {h.ma}
-                  </Td>
-                  <Td
-                    className={`sticky left-22.5 z-10 max-w-55 truncate text-xs ${nhomCha ? "bg-nen/60 font-semibold" : "bg-the"}`}
-                    title={h.ten}
-                  >
-                    {h.loai === "Chi phí" ? h.ten : <span className="text-nhan">{h.ten}</span>}
-                  </Td>
-                  <Td phai className="bg-nen font-semibold">
-                    {tien(h.tong)}
-                  </Td>
-                  {chiSo.map(({ c, i }) => (
-                    <Td key={c} phai className={h.giaTri[i] ? "" : "text-chunhat"}>
-                      {h.giaTri[i] ? tien(h.giaTri[i]) : "—"}
-                    </Td>
-                  ))}
-                </tr>
-              );
-            })}
+            {hangKhac.map(veHang)}
             <tr className="bg-nen font-semibold">
-              <Td className="sticky left-0 z-10 bg-nen">TỔNG</Td>
-              <Td className="sticky left-22.5 z-10 bg-nen" />
-              <Td phai>{tien(tongChung)}</Td>
-              {tongCot.map((t, i) => (
+              <Td className="sticky left-0 z-10 bg-nen" />
+              <Td className="sticky left-22.5 z-10 bg-nen text-xs whitespace-nowrap">
+                TỔNG CHI PHÍ
+              </Td>
+              <Td phai>{tien(tongCPChung)}</Td>
+              {tongCPCot.map((t, i) => (
                 <Td key={i} phai>
                   {tien(t)}
                 </Td>
               ))}
             </tr>
+            {hangCP.map(veHang)}
           </tbody>
-        </Bang>
+          </table>
+        </div>
       </The>
     </>
   );

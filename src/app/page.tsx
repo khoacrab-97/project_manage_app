@@ -750,7 +750,7 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
           <The>
             <TheDau
               tieuDe={tkCt === "all" ? "Tổng hợp tất cả công trình" : tkTuyChon.find((o) => o.value === tkCt)?.nhan ?? tkCt}
-              moTa={`${tkKyChon ? nhanKyBC(tkKy, tkKyChon) : "—"} · ${tkData.hangs.length} mã · tổng lũy kế ${tien(tkTongChung)} đ`}
+              moTa={tkKyChon ? nhanKyBC(tkKy, tkKyChon) : undefined}
               chiDan="Cột Tổng là lũy kế mọi kỳ (không đổi theo Thời điểm). Cột giá trị kỳ là số của đúng Thời điểm đang chọn. Tỷ trọng = Giá trị kỳ / Tổng của dòng (kỳ này chiếm bao nhiêu phần trăm tổng lũy kế). Dòng Bill là giá trị thực hiện (BOQ)."
             />
             <div className="cuon-ngang max-h-[calc(100vh-26rem)]">
