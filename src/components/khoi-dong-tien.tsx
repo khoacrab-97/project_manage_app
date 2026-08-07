@@ -24,15 +24,30 @@ export function KhoiDongTien({ chuoi }: { chuoi: DiemDongTienChuoi[] }) {
   return (
     <>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <TheKPI nhan="Tiền thu lũy kế" giaTri={thu} phuChu="Tạm ứng / Thanh toán / Quyết toán" />
-        <TheKPI nhan="Tiền chi lũy kế" giaTri={chi} phuChu="Tổng các mã chi phí" />
-        <TheKPI nhan="Dòng tiền ròng" giaTri={rong} phuChu="Tiền thu − Tiền chi" />
+        <TheKPI
+          nhan="Tiền thu lũy kế"
+          giaTri={thu}
+          phuChu="Tạm ứng / Thanh toán / Quyết toán"
+          chiDan="Tổng tiền thu thực tế trên sổ giao dịch (các mã Doanh thu: tạm ứng, thanh toán đợt, quyết toán). Không phải giá trị thực hiện (Bill)."
+        />
+        <TheKPI
+          nhan="Tiền chi lũy kế"
+          giaTri={chi}
+          phuChu="Tổng các mã chi phí"
+          chiDan="Tổng tiền chi thực tế trên sổ giao dịch (mọi mã Chi phí), lũy kế toàn kỳ."
+        />
+        <TheKPI
+          nhan="Dòng tiền ròng"
+          giaTri={rong}
+          phuChu="Tiền thu − Tiền chi"
+          chiDan="Dòng tiền ròng = Tiền thu lũy kế − Tiền chi lũy kế. Âm (đỏ) nghĩa là đang chi nhiều hơn thu."
+        />
       </div>
 
       <The className="mt-4">
         <TheDau
           tieuDe="Dòng tiền theo tháng"
-          moTa="Tiền thu (mã Doanh thu) và tiền chi (mã Chi phí) từ Giao dịch. Bill không tính — đó là giá trị thực hiện, không phải dòng tiền."
+          chiDan="Tiền thu (mã Doanh thu) và tiền chi (mã Chi phí) từ Giao dịch. Bill không tính — đó là giá trị thực hiện, không phải dòng tiền."
         />
         <div className="p-3">
           {chuoi.length ? (

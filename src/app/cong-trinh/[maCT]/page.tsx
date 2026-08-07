@@ -279,14 +279,30 @@ async function TongQuan({
   return (
     <>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TheKPI nhan="Giá trị thực hiện lũy kế" giaTri={dong.doanhThu} phuChu="Bill nội bộ (BOQ)" />
-        <TheKPI nhan="Chi phí lũy kế" giaTri={dong.chiPhi} phuChu="Tổng các mã chi phí" />
-        <TheKPI nhan="Lợi nhuận gộp" giaTri={dong.loiNhuan} phuChu="Doanh thu − Chi phí" />
+        <TheKPI
+          nhan="Giá trị thực hiện lũy kế"
+          giaTri={dong.doanhThu}
+          phuChu="Bill nội bộ (BOQ)"
+          chiDan="Lũy kế giá trị thực hiện (Bill nội bộ tính từ khối lượng BOQ đã xác nhận). Đây là giá trị thực hiện, chưa phải doanh thu nghiệm thu thanh toán."
+        />
+        <TheKPI
+          nhan="Chi phí lũy kế"
+          giaTri={dong.chiPhi}
+          phuChu="Tổng các mã chi phí"
+          chiDan="Tổng các giao dịch thuộc mã Chi phí đã ghi sổ cho công trình này (lũy kế toàn kỳ)."
+        />
+        <TheKPI
+          nhan="Lợi nhuận gộp"
+          giaTri={dong.loiNhuan}
+          phuChu="Doanh thu − Chi phí"
+          chiDan="Lợi nhuận gộp = Giá trị thực hiện lũy kế − Chi phí lũy kế. Số âm (đỏ) nghĩa là chi phí đang vượt giá trị thực hiện."
+        />
         <TheKPI
           nhan="Biên lợi nhuận"
           giaTri={dong.bienLN}
           dinhDang="phanTram"
           phuChu={`Mục tiêu ${phanTram(dong.congTrinh.bienLNMucTieu, 0)}`}
+          chiDan={`Biên lợi nhuận = Lợi nhuận gộp / Giá trị thực hiện. Mục tiêu của công trình: ${phanTram(dong.congTrinh.bienLNMucTieu, 0)}.`}
         />
       </div>
 
@@ -450,18 +466,36 @@ async function BOQTab({
           nhan="Giá trị hợp đồng (BOQ)"
           giaTri={ttHopDong}
           phuChu={`${dongs.length} công tác · ${soXong} đã xong`}
+          chiDan={
+            <>
+              Tổng thành tiền theo bảng khối lượng (BOQ) của hợp đồng.{" "}
+              {donGiaGomVAT
+                ? `Đơn giá ĐÃ bao gồm VAT ${vatPhanTram}%.`
+                : "Đơn giá CHƯA bao gồm VAT."}{" "}
+              {giamGia.length
+                ? `Đã trừ ${giamGia.length} khoản giảm giá.`
+                : "Không có khoản giảm giá."}
+            </>
+          }
         />
-        <TheKPI nhan="Lũy kế Bill" giaTri={ttXacNhan} phuChu="Giá trị Bill mọi kỳ" />
+        <TheKPI
+          nhan="Lũy kế Bill"
+          giaTri={ttXacNhan}
+          phuChu="Giá trị Bill mọi kỳ"
+          chiDan={`Tổng giá trị thực hiện (Bill) đã xác nhận qua tất cả các kỳ. ${donGiaGomVAT ? `Đã quy về CHƯA VAT (chia 1+${vatPhanTram}%).` : "Theo đơn giá chưa VAT."}`}
+        />
         <TheKPI
           nhan={ky ? `Bill ${nhanThang(ky.thang)}` : "Bill tháng"}
           giaTri={billKy}
           phuChu="Giá trị Bill kỳ này"
+          chiDan="Giá trị thực hiện (Bill) của riêng kỳ đang chọn — tổng khối lượng thực hiện trong tháng nhân đơn giá, trừ giảm giá của kỳ."
         />
         <TheKPI
           nhan="Tiến độ thực hiện"
           giaTri={tatCaXong ? 1 : ttHopDong ? ttLuyKe / ttHopDong : null}
           dinhDang="phanTram"
           phuChu={tatCaXong ? "Tất cả công tác đã xong" : "Lũy kế / Hợp đồng"}
+          chiDan="Tỷ lệ hoàn thành = Lũy kế giá trị thực hiện / Giá trị hợp đồng (BOQ). Nếu mọi công tác đã tích Xong thì tính tròn 100%."
         />
       </div>
 
@@ -710,6 +744,7 @@ async function DoanhThu({
         <TheDau
           tieuDe="Giá trị thực hiện và dòng tiền thu"
           moTa="Bill là giá trị khối lượng thực hiện trong tháng do chỉ huy trưởng xác nhận — không phải dòng tiền thu"
+          chiDan="Bill là giá trị khối lượng thực hiện trong tháng (chỉ huy trưởng xác nhận) — xem như doanh thu dự kiến, CHƯA phải dòng tiền. Tạm ứng, Thanh toán đợt và Quyết toán mới là tiền thực thu; hiện chưa ghi nhận trong dữ liệu nguồn."
         />
         <Bang>
           <thead>
@@ -753,11 +788,6 @@ async function DoanhThu({
             ))}
           </tbody>
         </Bang>
-        <GhiChuNguon>
-          <strong>Bill</strong> là giá trị khối lượng thực hiện trong tháng, chỉ huy trưởng phụ trách
-          xác nhận — xem như doanh thu dự kiến, <strong>chưa phải dòng tiền</strong>. Tạm ứng, Thanh
-          toán đợt và Quyết toán mới là tiền thực thu; hiện chưa ghi nhận trong dữ liệu nguồn.
-        </GhiChuNguon>
       </The>
 
       <The>
@@ -846,6 +876,7 @@ async function ChiPhi({
       <TheDau
         tieuDe="Chi phí theo cây mã"
         moTa="Mã nhóm in đậm, mã chi tiết thụt vào. Bấm số tiền để xem các giao dịch cấu thành."
+        chiDan="Kế hoạch lấy từ sheet KẾ HOẠCH TH (hệ mã cũ DA*) sau khi qua bảng ánh xạ. Mã kế hoạch chưa ánh xạ được sẽ hiển thị “—” chứ không bị gộp ngầm vào mã khác."
         phai={
           <div className="flex gap-1.5">
             <LocLink href={`${base}?tab=chi-phi`} dangChon={!an0}>
@@ -908,10 +939,6 @@ async function ChiPhi({
           </tr>
         </tbody>
       </Bang>
-      <GhiChuNguon>
-        Kế hoạch lấy từ sheet KẾ HOẠCH TH (hệ mã cũ DA*) sau khi qua bảng ánh xạ. Mã kế hoạch chưa
-        ánh xạ được sẽ hiển thị “—” chứ không bị gộp ngầm vào mã khác.
-      </GhiChuNguon>
     </The>
   );
 }
@@ -1031,6 +1058,7 @@ async function BaoCaoTab({
         <TheDau
           tieuDe={ky ? nhanKyBaoCao(loai, ky) : `Toàn bộ kỳ theo ${LOAI_KY.find((l) => l.id === loai)!.nhan.toLowerCase().replace("theo ", "")}`}
           moTa={`${hangs.length} mã · tổng lũy kế ${tien(tongChung)} đ`}
+          chiDan="Liệt kê đầy đủ danh mục mã theo cây 2 cấp; dòng toàn dấu “—” là mã chưa phát sinh. Dòng Bill là giá trị thực hiện lấy từ BOQ (cùng nguồn tab Doanh thu), không phải tổng giao dịch mã Bill; TƯ, TT, QT là dòng tiền thu theo hợp đồng nên không đặt chung bảng với chi phí thực hiện. Cột Tổng luôn là lũy kế mọi kỳ, không đổi theo bộ lọc Thời điểm."
         />
         <Bang>
           <thead>
@@ -1087,14 +1115,6 @@ async function BaoCaoTab({
           </tbody>
         </Bang>
       </The>
-
-      <GhiChuNguon>
-        Liệt kê đầy đủ danh mục mã theo cây 2 cấp (mã nhóm in đậm, mã chi tiết thụt vào); dòng toàn
-        dấu “—” là mã chưa phát sinh. Dòng <strong>Bill</strong> là giá trị thực hiện lấy từ BOQ
-        (cùng nguồn với tab Doanh thu), không phải tổng giao dịch mã Bill; TƯ, TT, QT là dòng tiền
-        thu theo hợp đồng nên không đặt chung bảng với chi phí thực hiện. Cột <strong>Tổng</strong>{" "}
-        luôn là lũy kế mọi kỳ, không đổi theo bộ lọc Thời điểm.
-      </GhiChuNguon>
     </>
   );
 }
@@ -1194,6 +1214,7 @@ async function EVMTab({ maCongTrinh }: { maCongTrinh: string }) {
         <TheDau
           tieuDe="Dự báo khi hoàn thành (EAC) so với ngân sách (BAC)"
           moTa="Thanh vượt quá vạch ngân sách là phần dự báo chi vượt"
+          chiDan="Vạch ngân sách nằm ở mốc 100%; thanh vẽ theo thang 150% nên thanh đầy nghĩa là dự báo chi gấp rưỡi ngân sách trở lên."
         />
         <Bang>
           <thead>
@@ -1223,10 +1244,6 @@ async function EVMTab({ maCongTrinh }: { maCongTrinh: string }) {
             </tr>
           </tbody>
         </Bang>
-        <GhiChuNguon>
-          Vạch ngân sách nằm ở mốc 100%; thanh vẽ theo thang 150% nên thanh đầy nghĩa là dự báo chi
-          gấp rưỡi ngân sách trở lên.
-        </GhiChuNguon>
       </The>
     </>
   );

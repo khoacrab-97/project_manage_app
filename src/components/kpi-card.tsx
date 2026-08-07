@@ -1,5 +1,6 @@
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import type { ReactNode } from "react";
+import { ChiDan } from "@/components/chi-dan";
 import { cn } from "@/lib/cn";
 import { phanTram, tienGon } from "@/lib/format";
 
@@ -18,6 +19,7 @@ export function TheKPI({
   phuChu,
   dinhDang = "tien",
   nhanMuc,
+  chiDan,
 }: {
   nhan: string;
   giaTri: number | null;
@@ -27,6 +29,8 @@ export function TheKPI({
   /** `so`: tỷ số hoặc số đếm — CPI, số công trình… không mang đơn vị tiền lẫn %. */
   dinhDang?: "tien" | "phanTram" | "so";
   nhanMuc?: ReactNode;
+  /** Giải thích ngắn dồn vào icon (i) cạnh nhãn, thay cho ghi chú dài. */
+  chiDan?: ReactNode;
 }) {
   const hienGiaTri =
     giaTri === null
@@ -46,7 +50,10 @@ export function TheKPI({
   return (
     <div className="rounded-xl border border-vien bg-the p-4">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-medium text-chunhat">{nhan}</p>
+        <p className="flex items-center gap-1 text-xs font-medium text-chunhat">
+          {nhan}
+          {chiDan ? <ChiDan tieuDe={nhan}>{chiDan}</ChiDan> : null}
+        </p>
         {nhanMuc}
       </div>
       <p

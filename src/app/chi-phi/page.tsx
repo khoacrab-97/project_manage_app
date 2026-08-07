@@ -1,5 +1,5 @@
 import { BieuDoCoCau } from "@/components/charts";
-import { DauTrang, GhiChuNguon, LocLink, Nhan, The, TheDau } from "@/components/ui";
+import { DauTrang, LocLink, Nhan, The, TheDau } from "@/components/ui";
 import { nhanThang, phanTram } from "@/lib/format";
 import {
   cacThang,
@@ -91,7 +91,7 @@ export default async function TrangCoCauChiPhi({ searchParams }: PageProps<"/chi
     <>
       <DauTrang
         tieuDe="Cơ cấu chi phí tất cả công trình"
-        moTa="Tiền đang được sử dụng vào đâu (§4.4). Tỷ trọng tính trên tổng chi phí và trên doanh thu ghi nhận."
+        chiDan="Tiền đang được sử dụng vào đâu (§4.4). Tỷ trọng tính trên tổng chi phí và trên doanh thu ghi nhận."
       />
 
       <div className="mb-4 flex flex-wrap gap-1.5">
@@ -133,6 +133,7 @@ export default async function TrangCoCauChiPhi({ searchParams }: PageProps<"/chi
                 ? `Bấm vào nhóm để mở các mã chi tiết · biến động so với ${nhanThang(thangTruoc)}`
                 : "Bấm vào nhóm để mở các mã chi tiết · chọn một tháng để thấy cột biến động"
             }
+            chiDan="Biến động in đỏ khi tăng trên 30% so với tháng trước. Mã mới phát sinh trong kỳ hiển thị “mới” thay vì một tỷ lệ tăng vô cực."
           />
           <CayChiPhi
             nhom={cay}
@@ -140,11 +141,6 @@ export default async function TrangCoCauChiPhi({ searchParams }: PageProps<"/chi
             tongChiPhi={tong.chiPhi}
             tyTrongTrenDTTong={tong.doanhThu ? tong.chiPhi / tong.doanhThu : null}
           />
-          <GhiChuNguon>
-            Biến động in đỏ khi tăng trên 30% so với tháng trước — ngưỡng đặt tại{" "}
-            <code className="text-[11px]">src/lib/thresholds.ts</code>. Mã mới phát sinh trong kỳ
-            hiển thị “mới” thay vì một tỷ lệ tăng vô cực.
-          </GhiChuNguon>
         </The>
       </div>
     </>

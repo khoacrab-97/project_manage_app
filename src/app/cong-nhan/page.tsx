@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { FileDown } from "lucide-react";
-import { Bang, CanhBaoBox, DauTrang, GhiChuNguon, LocLink, Nhan, NhanCongTrinh, Rong, Td, The, TheDau, TheGap, Th } from "@/components/ui";
+import { Bang, CanhBaoBox, DauTrang, LocLink, Nhan, NhanCongTrinh, Rong, Td, The, TheDau, TheGap, Th } from "@/components/ui";
 import {
   baNgayMauChep,
   cacThangChamCong,
@@ -91,7 +91,7 @@ export default async function TrangCongNhan({ searchParams }: PageProps<"/cong-n
     <>
       <DauTrang
         tieuDe="Quản lý công nhân"
-        moTa="Chấm công hai luồng: đội nội thành dùng chung đi qua bước phân công hằng ngày, đội ngoại thành chấm công trực tiếp. Cả hai đổ về một cơ sở chấm công chung."
+        chiDan="Chấm công hai luồng: đội nội thành dùng chung đi qua bước phân công hằng ngày, đội ngoại thành chấm công trực tiếp. Cả hai đổ về một cơ sở chấm công chung."
       />
 
       <p className="mb-2 text-[11px] text-chunhat">
@@ -175,21 +175,19 @@ async function HoSo({ duocSua, laAdmin }: { duocSua: boolean; laAdmin: boolean }
         <TheGap
           tieuDe="Danh sách công nhân"
           moTa={`${ds.length} công nhân · ${noiThanh.length} đội thi công · ${ngoaiThanh.length} đội DA`}
+          chiDan="Xoá công nhân sẽ xoá luôn toàn bộ phân công và chấm công của người đó — thao tác không hoàn tác được, cân nhắc trước khi xoá người đã có dữ liệu công."
         >
           {ds.length ? (
             <DanhSachDoiTab ds={ds} duocSua={duocSua} dsDoiDA={dsDoiDA} />
           ) : (
             <Rong>Chưa có công nhân nào. Bấm “Thêm công nhân” để bắt đầu.</Rong>
           )}
-          <GhiChuNguon>
-            Xoá công nhân sẽ xoá luôn toàn bộ phân công và chấm công của người đó — thao tác không
-            hoàn tác được, cân nhắc trước khi xoá người đã có dữ liệu công.
-          </GhiChuNguon>
         </TheGap>
 
         <TheGap
           tieuDe="Khu vực công trình"
           moTa="Khai báo công trình thuộc nội thành hay ngoại thành và ai là người chấm công tại chỗ"
+          chiDan="Danh sách công trình lấy thẳng từ mục Công trình, không nhập lại. Module này chỉ bổ sung hai thuộc tính riêng của nghiệp vụ chấm công."
         >
           <Bang>
             <thead>
@@ -215,10 +213,6 @@ async function HoSo({ duocSua, laAdmin }: { duocSua: boolean; laAdmin: boolean }
               ))}
             </tbody>
           </Bang>
-          <GhiChuNguon>
-            Danh sách công trình lấy thẳng từ mục <strong>Công trình</strong>, không nhập lại. Module
-            này chỉ bổ sung hai thuộc tính riêng của nghiệp vụ chấm công.
-          </GhiChuNguon>
         </TheGap>
 
         <TheGap
@@ -516,6 +510,7 @@ async function ChamCong({
             <TheDau
               tieuDe={`Chấm công ${nhanNgay(ngay)} — ${activeCT!.tenRutGon || activeCT!.maCongTrinh}`}
               moTa={`${activeCT!.maCongTrinh} · ${activeCT!.tenCongTrinh}`}
+              chiDan="Danh sách lấy từ điều động của công trình trong ngày. Mỗi ca làm 0,5 công; vắng có phép vẫn tính công, vắng không phép thì không. Chủ nhật và ngày lễ chỉ tính giờ tăng ca. Tab tím (DA ·) là dự án ngoại thành — chấm trực tiếp cả đội."
             />
             <BangChamCong
               key={`${ngay}:${activeCT!.id}`}
@@ -528,11 +523,6 @@ async function ChamCong({
               }
               duocSua={duocSua}
             />
-            <GhiChuNguon>
-              Danh sách lấy từ điều động của công trình trong ngày. Mỗi ca làm 0,5 công; vắng có
-              phép vẫn tính công, vắng không phép thì không. Chủ nhật và ngày lễ chỉ tính giờ tăng
-              ca. Tab tím (DA ·) là dự án ngoại thành — chấm trực tiếp cả đội.
-            </GhiChuNguon>
           </>
         )}
       </The>
@@ -565,6 +555,7 @@ async function ChamCongDoiPanel({
       <TheDau
         tieuDe={`Chấm công dự án ${nhanNgay(ngay)} — ${info.ten}`}
         moTa={`${info.rows.length} công nhân · ${info.congTrinhs.length} công trình trong dự án`}
+        chiDan="Chấm công trực tiếp theo dự án: cả đội hiện sẵn, mỗi người chọn công trình của dự án rồi chấm ca. Bỏ chọn công trình nghĩa là người đó không làm hôm đó. Mỗi ca 0,5 công; Chủ nhật và ngày lễ chỉ tính giờ tăng ca."
       />
       <BangChamCongDA
         key={`${ngay}:${daId}`}
@@ -576,11 +567,6 @@ async function ChamCongDoiPanel({
         daLuu={daLuu}
         duocSua={duocSua}
       />
-      <GhiChuNguon>
-        Chấm công <strong>trực tiếp theo dự án</strong>: cả đội hiện sẵn, mỗi người chọn công trình
-        của dự án rồi chấm ca. Bỏ chọn công trình nghĩa là người đó không làm hôm đó. Mỗi ca 0,5
-        công; Chủ nhật và ngày lễ chỉ tính giờ tăng ca.
-      </GhiChuNguon>
     </>
   );
 }
@@ -671,6 +657,7 @@ async function TongHopBang({ thang, view }: { thang: string; view: "cong-trinh" 
         <TheDau
           tieuDe="Tổng hợp theo công nhân"
           moTa={`${nhanThang(thang)} · bấm tên để xem time sheet`}
+          chiDan="Số công = ngày đi làm thật (không gồm nghỉ phép). Tổng công = Số công + Nghỉ phép (nghỉ phép tính như ngày công). Chủ nhật và ngày lễ không tính công thường mà dồn giờ vào cột tăng ca riêng."
         />
         <Bang>
           <thead>
@@ -708,11 +695,6 @@ async function TongHopBang({ thang, view }: { thang: string; view: "cong-trinh" 
             ))}
           </tbody>
         </Bang>
-        <GhiChuNguon>
-          <strong>Số công</strong> = ngày đi làm thật (không gồm nghỉ phép). <strong>Tổng công</strong>{" "}
-          = Số công + Nghỉ phép (nghỉ phép được tính như ngày công). Chủ nhật và ngày lễ không tính
-          công thường mà dồn giờ vào cột tăng ca riêng.
-        </GhiChuNguon>
       </The>
     );
   }
@@ -812,6 +794,7 @@ async function DoiChieu({ thang: thangTho }: { thang?: string }) {
               ? [...dem.entries()].map(([k, v]) => `${nhanLech(k)}: ${v}`).join(" · ")
               : "Không có chênh lệch nào"
           }
+          chiDan="Chỉ xét đội nội thành — đội ngoại thành theo thiết kế không đi qua bước phân công nên đưa vào đây thì dòng nào cũng báo lệch. Riêng “Tổng công trong ngày vượt 1” xét cả hai đội: một người làm hai công trình trong ngày là hợp lệ, nhưng cần soi lại xem có nhập nhầm không."
         />
         {ds.length ? (
           <Bang>
@@ -853,12 +836,6 @@ async function DoiChieu({ thang: thangTho }: { thang?: string }) {
             Không có chênh lệch: mọi công nhân nội thành đều làm đúng công trình được phân.
           </Rong>
         )}
-        <GhiChuNguon>
-          Chỉ xét <strong>đội nội thành</strong> — đội ngoại thành theo thiết kế không đi qua bước
-          phân công nên đưa vào đây thì dòng nào cũng báo lệch. Riêng{" "}
-          <strong>“Tổng công trong ngày vượt 1”</strong> xét cả hai đội: một người làm hai công
-          trình trong ngày là hợp lệ, nhưng cần soi lại xem có nhập nhầm không.
-        </GhiChuNguon>
       </The>
     </>
   );

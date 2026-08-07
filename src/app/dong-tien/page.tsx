@@ -10,7 +10,7 @@ export default async function TrangDongTien() {
     <>
       <DauTrang
         tieuDe="Dòng tiền"
-        moTa="Tiền thu (mã Doanh thu: Tạm ứng / Thanh toán / Quyết toán) và tiền chi (mã Chi phí) trên sổ giao dịch, tổng hợp theo phạm vi được xem. Bill là giá trị thực hiện — KHÔNG tính vào dòng tiền."
+        chiDan="Tiền thu (mã Doanh thu: Tạm ứng / Thanh toán / Quyết toán) và tiền chi (mã Chi phí) trên sổ giao dịch, tổng hợp theo phạm vi được xem. Bill là giá trị thực hiện — KHÔNG tính vào dòng tiền."
       />
       <KhoiDongTien chuoi={chuoi} />
     </>

@@ -6,7 +6,6 @@ import {
   Bang,
   CanhBaoBox,
   DauTrang,
-  GhiChuNguon,
   LocLink,
   Nhan,
   NhanCongTrinh,
@@ -132,7 +131,7 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
     <>
       <DauTrang
         tieuDe="Tổng quan điều hành"
-        moTa={
+        chiDan={
           <>
             Lũy kế tất cả công trình đến hết {nhanThang(thang)}. Giá trị thực hiện lấy theo mã{" "}
             <strong>{MA_DOANH_THU_DIEU_HANH} — bill nội bộ</strong>; theo §6.1 các trạng thái Tạm
@@ -173,14 +172,30 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
         Lũy kế từ đầu năm
       </p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TheKPI nhan="Giá trị thực hiện lũy kế" giaTri={luyKe.doanhThu} phuChu="Bill nội bộ" />
-        <TheKPI nhan="Chi phí lũy kế" giaTri={luyKe.chiPhi} phuChu="Tổng các mã chi phí" />
-        <TheKPI nhan="Lợi nhuận gộp" giaTri={luyKe.loiNhuan} phuChu="Giá trị thực hiện − Chi phí" />
+        <TheKPI
+          nhan="Giá trị thực hiện lũy kế"
+          giaTri={luyKe.doanhThu}
+          phuChu="Bill nội bộ"
+          chiDan="Lũy kế giá trị thực hiện (Bill nội bộ theo mã điều hành) của tất cả công trình từ đầu năm. Đây là giá trị thực hiện, không phải tiền thu (dòng tiền)."
+        />
+        <TheKPI
+          nhan="Chi phí lũy kế"
+          giaTri={luyKe.chiPhi}
+          phuChu="Tổng các mã chi phí"
+          chiDan="Tổng mọi giao dịch thuộc mã Chi phí của tất cả công trình, lũy kế từ đầu năm."
+        />
+        <TheKPI
+          nhan="Lợi nhuận gộp"
+          giaTri={luyKe.loiNhuan}
+          phuChu="Giá trị thực hiện − Chi phí"
+          chiDan="Lợi nhuận gộp = Giá trị thực hiện lũy kế − Chi phí lũy kế, cộng gộp toàn công ty."
+        />
         <TheKPI
           nhan="Biên lợi nhuận gộp"
           giaTri={luyKe.bienLN}
           dinhDang="phanTram"
           phuChu="Lợi nhuận / Giá trị thực hiện"
+          chiDan="Biên lợi nhuận gộp = Lợi nhuận gộp / Giá trị thực hiện lũy kế của toàn công ty."
         />
       </div>
 
@@ -238,12 +253,19 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
               phuChu={
                 evmCPI && evmCPI < 1 ? "Dưới 1 — đang vượt chi" : "Từ 1 trở lên — trong ngân sách"
               }
+              chiDan="CPI (Chỉ số hiệu quả chi phí) = Giá trị thu được (EV) / Chi phí thực tế (AC). Dưới 1 = đang vượt chi; từ 1 trở lên = trong ngân sách."
             />
-            <TheKPI nhan="Ngân sách (BAC)" giaTri={evmBAC} phuChu={`${evm.length} công trình`} />
+            <TheKPI
+              nhan="Ngân sách (BAC)"
+              giaTri={evmBAC}
+              phuChu={`${evm.length} công trình`}
+              chiDan="BAC (Budget At Completion) = tổng ngân sách khi hoàn thành — ở đây lấy tổng giá trị hợp đồng BOQ của các công trình đã nhập BOQ."
+            />
             <TheKPI
               nhan="Dự báo lệch (VAC)"
               giaTri={evmVAC}
               phuChu={evmVAC < 0 ? "Âm — dự báo vượt ngân sách" : "Dương — dự báo còn dư"}
+              chiDan="VAC (Variance At Completion) = BAC − Dự báo chi phí khi hoàn thành (EAC). Âm = dự báo vượt ngân sách; dương = dự báo còn dư."
             />
             <TheKPI
               nhan="Công trình báo động"
@@ -256,7 +278,7 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
           <The className="mt-4">
             <TheDau
               tieuDe="Giá trị thu được (EV) so với Chi phí thực tế (AC)"
-              moTa="Lũy tiến theo tháng, gộp các công trình có BOQ. Khoảng cách giữa hai đường chính là CV."
+              chiDan="Lũy tiến theo tháng, gộp các công trình có BOQ. Khoảng cách giữa hai đường chính là CV (chênh lệch chi phí). EV = % hoàn thành vật lý × ngân sách chi phí, phần trăm lấy từ khối lượng BOQ đã xác nhận. Chỉ số của từng công trình xem ở mục EVM trong chi tiết công trình."
             />
             <div className="p-3">
               <BieuDoEVM data={chuoiEV} />
@@ -284,11 +306,6 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
                 ))}
               </tbody>
             </Bang>
-            <GhiChuNguon>
-              EV = % hoàn thành vật lý × ngân sách chi phí, phần trăm lấy từ khối lượng BOQ đã xác
-              nhận. Chỉ số của từng công trình nằm ở mục <strong>EVM</strong> trong chi tiết công
-              trình.
-            </GhiChuNguon>
           </The>
         </>
       ) : null}
@@ -354,7 +371,11 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
 
         <div className="space-y-4">
           <The>
-            <TheDau tieuDe="Sức khỏe danh mục" moTa={`${danhMuc.length} công trình`} />
+            <TheDau
+              tieuDe="Sức khỏe danh mục"
+              moTa={`${danhMuc.length} công trình`}
+              chiDan="Đỏ khi vượt ngân sách, lợi nhuận âm, quá hạn cập nhật hoặc chưa có doanh thu. Ngưỡng đặt tập trung tại src/lib/thresholds.ts."
+            />
             <div className="space-y-2 p-4">
               {(["Xanh", "Vàng", "Đỏ"] as const).map((s) => {
                 const n = suckhoe[s];
@@ -371,10 +392,6 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
                   </div>
                 );
               })}
-              <GhiChuNguon>
-                Đỏ khi vượt ngân sách, lợi nhuận âm, quá hạn cập nhật hoặc chưa có doanh thu. Ngưỡng
-                đặt tập trung tại <code className="text-[11px]">src/lib/thresholds.ts</code>.
-              </GhiChuNguon>
             </div>
           </The>
 
@@ -531,6 +548,7 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
         <TheDau
           tieuDe="Top công trình lệch ngân sách (TOP 10)"
           moTa="Chênh lệch = Kế hoạch − Thực hiện · âm là đã vượt · xếp theo số tiền lệch"
+          chiDan="% lệch = Chênh lệch / Kế hoạch. Chỉ gồm công trình đã được cấp ngân sách; công trình chưa lập kế hoạch không có mẫu số để so."
         />
         <Bang>
           <thead>
@@ -569,10 +587,6 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
             ))}
           </tbody>
         </Bang>
-        <GhiChuNguon>
-          % lệch = Chênh lệch / Kế hoạch. Chỉ gồm công trình đã được cấp ngân sách; công trình chưa
-          lập kế hoạch không có mẫu số để so.
-        </GhiChuNguon>
       </The>
 
       {/* ---- Tình trạng nộp dữ liệu ---- */}

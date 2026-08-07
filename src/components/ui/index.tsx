@@ -2,6 +2,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ChevronDown, Lock } from "lucide-react";
+import { ChiDan } from "@/components/chi-dan";
 import { cn } from "@/lib/cn";
 import { MAU_SUC_KHOE } from "@/lib/kpi";
 import type { SucKhoe } from "@/lib/types";
@@ -31,12 +32,15 @@ export function TheGap({
   moTa,
   moSan = false,
   children,
+  chiDan,
   className,
 }: {
   tieuDe: ReactNode;
   moTa?: ReactNode;
   moSan?: boolean;
   children: ReactNode;
+  /** Nội dung giải thích dồn vào icon (i) cạnh tiêu đề, thay cho ghi chú dài. */
+  chiDan?: ReactNode;
   className?: string;
 }) {
   return (
@@ -49,7 +53,12 @@ export function TheGap({
     >
       <summary className="flex cursor-pointer list-none items-start justify-between gap-4 px-4 py-3 [&::-webkit-details-marker]:hidden">
         <div className="min-w-0">
-          <h2 className="truncate text-sm font-semibold">{tieuDe}</h2>
+          <div className="flex items-center gap-1">
+            <h2 className="truncate text-sm font-semibold">{tieuDe}</h2>
+            {chiDan ? (
+              <ChiDan tieuDe={typeof tieuDe === "string" ? tieuDe : undefined}>{chiDan}</ChiDan>
+            ) : null}
+          </div>
           {moTa ? <p className="mt-0.5 text-xs text-chunhat">{moTa}</p> : null}
         </div>
         <ChevronDown className="mt-0.5 size-4 shrink-0 text-chunhat transition-transform group-open:rotate-180" />
@@ -63,17 +72,25 @@ export function TheDau({
   tieuDe,
   moTa,
   phai,
+  chiDan,
   className,
 }: {
   tieuDe: ReactNode;
   moTa?: ReactNode;
   phai?: ReactNode;
+  /** Nội dung giải thích dồn vào icon (i) cạnh tiêu đề, thay cho ghi chú dài. */
+  chiDan?: ReactNode;
   className?: string;
 }) {
   return (
     <div className={cn("flex items-start justify-between gap-4 border-b border-vien px-4 py-3", className)}>
       <div className="min-w-0">
-        <h2 className="truncate text-sm font-semibold">{tieuDe}</h2>
+        <div className="flex items-center gap-1">
+          <h2 className="truncate text-sm font-semibold">{tieuDe}</h2>
+          {chiDan ? (
+            <ChiDan tieuDe={typeof tieuDe === "string" ? tieuDe : undefined}>{chiDan}</ChiDan>
+          ) : null}
+        </div>
         {moTa ? <p className="mt-0.5 text-xs text-chunhat">{moTa}</p> : null}
       </div>
       {phai ? <div className="shrink-0">{phai}</div> : null}
@@ -155,15 +172,21 @@ export function DauTrang({
   tieuDe,
   moTa,
   phai,
+  chiDan,
 }: {
   tieuDe: string;
   moTa?: ReactNode;
   phai?: ReactNode;
+  /** Nội dung giải thích dồn vào icon (i) cạnh tiêu đề, thay cho mô tả dài. */
+  chiDan?: ReactNode;
 }) {
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">{tieuDe}</h1>
+        <div className="flex items-center gap-1.5">
+          <h1 className="text-xl font-semibold tracking-tight">{tieuDe}</h1>
+          {chiDan ? <ChiDan tieuDe={tieuDe}>{chiDan}</ChiDan> : null}
+        </div>
         {moTa ? <p className="mt-1 max-w-3xl text-sm text-chunhat">{moTa}</p> : null}
       </div>
       {phai ? <div className="flex shrink-0 flex-wrap gap-2">{phai}</div> : null}

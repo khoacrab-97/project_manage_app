@@ -2,7 +2,6 @@ import { BieuDoKHTH } from "@/components/charts";
 import {
   Bang,
   DauTrang,
-  GhiChuNguon,
   LocLink,
   Nhan,
   O_So,
@@ -12,6 +11,7 @@ import {
   Th,
   ThanhTyLe,
 } from "@/components/ui";
+import { ChiDan } from "@/components/chi-dan";
 import { tien } from "@/lib/format";
 import {
   keHoachTheoMa,
@@ -88,7 +88,7 @@ export default async function TrangKeHoach({ searchParams }: PageProps<"/ke-hoac
     <>
       <DauTrang
         tieuDe="Kế hoạch – Ngân sách"
-        moTa="So sánh ngân sách được duyệt với chi phí, doanh thu thực hiện. Kế hoạch lập theo danh mục mã doanh thu – chi phí hiện hành."
+        chiDan="So sánh ngân sách được duyệt với chi phí, doanh thu thực hiện. Kế hoạch lập theo danh mục mã doanh thu – chi phí hiện hành."
       />
 
       {/* ---- Chọn công trình để nhập kế hoạch ---- */}
@@ -113,15 +113,32 @@ export default async function TrangKeHoach({ searchParams }: PageProps<"/ke-hoac
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-vien bg-the p-4">
-          <p className="text-xs text-chunhat">Chi phí kế hoạch</p>
+          <p className="flex items-center gap-1 text-xs text-chunhat">
+            Chi phí kế hoạch
+            <ChiDan tieuDe="Chi phí kế hoạch">
+              Tổng ngân sách chi phí đã lập cho {phamVi.toLowerCase()} — cộng các mã Chi phí trong
+              kế hoạch.
+            </ChiDan>
+          </p>
           <p className="so mt-1 text-xl font-semibold">{tien(tongKH)}</p>
         </div>
         <div className="rounded-xl border border-vien bg-the p-4">
-          <p className="text-xs text-chunhat">Chi phí thực hiện</p>
+          <p className="flex items-center gap-1 text-xs text-chunhat">
+            Chi phí thực hiện
+            <ChiDan tieuDe="Chi phí thực hiện">
+              Tổng chi phí thực tế đã ghi sổ (mã Chi phí), lũy kế toàn kỳ — để so với ngân sách.
+            </ChiDan>
+          </p>
           <p className="so mt-1 text-xl font-semibold">{tien(tongTH)}</p>
         </div>
         <div className="rounded-xl border border-vien bg-the p-4">
-          <p className="text-xs text-chunhat">Chênh lệch</p>
+          <p className="flex items-center gap-1 text-xs text-chunhat">
+            Chênh lệch
+            <ChiDan tieuDe="Chênh lệch">
+              Chênh lệch = Chi phí kế hoạch − Chi phí thực hiện. Âm (đỏ) nghĩa là chi vượt ngân
+              sách.
+            </ChiDan>
+          </p>
           <p
             className={`so mt-1 text-xl font-semibold ${tongKH - tongTH < 0 ? "text-rose-600 dark:text-rose-400" : ""}`}
           >
@@ -138,7 +155,11 @@ export default async function TrangKeHoach({ searchParams }: PageProps<"/ke-hoac
       </The>
 
       <The className="mt-4">
-        <TheDau tieuDe="Chi tiết theo mã" moTa={`${phamVi} · lũy kế`} />
+        <TheDau
+          tieuDe="Chi tiết theo mã"
+          moTa={`${phamVi} · lũy kế`}
+          chiDan="Liệt kê đầy đủ danh mục mã theo cây 2 cấp (mã nhóm in đậm, mã chi tiết thụt vào), trừ mã Bill vì đó là giá trị khối lượng thực hiện chứ không phải khoản lập ngân sách. Chênh lệch = Kế hoạch − Thực hiện. Dòng “chưa có KH” là mã chưa được cấp ngân sách."
+        />
         <Bang>
           <thead>
             <tr>
@@ -182,12 +203,6 @@ export default async function TrangKeHoach({ searchParams }: PageProps<"/ke-hoac
             ))}
           </tbody>
         </Bang>
-        <GhiChuNguon>
-          Liệt kê đầy đủ danh mục mã theo cây 2 cấp (mã nhóm in đậm, mã chi tiết thụt vào), trừ mã{" "}
-          <strong>Bill</strong> vì đó là giá trị khối lượng thực hiện chứ không phải khoản lập ngân
-          sách. Chênh lệch = Kế hoạch − Thực hiện. Dòng “chưa có KH” là mã chưa được cấp ngân sách —
-          nếu có phát sinh thực tế thì cần bổ sung kế hoạch hoặc xác nhận là chi ngoài kế hoạch.
-        </GhiChuNguon>
       </The>
     </>
   );
