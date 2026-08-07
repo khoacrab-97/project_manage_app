@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Check, Download, Pencil, Redo2, Undo2, Upload, X } from "lucide-react";
 import { luuKeHoach, nhapKeHoachExcel, type KetQuaKeHoach } from "@/app/ke-hoach/actions";
 import { tien } from "@/lib/format";
@@ -52,6 +53,7 @@ export function LuoiKeHoach({
   dsMa: MaNhap[];
   giaTriHienTai: Record<string, number>;
 }) {
+  const router = useRouter();
   const [mo, setMo] = useState(false);
   const [v, setV] = useState<Record<string, string>>(
     Object.fromEntries(dsMa.map((m) => [m.ma, giaTriHienTai[m.ma] ? String(giaTriHienTai[m.ma]) : ""]))
@@ -299,7 +301,15 @@ export function LuoiKeHoach({
     const fd = new FormData();
     fd.set("maCongTrinh", maCongTrinh);
     for (const m of dsMa) fd.set(`kh_${m.ma}`, v[m.ma] ?? "");
-    batDau(async () => setKq(await luuKeHoach(fd)));
+    batDau(async () => {
+      const r = await luuKeHoach(fd);
+      setKq(r);
+      // Lưu xong: hiện thông báo một nhịp rồi tự đóng hộp thoại và làm mới số liệu.
+      if (r.ok) setTimeout(() => {
+        setMo(false);
+        router.refresh();
+      }, 900);
+    });
   };
 
   if (!mo) {
