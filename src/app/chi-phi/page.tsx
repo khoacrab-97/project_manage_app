@@ -89,10 +89,7 @@ export default async function TrangCoCauChiPhi({ searchParams }: PageProps<"/chi
 
   return (
     <>
-      <DauTrang
-        tieuDe="Cơ cấu chi phí tất cả công trình"
-        chiDan="Tiền đang được sử dụng vào đâu (§4.4). Tỷ trọng tính trên tổng chi phí và trên doanh thu ghi nhận."
-      />
+      <DauTrang chiDan="Tiền đang được sử dụng vào đâu (§4.4). Tỷ trọng tính trên tổng chi phí và trên doanh thu ghi nhận." />
 
       <div className="mb-4 flex flex-wrap gap-1.5">
         <LocLink href="/chi-phi" dangChon={!thang}>

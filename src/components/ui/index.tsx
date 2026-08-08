@@ -175,7 +175,9 @@ export function DauTrang({
   chiDan,
   moTaRong,
 }: {
-  tieuDe: string;
+  /** Tiêu đề trang. Bỏ trống khi tiêu đề đã đưa lên thanh trên cùng — chỉ còn
+   *  (i)/mô tả/badge ở nội dung. */
+  tieuDe?: string;
   moTa?: ReactNode;
   phai?: ReactNode;
   /** Nội dung giải thích dồn vào icon (i) cạnh tiêu đề, thay cho mô tả dài. */
@@ -183,15 +185,21 @@ export function DauTrang({
   /** Cho phần mô tả trải hết bề ngang tới sát khối bên phải (bỏ giới hạn max-w). */
   moTaRong?: boolean;
 }) {
+  // Không tiêu đề, không mô tả, không (i) → chỉ còn badge bên phải: bớt lề dưới.
+  const trong = !tieuDe && !moTa && !chiDan;
   return (
-    <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div className={`flex flex-wrap items-end justify-between gap-3 ${trong ? "mb-2" : "mb-5"}`}>
       <div className={moTaRong ? "min-w-0 flex-1" : undefined}>
-        <div className="flex items-center gap-1.5">
-          <h1 className="text-xl font-semibold tracking-tight">{tieuDe}</h1>
-          {chiDan ? <ChiDan tieuDe={tieuDe}>{chiDan}</ChiDan> : null}
-        </div>
+        {tieuDe || chiDan ? (
+          <div className="flex items-center gap-1.5">
+            {tieuDe ? <h1 className="text-xl font-semibold tracking-tight">{tieuDe}</h1> : null}
+            {chiDan ? <ChiDan tieuDe={tieuDe}>{chiDan}</ChiDan> : null}
+          </div>
+        ) : null}
         {moTa ? (
-          <p className={`mt-1 text-sm text-chunhat ${moTaRong ? "" : "max-w-3xl"}`}>{moTa}</p>
+          <p className={`text-sm text-chunhat ${tieuDe ? "mt-1" : ""} ${moTaRong ? "" : "max-w-3xl"}`}>
+            {moTa}
+          </p>
         ) : null}
       </div>
       {phai ? <div className="flex shrink-0 flex-wrap gap-2">{phai}</div> : null}

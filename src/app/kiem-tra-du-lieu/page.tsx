@@ -29,7 +29,6 @@ export default async function TrangKiemTraDuLieu() {
   return (
     <>
       <DauTrang
-        tieuDe="Chất lượng dữ liệu"
         moTa="Báo cáo bắt buộc theo §4.5, không phải báo cáo phụ. 12 chỉ tiêu đo mức tin cậy của số liệu đang lên báo cáo điều hành."
         phai={
           <Nhan bienThe={diem >= 85 ? "xanh" : diem >= 60 ? "vang" : "do"}>

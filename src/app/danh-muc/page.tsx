@@ -43,7 +43,6 @@ export default async function TrangDanhMuc() {
   return (
     <>
       <DauTrang
-        tieuDe="Danh mục mã doanh thu – chi phí"
         phai={
           <>
             <Nhan bienThe="nhan">{soDT} mã doanh thu</Nhan>

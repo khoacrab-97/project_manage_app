@@ -86,10 +86,7 @@ export default async function TrangKeHoach({ searchParams }: PageProps<"/ke-hoac
 
   return (
     <>
-      <DauTrang
-        tieuDe="Kế hoạch – Ngân sách"
-        chiDan="So sánh ngân sách được duyệt với chi phí, doanh thu thực hiện. Kế hoạch lập theo danh mục mã doanh thu – chi phí hiện hành."
-      />
+      <DauTrang chiDan="So sánh ngân sách được duyệt với chi phí, doanh thu thực hiện. Kế hoạch lập theo danh mục mã doanh thu – chi phí hiện hành." />
 
       {/* ---- Chọn công trình để nhập kế hoạch ---- */}
       <div className="mb-4 flex flex-wrap items-center gap-1.5">

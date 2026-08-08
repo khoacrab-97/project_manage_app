@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { TheKPI } from "@/components/kpi-card";
 import { CanhBaoNut } from "@/components/canh-bao-nut";
 import { BieuDoXuHuong } from "@/components/charts";
 import {
   Bang,
   CanhBaoBox,
-  DauTrang,
   GhiChuNguon,
   LocLink,
   Nhan,
@@ -161,19 +159,11 @@ export default async function TrangChiTietCongTrinh({
 
   return (
     <>
-      <Link
-        href="/cong-trinh"
-        className="mb-3 inline-flex items-center gap-1 text-xs font-medium text-nhan hover:underline"
-      >
-        <ArrowLeft className="size-3" /> Danh mục công trình
-      </Link>
-
-      <DauTrang
-        moTaRong
-        tieuDe={ct.tenRutGon || maCongTrinh}
-        moTa={
-          // Nén thông tin công trình vào nút "Thông tin" bật/tắt (hộp nổi, không đẩy
-          // trang) để vùng xem BOQ rộng hơn. Mã đặt trước, rồi tới nút.
+      {/* Nút quay lại đã nằm trên thanh trên cùng. Tên rút gọn + mã (nút Thông tin)
+          ngang hàng, ép sát trên cùng để bảng BOQ thấy được nhiều dòng hơn. */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+          <h1 className="text-lg font-semibold tracking-tight">{ct.tenRutGon || maCongTrinh}</h1>
           <ThongTinCongTrinh
             ma={maCongTrinh}
             hienMa={!!ct.tenRutGon}
@@ -183,18 +173,16 @@ export default async function TrangChiTietCongTrinh({
             chiHuyTruong={ct.chiHuyTruong ?? undefined}
             ngayKhoiCong={ngay(ct.ngayBatDau)}
           />
-        }
-        phai={
-          <>
-            <Nhan>{ct.trangThai}</Nhan>
-            {dong.lyDo.length ? (
-              <CanhBaoNut mucDo={dong.sucKhoe} lyDo={dong.lyDo} />
-            ) : (
-              <NhanSucKhoe sucKhoe={dong.sucKhoe} lyDo={dong.lyDo} />
-            )}
-          </>
-        }
-      />
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Nhan>{ct.trangThai}</Nhan>
+          {dong.lyDo.length ? (
+            <CanhBaoNut mucDo={dong.sucKhoe} lyDo={dong.lyDo} />
+          ) : (
+            <NhanSucKhoe sucKhoe={dong.sucKhoe} lyDo={dong.lyDo} />
+          )}
+        </div>
+      </div>
 
       {ct.trangThai === "Đã nghiệm thu" ? (
         <div className="mb-4">
@@ -236,7 +224,7 @@ export default async function TrangChiTietCongTrinh({
         className={
           tab === "bao-cao"
             ? undefined
-            : "-mx-4 max-h-[calc(100vh-16rem)] overflow-y-auto px-4 pt-1"
+            : "-mx-4 max-h-[calc(100vh-12rem)] overflow-y-auto px-4 pt-1"
         }
       >
         {tab === "tong-quan" ? (
@@ -1258,7 +1246,7 @@ async function BaoCaoTab({
           tieuDe={ky ? nhanKyBaoCao(loai, ky) : `Toàn bộ kỳ theo ${LOAI_KY.find((l) => l.id === loai)!.nhan.toLowerCase().replace("theo ", "")}`}
           chiDan="Liệt kê đầy đủ danh mục mã theo cây 2 cấp; dòng toàn dấu “—” là mã chưa phát sinh. Dòng Bill là giá trị thực hiện lấy từ BOQ (cùng nguồn tab Doanh thu), không phải tổng giao dịch mã Bill; TƯ, TT, QT là dòng tiền thu theo hợp đồng nên không đặt chung bảng với chi phí thực hiện. Cột Tổng luôn là lũy kế mọi kỳ, không đổi theo bộ lọc Thời điểm."
         />
-        <div className="cuon-ngang max-h-[calc(100vh-25rem)]">
+        <div className="cuon-ngang max-h-[calc(100vh-21rem)]">
           <table className="w-full border-collapse text-sm">
           <thead>
             <tr>

@@ -35,10 +35,7 @@ export default async function TrangQuanTriNguoiDung() {
 
   return (
     <>
-      <DauTrang
-        tieuDe="Quản trị người dùng"
-        moTa="Cấp tài khoản, gán vai trò và phạm vi công trình. Hệ thống không cho tự đăng ký — mọi tài khoản do quản trị tạo."
-      />
+      <DauTrang moTa="Cấp tài khoản, gán vai trò và phạm vi công trình. Hệ thống không cho tự đăng ký — mọi tài khoản do quản trị tạo." />
 
       <div className="mb-4">
         <CanhBaoBox bienThe="nhan" tieuDe="Cách mật khẩu hoạt động">

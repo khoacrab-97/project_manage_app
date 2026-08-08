@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import "./globals.css";
@@ -6,10 +8,8 @@ import { Sidebar } from "@/components/sidebar";
 import { ThanhNguoiDung } from "@/components/thanh-nguoi-dung";
 import { nguoiDungHienTai, xoaPhien } from "@/lib/auth/phien";
 import { menuChoVaiTro } from "@/lib/auth/menu-quyen";
-import { MENU, timMucMenu } from "@/lib/menu";
+import { MENU, timMucMenu, tieuDeTrang } from "@/lib/menu";
 import { VAI_TRO, xemModuleCongNhan } from "@/lib/auth/quyen";
-import { NGAY_HIEN_TAI } from "@/lib/thresholds";
-import { ngay } from "@/lib/format";
 
 export const metadata: Metadata = {
   title: "CEM Platform — Quản lý Chi phí & Doanh thu Xây dựng",
@@ -113,23 +113,22 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <Sidebar menuDuocThay={menuDuocThay} />
         <div className="lg:pl-60">
           <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 border-b border-vien bg-the/90 px-4 py-2.5 pl-14 backdrop-blur lg:pl-4">
-            <div className="flex items-center gap-2">
-              {/*
-                Nhãn bắt buộc: mọi giao dịch trong app là dữ liệu dựng ngược từ số
-                tổng của file Excel, KHÔNG phải chứng từ thật. Không gỡ nhãn này
-                cho tới khi hệ thống chạy trên dữ liệu nhập thật.
-              */}
-              <span className="rounded-md border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold tracking-wide text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
-                DỮ LIỆU DEMO
-              </span>
-              <span className="hidden text-xs text-chunhat sm:inline">
-                Số liệu dựng từ ma trận OUTPUT_NAM, không phải chứng từ thật
-              </span>
+            <div className="flex min-w-0 items-center gap-2">
+              {/* Trang chi tiết công trình: nút quay lại. Các trang khác: tiêu đề (in hoa). */}
+              {duongDan.startsWith("/cong-trinh/") ? (
+                <Link
+                  href="/cong-trinh"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-nhan hover:underline"
+                >
+                  <ArrowLeft className="size-3.5" /> Danh mục công trình
+                </Link>
+              ) : tieuDeTrang(duongDan) ? (
+                <h1 className="truncate text-sm font-semibold tracking-wide uppercase">
+                  {tieuDeTrang(duongDan)}
+                </h1>
+              ) : null}
             </div>
             <div className="flex items-center gap-4">
-              <div className="hidden text-xs text-chunhat sm:block">
-                Số liệu chốt đến <strong className="text-chu">{ngay(NGAY_HIEN_TAI)}</strong>
-              </div>
               <ThanhNguoiDung />
             </div>
           </header>

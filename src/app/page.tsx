@@ -217,7 +217,6 @@ export default async function TrangTongQuan({ searchParams }: PageProps<"/">) {
         }
       >
         <DauTrang
-          tieuDe="Tổng quan điều hành"
           chiDan={
             <>
               Lũy kế tất cả công trình đến hết {nhanThang(thang)}. Giá trị thực hiện lấy theo mã{" "}

@@ -47,7 +47,6 @@ export default async function TrangDanhMucCongTrinh() {
   return (
     <>
       <DauTrang
-        tieuDe="DANH MỤC CÔNG TRÌNH"
         phai={
             <>
               <Nhan bienThe="xanh">Xanh {dem.Xanh}</Nhan>

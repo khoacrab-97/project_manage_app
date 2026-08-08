@@ -13,10 +13,7 @@ export default async function TrangNhapDuLieu() {
 
   return (
     <>
-      <DauTrang
-        tieuDe="Nhập dữ liệu từ file công trình"
-        moTa="Thay thao tác mở từng file rồi copy–paste vào sheet INPUT bằng quy trình có kiểm soát (§8.2). Bộ kiểm tra chạy thật trên file bạn tải lên."
-      />
+      <DauTrang moTa="Thay thao tác mở từng file rồi copy–paste vào sheet INPUT bằng quy trình có kiểm soát (§8.2). Bộ kiểm tra chạy thật trên file bạn tải lên." />
 
       <div className="mb-4">
         <CanhBaoBox bienThe="nhan" tieuDe="Thử ngay với file gốc của bạn">

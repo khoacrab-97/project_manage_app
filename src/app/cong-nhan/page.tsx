@@ -89,10 +89,7 @@ export default async function TrangCongNhan({ searchParams }: PageProps<"/cong-n
 
   return (
     <>
-      <DauTrang
-        tieuDe="Quản lý công nhân"
-        chiDan="Chấm công hai luồng: đội nội thành dùng chung đi qua bước phân công hằng ngày, đội ngoại thành chấm công trực tiếp. Cả hai đổ về một cơ sở chấm công chung."
-      />
+      <DauTrang chiDan="Chấm công hai luồng: đội nội thành dùng chung đi qua bước phân công hằng ngày, đội ngoại thành chấm công trực tiếp. Cả hai đổ về một cơ sở chấm công chung." />
 
       <p className="mb-2 text-[11px] text-chunhat">
         Máy chủ chạy từ: <span className="">{MAY_CHU_KHOI_DONG}</span> — nếu vừa chạy{" "}

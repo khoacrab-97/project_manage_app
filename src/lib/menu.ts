@@ -40,3 +40,25 @@ export function timMucMenu(duongDan: string): MucMenu | undefined {
     .sort((a, b) => b.href.length - a.href.length)
     .find((m) => sach === m.href || sach.startsWith(`${m.href}/`));
 }
+
+/**
+ * Tiêu đề trang hiển thị trên thanh trên cùng (in hoa bằng CSS). Là nguồn DUY NHẤT
+ * cho tiêu đề mỗi hạng mục — các trang không tự vẽ tiêu đề nữa. Trang chi tiết công
+ * trình không có ở đây: thanh trên hiện nút quay lại "← Danh mục công trình".
+ */
+export const TIEU_DE_TRANG: Record<string, string> = {
+  "/": "Tổng quan điều hành",
+  "/cong-trinh": "Danh mục công trình",
+  "/chi-phi": "Cơ cấu chi phí tất cả công trình",
+  "/dong-tien": "Dòng tiền",
+  "/ke-hoach": "Kế hoạch – Ngân sách",
+  "/cong-nhan": "Quản lý công nhân",
+  "/nhap-du-lieu": "Nhập dữ liệu từ file công trình",
+  "/kiem-tra-du-lieu": "Chất lượng dữ liệu",
+  "/danh-muc": "Danh mục mã doanh thu – chi phí",
+  "/quan-tri/nguoi-dung": "Quản trị người dùng",
+};
+
+export function tieuDeTrang(duongDan: string): string | undefined {
+  return TIEU_DE_TRANG[duongDan.split("?")[0]];
+}
