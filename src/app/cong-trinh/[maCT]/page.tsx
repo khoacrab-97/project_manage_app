@@ -31,7 +31,6 @@ import {
   layBOQ,
   billDoanhThuTheoThang,
   dongTienTheoThang,
-  giaTriBillThang,
   giaTriMotGiamGia,
   maTranTheoCongTrinh,
   timCongTrinh,
@@ -237,7 +236,7 @@ export default async function TrangChiTietCongTrinh({
         className={
           tab === "bao-cao"
             ? undefined
-            : "-mx-4 max-h-[calc(100vh-21rem)] overflow-y-auto px-4 pt-1"
+            : "-mx-4 max-h-[calc(100vh-16rem)] overflow-y-auto px-4 pt-1"
         }
       >
         {tab === "tong-quan" ? (
@@ -278,14 +277,34 @@ async function TongQuan({
   chuoi: { thang: string; doanhThu: number; chiPhi: number; loiNhuan: number }[];
   base: string;
 }) {
+  // Tiến độ thực hiện = Bill lũy kế / Giá trị hợp đồng (BOQ); tròn 100% nếu mọi
+  // công tác đã tích Xong. Chuyển từ tab BOQ sang đây theo bố cục mới.
+  const tienDo = dong.tatCaXong
+    ? 1
+    : dong.boqHopDong
+      ? dong.doanhThu / dong.boqHopDong
+      : null;
   return (
     <>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <TheKPI
+          nhan="Giá trị hợp đồng (BOQ)"
+          giaTri={dong.boqHopDong}
+          phuChu={dong.boqHopDong === null ? "Chưa nhập BOQ" : "Tổng thành tiền hợp đồng"}
+          chiDan="Tổng thành tiền theo bảng khối lượng (BOQ) của hợp đồng. Công trình chưa nhập BOQ thì để trống."
+        />
         <TheKPI
           nhan="Giá trị thực hiện lũy kế"
           giaTri={dong.doanhThu}
           phuChu="Bill nội bộ (BOQ)"
           chiDan="Lũy kế giá trị thực hiện (Bill nội bộ tính từ khối lượng BOQ đã xác nhận). Đây là giá trị thực hiện, chưa phải doanh thu nghiệm thu thanh toán."
+        />
+        <TheKPI
+          nhan="Tiến độ thực hiện"
+          giaTri={tienDo}
+          dinhDang="phanTram"
+          phuChu={dong.tatCaXong ? "Tất cả công tác đã xong" : "Lũy kế / Hợp đồng"}
+          chiDan="Tỷ lệ hoàn thành = Lũy kế giá trị thực hiện / Giá trị hợp đồng (BOQ). Nếu mọi công tác đã tích Xong thì tính tròn 100%."
         />
         <TheKPI
           nhan="Chi phí lũy kế"
@@ -462,19 +481,9 @@ async function BOQTab({
   const ky = kyChon ?? thangs.at(-1);
   const base = `/cong-trinh/${encodeURIComponent(maCongTrinh)}`;
 
+  // Tổng thành tiền hợp đồng — dùng cho dòng TỔNG của bảng BOQ. Các KPI Giá trị
+  // hợp đồng / Tiến độ đã chuyển sang tab Tổng quan.
   const ttHopDong = dongs.reduce((a, d) => a + d.ttHopDong, 0);
-  // Lũy kế vật lý tính mọi tháng; lũy kế vào KPI chỉ tính tháng đã xác nhận.
-  const ttLuyKe = dongs.reduce((a, d) => a + d.ttLuyKe, 0);
-  // Không còn xác nhận: mọi kỳ Bill đều tính vào lũy kế.
-  const ttXacNhan = thangs.reduce(
-    (a, t) => a + giaTriBillThang(dongs, t.thang, vatInfo, giamGia, lamTronThanhTien),
-    0
-  );
-  const billKy = ky ? giaTriBillThang(dongs, ky.thang, vatInfo, giamGia, lamTronThanhTien) : 0;
-  const soXong = dongs.filter((d) => d.hoanThanh).length;
-  // Tất cả công tác tích "Xong" = tiến độ thực hiện 100% (theo yêu cầu nghiệp vụ),
-  // bất kể lũy kế giá trị. Ngược lại tính theo lũy kế / hợp đồng như cũ.
-  const tatCaXong = dongs.length > 0 && soXong === dongs.length;
 
   /** Luỹ kế khối lượng của các tháng TRƯỚC kỳ đang chọn. */
   const klKyTruoc = (d: (typeof dongs)[number]) =>
@@ -486,46 +495,8 @@ async function BOQTab({
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TheKPI
-          nhan="Giá trị hợp đồng (BOQ)"
-          giaTri={ttHopDong}
-          phuChu={`${dongs.length} công tác · ${soXong} đã xong`}
-          chiDan={
-            <>
-              Tổng thành tiền theo bảng khối lượng (BOQ) của hợp đồng.{" "}
-              {donGiaGomVAT
-                ? `Đơn giá ĐÃ bao gồm VAT ${vatPhanTram}%.`
-                : "Đơn giá CHƯA bao gồm VAT."}{" "}
-              {giamGia.length
-                ? `Đã trừ ${giamGia.length} khoản giảm giá.`
-                : "Không có khoản giảm giá."}
-            </>
-          }
-        />
-        <TheKPI
-          nhan="Lũy kế Bill"
-          giaTri={ttXacNhan}
-          phuChu="Giá trị Bill mọi kỳ"
-          chiDan={`Tổng giá trị thực hiện (Bill) đã xác nhận qua tất cả các kỳ. ${donGiaGomVAT ? `Đã quy về CHƯA VAT (chia 1+${vatPhanTram}%).` : "Theo đơn giá chưa VAT."}`}
-        />
-        <TheKPI
-          nhan={ky ? `Bill ${nhanThang(ky.thang)}` : "Bill tháng"}
-          giaTri={billKy}
-          phuChu="Giá trị Bill kỳ này"
-          chiDan="Giá trị thực hiện (Bill) của riêng kỳ đang chọn — tổng khối lượng thực hiện trong tháng nhân đơn giá, trừ giảm giá của kỳ."
-        />
-        <TheKPI
-          nhan="Tiến độ thực hiện"
-          giaTri={tatCaXong ? 1 : ttHopDong ? ttLuyKe / ttHopDong : null}
-          dinhDang="phanTram"
-          phuChu={tatCaXong ? "Tất cả công tác đã xong" : "Lũy kế / Hợp đồng"}
-          chiDan="Tỷ lệ hoàn thành = Lũy kế giá trị thực hiện / Giá trị hợp đồng (BOQ). Nếu mọi công tác đã tích Xong thì tính tròn 100%."
-        />
-      </div>
-
       {/* ---- Chọn tháng: bấm để mở hộp thoại Bill. ---- */}
-      <div className="mt-4 flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         <span className="mr-1 text-xs font-medium text-chunhat">Kỳ Bill:</span>
         {thangs.map((t) => (
           <LocLink
@@ -866,12 +837,15 @@ function SpreadsheetBOQ({
                 ))}
                 {coCotTong ? <td className={`${oT} so text-right`}>{tienLe(grandSauThue)}</td> : null}
               </tr>
-              {/* Nhãn gộp một ô rộng, GIÁ TRỊ căn phải thẳng cột với 3 dòng trên. */}
+              {/* Nhãn THẲNG CỘT với 3 nhãn trên (colSpan=truocTT); giá trị gộp một ô
+                  trải các cột thành tiền, căn phải thẳng cột giá trị phía trên. */}
               <tr>
-                <td className={`${oT} sticky left-0 z-10 text-right`} colSpan={tongCot - 1}>
+                <td className={`${oT} sticky left-0 z-10 text-right`} colSpan={truocTT}>
                   TỔNG THÀNH TIỀN TRƯỚC VAT
                 </td>
-                <td className={`${oT} so text-right`}>{tienLe(grandPre)}</td>
+                <td className={`${oT} so text-right`} colSpan={soCotTT}>
+                  {tienLe(grandPre)}
+                </td>
               </tr>
             </>
           ) : (
@@ -1284,7 +1258,7 @@ async function BaoCaoTab({
           tieuDe={ky ? nhanKyBaoCao(loai, ky) : `Toàn bộ kỳ theo ${LOAI_KY.find((l) => l.id === loai)!.nhan.toLowerCase().replace("theo ", "")}`}
           chiDan="Liệt kê đầy đủ danh mục mã theo cây 2 cấp; dòng toàn dấu “—” là mã chưa phát sinh. Dòng Bill là giá trị thực hiện lấy từ BOQ (cùng nguồn tab Doanh thu), không phải tổng giao dịch mã Bill; TƯ, TT, QT là dòng tiền thu theo hợp đồng nên không đặt chung bảng với chi phí thực hiện. Cột Tổng luôn là lũy kế mọi kỳ, không đổi theo bộ lọc Thời điểm."
         />
-        <div className="cuon-ngang max-h-[calc(100vh-30rem)]">
+        <div className="cuon-ngang max-h-[calc(100vh-25rem)]">
           <table className="w-full border-collapse text-sm">
           <thead>
             <tr>
