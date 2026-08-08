@@ -11,6 +11,7 @@ import {
   type KetQuaBOQ,
 } from "@/app/cong-trinh/boq-actions";
 import { type MaKieuDonGia, TEN_THANH_PHAN, THANH_PHAN_THEO_KIEU } from "@/lib/boq-thanh-phan";
+import { HopBOQ } from "./quan-ly-boq";
 
 const O = "rounded-md border border-vien bg-the px-2 py-1 text-xs";
 
@@ -44,44 +45,45 @@ export function NutThemCot({ maCongTrinh }: { maCongTrinh: string }) {
   }
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        const fd = new FormData(e.currentTarget);
-        batDau(async () => setKq(await themCot(fd)));
-      }}
-      className="rounded-lg border border-nhan bg-nhannhat p-3"
-    >
-      <input type="hidden" name="maCongTrinh" value={maCongTrinh} />
-      <label className="text-xs">
-        <span className="mb-0.5 block text-chunhat">Tên cột mới</span>
-        <input name="ten" placeholder="Ghi chú / Vị trí / Nhà thầu phụ…" className={`${O} w-64`} required />
-      </label>
-      <p className="mt-1 text-[11px] text-chunhat">
-        Cột mới dạng general: nhập chữ hay số đều được, không tham gia tính toán. Sửa giá trị ngay
-        trên bảng BOQ; dùng mũi tên ở tiêu đề để đổi vị trí cột.
-      </p>
-      <div className="mt-2 flex gap-2">
-        <button
-          type="submit"
-          disabled={dangChay}
-          className="rounded-md bg-nhan px-3 py-1 text-xs font-medium text-white disabled:opacity-60"
-        >
-          {dangChay ? "Đang thêm…" : "Thêm cột"}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setMo(false);
-            setKq(null);
-          }}
-          className="rounded-md border border-vien px-3 py-1 text-xs"
-        >
-          Đóng
-        </button>
-      </div>
-      <ThongBao kq={kq} />
-    </form>
+    <HopBOQ tieuDe="Thêm cột" onClose={() => setMo(false)} rong="max-w-md">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          batDau(async () => setKq(await themCot(fd)));
+        }}
+      >
+        <input type="hidden" name="maCongTrinh" value={maCongTrinh} />
+        <label className="text-xs">
+          <span className="mb-0.5 block text-chunhat">Tên cột mới</span>
+          <input name="ten" placeholder="Ghi chú / Vị trí / Nhà thầu phụ…" className={`${O} w-64`} required />
+        </label>
+        <p className="mt-1 text-[11px] text-chunhat">
+          Cột mới dạng general: nhập chữ hay số đều được, không tham gia tính toán. Sửa giá trị ngay
+          trên bảng BOQ; dùng mũi tên ở tiêu đề để đổi vị trí cột.
+        </p>
+        <div className="mt-2 flex gap-2">
+          <button
+            type="submit"
+            disabled={dangChay}
+            className="rounded-md bg-nhan px-3 py-1 text-xs font-medium text-white disabled:opacity-60"
+          >
+            {dangChay ? "Đang thêm…" : "Thêm cột"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMo(false);
+              setKq(null);
+            }}
+            className="rounded-md border border-vien px-3 py-1 text-xs"
+          >
+            Đóng
+          </button>
+        </div>
+        <ThongBao kq={kq} />
+      </form>
+    </HopBOQ>
   );
 }
 
@@ -214,6 +216,7 @@ export function NutThemDong({
   }
 
   return (
+    <HopBOQ tieuDe="Thêm dòng BOQ" onClose={() => setMo(false)} rong="max-w-2xl">
     <form
       onSubmit={(e) => {
         e.preventDefault();
@@ -223,7 +226,6 @@ export function NutThemDong({
           setKq(r);
         });
       }}
-      className="rounded-lg border border-nhan bg-nhannhat p-3"
     >
       <input type="hidden" name="maCongTrinh" value={maCongTrinh} />
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-6">
@@ -289,5 +291,6 @@ export function NutThemDong({
       </div>
       <ThongBao kq={kq} />
     </form>
+    </HopBOQ>
   );
 }

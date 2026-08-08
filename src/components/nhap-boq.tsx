@@ -16,6 +16,7 @@ import {
   type KetQuaBOQ,
 } from "@/app/cong-trinh/boq-actions";
 import { ONhapCot, TieuDeCot } from "./cot-boq";
+import { HopBOQ } from "./quan-ly-boq";
 import { khoiLuong as dinhDangKL, tien, tienLe } from "@/lib/format";
 import { docSoVN } from "@/lib/so-vn";
 import {
@@ -438,7 +439,7 @@ export function HopThoaiBill({
   const oTd = "border border-vien px-2 py-1 text-xs";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
+    <div data-boq-modal className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
       <div className="my-6 w-full max-w-6xl rounded-xl border border-vien bg-the shadow-xl">
         <div className="flex items-center justify-between border-b border-vien px-4 py-3">
           <div className="flex items-center gap-3">
@@ -721,7 +722,7 @@ export function LuoiNhapBOQ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
+    <div data-boq-modal className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
       <div className="my-6 w-full max-w-4xl rounded-xl border border-vien bg-the shadow-xl">
         <div className="flex items-center justify-between border-b border-vien px-4 py-3">
           <div>
@@ -1004,7 +1005,7 @@ export function ImportBOQ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
+    <div data-boq-modal className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
       <div className="my-6 w-full max-w-4xl rounded-xl border border-vien bg-the shadow-xl">
         <div className="flex items-center justify-between border-b border-vien px-4 py-3">
           <div>
@@ -1227,6 +1228,7 @@ export function ThietLapVAT({
   }
 
   return (
+    <HopBOQ tieuDe="Thiết lập BOQ" onClose={() => setMo(false)} rong="max-w-md">
     <form
       onSubmit={(e) => {
         e.preventDefault();
@@ -1237,10 +1239,8 @@ export function ThietLapVAT({
           if (r.ok) setTimeout(() => setMo(false), 700);
         });
       }}
-      className="w-full max-w-md rounded-lg border border-nhan bg-nhannhat p-3"
     >
       <input type="hidden" name="maCongTrinh" value={maCongTrinh} />
-      <p className="mb-2 text-xs font-semibold">Thiết lập BOQ</p>
 
       <label className="block text-xs">
         <span className="mb-0.5 block text-chunhat">Kiểu đơn giá</span>
@@ -1338,6 +1338,7 @@ export function ThietLapVAT({
       </div>
       <ThongBao kq={kq} />
     </form>
+    </HopBOQ>
   );
 }
 
@@ -1382,9 +1383,7 @@ export function GiamGiaBOQ({
   }
 
   return (
-    <div className="w-full max-w-lg rounded-lg border border-nhan bg-nhannhat p-3">
-      <p className="mb-2 text-xs font-semibold">Giảm giá BOQ (chiết khấu)</p>
-
+    <HopBOQ tieuDe="Giảm giá BOQ (chiết khấu)" onClose={() => setMo(false)} rong="max-w-lg">
       {danhSach.length ? (
         <ul className="mb-2 space-y-1">
           {danhSach.map((g) => (
@@ -1468,7 +1467,7 @@ export function GiamGiaBOQ({
       <button type="button" onClick={() => setMo(false)} className="mt-2 rounded-md border border-vien px-3 py-1 text-xs">
         Đóng
       </button>
-    </div>
+    </HopBOQ>
   );
 }
 
@@ -1629,7 +1628,7 @@ export function SuaBOQ({
   const kieuNut = (bat: boolean) =>
     `${nutDD} ${bat ? "border-nhan bg-nhan text-white" : "border-vien hover:bg-nen"}`;
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
+    <div data-boq-modal className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
       <div className="my-6 w-full max-w-5xl rounded-xl border border-vien bg-the shadow-xl">
         <div className="flex items-center justify-between border-b border-vien px-4 py-3">
           <div>

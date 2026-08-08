@@ -48,6 +48,7 @@ import { BangGiaoDich } from "@/components/nhap-giao-dich";
 import { KhoiDongTien } from "@/components/khoi-dong-tien";
 import { NutThemCot, NutThemDong } from "@/components/cot-boq";
 import { QuanLyBOQ } from "@/components/quan-ly-boq";
+import { ThongTinCongTrinh } from "@/components/thong-tin-cong-trinh";
 
 /** Dãy tháng liên tục "yyyy-MM" từ `tu` đến `den`, bao gồm cả hai đầu. */
 function dayThang(tu: string, den: string): string[] {
@@ -172,23 +173,17 @@ export default async function TrangChiTietCongTrinh({
         moTaRong
         tieuDe={ct.tenRutGon || maCongTrinh}
         moTa={
-          // Thông tin nổi hơn (text-chu) nhưng vẫn dưới tên rút gọn (h1 to + đậm).
-          // Mã công trình giữ nguyên định dạng cũ (mờ, text-chunhat).
-          <span className="text-chu">
-            {ct.tenRutGon ? (
-              <>
-                <span className="text-chunhat">{maCongTrinh}</span>
-                <br />
-              </>
-            ) : null}
-            {ct.tenCongTrinh}
-            <br />
-            {ct.diaDiem}
-            <br />
-            {ct.chuDauTu}
-            <br />
-            Chỉ huy trưởng <strong>{ct.chiHuyTruong}</strong> · Khởi công {ngay(ct.ngayBatDau)}
-          </span>
+          // Nén thông tin công trình vào nút "Thông tin" bật/tắt (hộp nổi, không đẩy
+          // trang) để vùng xem BOQ rộng hơn. Mã đặt trước, rồi tới nút.
+          <ThongTinCongTrinh
+            ma={maCongTrinh}
+            hienMa={!!ct.tenRutGon}
+            tenCongTrinh={ct.tenCongTrinh}
+            diaDiem={ct.diaDiem ?? undefined}
+            chuDauTu={ct.chuDauTu ?? undefined}
+            chiHuyTruong={ct.chiHuyTruong ?? undefined}
+            ngayKhoiCong={ngay(ct.ngayBatDau)}
+          />
         }
         phai={
           <>
@@ -871,14 +866,12 @@ function SpreadsheetBOQ({
                 ))}
                 {coCotTong ? <td className={`${oT} so text-right`}>{tienLe(grandSauThue)}</td> : null}
               </tr>
-              {/* Gộp lại một ô: tổng thành tiền trước VAT của cả bảng. */}
+              {/* Nhãn gộp một ô rộng, GIÁ TRỊ căn phải thẳng cột với 3 dòng trên. */}
               <tr>
-                <td className={`${oT} text-right`} colSpan={tongCot}>
-                  <div className="flex items-center justify-between">
-                    <span>TỔNG THÀNH TIỀN TRƯỚC VAT</span>
-                    <span className="so">{tienLe(grandPre)}</span>
-                  </div>
+                <td className={`${oT} sticky left-0 z-10 text-right`} colSpan={tongCot - 1}>
+                  TỔNG THÀNH TIỀN TRƯỚC VAT
                 </td>
+                <td className={`${oT} so text-right`}>{tienLe(grandPre)}</td>
               </tr>
             </>
           ) : (
