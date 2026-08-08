@@ -1186,6 +1186,7 @@ export function ThietLapVAT({
   lamTronThanhTien,
   kieu,
   vatTPRaw,
+  hienTongCong,
 }: {
   maCongTrinh: string;
   donGiaGomVAT: boolean;
@@ -1193,11 +1194,13 @@ export function ThietLapVAT({
   lamTronThanhTien: boolean;
   kieu: MaKieuDonGia;
   vatTPRaw: Record<MaThanhPhan, number | null>;
+  hienTongCong: boolean;
 }) {
   const [mo, setMo] = useState(false);
   const [gom, setGom] = useState(donGiaGomVAT);
   const [vat, setVat] = useState(String(vatPhanTram));
   const [lamTron, setLamTron] = useState(lamTronThanhTien);
+  const [hienTong, setHienTong] = useState(hienTongCong);
   const [kieuChon, setKieuChon] = useState<MaKieuDonGia>(kieu);
   const [vatTP, setVatTP] = useState<Record<MaThanhPhan, string>>({
     VT: vatTPRaw.VT == null ? "" : String(vatTPRaw.VT),
@@ -1278,6 +1281,16 @@ export function ThietLapVAT({
           className={`${O} w-20 text-right`}
         />
       </label>
+
+      {tps.length ? (
+        <label className="mt-2 flex items-center gap-1.5 text-xs">
+          <input type="checkbox" name="hienTongCongBOQ" checked={hienTong} onChange={(e) => setHienTong(e.target.checked)} />
+          Hiện cột "Đơn giá tổng cộng" + "Thành tiền tổng cộng"
+        </label>
+      ) : (
+        // Kiểu DON: gửi kèm giá trị hiện tại để không mất khi lưu.
+        <input type="hidden" name="hienTongCongBOQ" value={hienTong ? "on" : ""} />
+      )}
 
       {tps.length ? (
         <div className="mt-2 rounded-md border border-vien bg-the/60 p-2">

@@ -60,6 +60,8 @@ model Project {
   vatNC              Float?
   vatMTC             Float?
   vatNCMTC           Float?
+  /// Kiểu tách: có hiện cột "Đơn giá tổng cộng" + "Thành tiền tổng cộng" không.
+  hienTongCongBOQ    Boolean   @default(true)
   /// Có làm tròn cột Thành tiền (khối lượng × đơn giá) về đồng hay không. Admin
   /// chỉnh theo từng công trình. false = giữ nguyên số lẻ, không làm tròn.
   lamTronThanhTien   Boolean   @default(true)

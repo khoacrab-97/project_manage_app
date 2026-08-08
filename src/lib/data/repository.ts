@@ -518,6 +518,8 @@ export async function layBOQ(
   vatInfo: ThongTinVATBOQ;
   /** VAT thô từng thành phần (null = dùng VAT chung) — cho form thiết lập. */
   vatTPRaw: Record<MaThanhPhan, number | null>;
+  /** Kiểu tách: có hiện cột đơn giá/thành tiền tổng cộng không. */
+  hienTongCong: boolean;
 }> {
   const macDinhVAT: ThongTinVATBOQ = {
     donGiaGomVAT: false,
@@ -537,6 +539,7 @@ export async function layBOQ(
       giamGia: [],
       vatInfo: macDinhVAT,
       vatTPRaw: { VT: null, VTK: null, NC: null, MTC: null, NCMTC: null },
+      hienTongCong: true,
     };
 
   const tls = await db.project.findUnique({
@@ -551,6 +554,7 @@ export async function layBOQ(
       vatNC: true,
       vatMTC: true,
       vatNCMTC: true,
+      hienTongCongBOQ: true,
     },
   });
   const lamTron = tls?.lamTronThanhTien ?? true;
@@ -636,6 +640,7 @@ export async function layBOQ(
       MTC: tls?.vatMTC ?? null,
       NCMTC: tls?.vatNCMTC ?? null,
     },
+    hienTongCong: tls?.hienTongCongBOQ ?? true,
   };
 }
 

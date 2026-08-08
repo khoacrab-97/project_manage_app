@@ -406,8 +406,18 @@ async function BOQTab({
   /** Công trình đã nghiệm thu — đóng băng, chỉ được xem. */
   daHoanThanh: boolean;
 }) {
-  const { thangs, dongs, cots, donGiaGomVAT, vatPhanTram, lamTronThanhTien, giamGia, vatInfo, vatTPRaw } =
-    await layBOQ(maCongTrinh);
+  const {
+    thangs,
+    dongs,
+    cots,
+    donGiaGomVAT,
+    vatPhanTram,
+    lamTronThanhTien,
+    giamGia,
+    vatInfo,
+    vatTPRaw,
+    hienTongCong,
+  } = await layBOQ(maCongTrinh);
   // Chiết khấu: tính số tiền giảm từng dòng theo thành tiền hợp đồng (theo thứ tự BOQ).
   const ttList = dongs.map((d) => d.ttHopDong);
   const giamGiaTinh = giamGia.map((g) => ({ ...g, giaTri: giaTriMotGiamGia(ttList, g) }));
@@ -439,6 +449,7 @@ async function BOQTab({
                   lamTronThanhTien={lamTronThanhTien}
                   kieu={vatInfo.kieu}
                   vatTPRaw={vatTPRaw}
+                  hienTongCong={hienTongCong}
                 />
                 <LuoiNhapBOQ maCongTrinh={maCongTrinh} nhan="Tạo BOQ — nhập bảng khối lượng" noiBat kieu={vatInfo.kieu} />
                 <ImportBOQ maCongTrinh={maCongTrinh} kieu={vatInfo.kieu} />
@@ -565,6 +576,7 @@ async function BOQTab({
               lamTronThanhTien={lamTronThanhTien}
               kieu={vatInfo.kieu}
               vatTPRaw={vatTPRaw}
+              hienTongCong={hienTongCong}
             />
             <GiamGiaBOQ maCongTrinh={maCongTrinh} danhSach={giamGiaTinh} soDong={dongs.length} />
           </QuanLyBOQ>
@@ -583,6 +595,7 @@ async function BOQTab({
             tong={ttHopDong}
             vatInfo={vatInfo}
             lamTron={lamTronThanhTien}
+            hienTong={hienTongCong}
             giamGia={giamGiaTinh}
           />
         </div>
@@ -631,6 +644,7 @@ function SpreadsheetBOQ({
   tong,
   vatInfo,
   lamTron,
+  hienTong,
   giamGia,
 }: {
   dongs: {
@@ -647,6 +661,8 @@ function SpreadsheetBOQ({
   tong: number;
   vatInfo: ThongTinVATBOQ;
   lamTron: boolean;
+  /** Kiểu tách: có hiện cột đơn giá/thành tiền tổng cộng không. */
+  hienTong: boolean;
   giamGia: { id: string; moTa: string; tuStt: number; denStt: number; phanTram: number; giaTri: number }[];
 }) {
   const oS = "border border-vien px-2 py-1 text-xs whitespace-nowrap";
@@ -655,13 +671,16 @@ function SpreadsheetBOQ({
   const { donGiaGomVAT, vatPhanTram, kieu, vatTP } = vatInfo;
   const tps = THANH_PHAN_THEO_KIEU[kieu];
   const tach = tps.length > 0;
+  // Cột "tổng cộng" chỉ có khi tách VÀ người dùng chọn hiện.
+  const coCotTong = tach && hienTong;
   const tt = (kl: number, dg: number) => (lamTron ? Math.round(kl * dg) : kl * dg);
 
-  // Số cột đơn giá + thành tiền: kiểu tách có thêm cột "tổng cộng"; DON chỉ 1 cột mỗi bên.
-  const soCotDG = tach ? tps.length + 1 : 1;
-  const soCotTT = tach ? tps.length + 1 : 1;
+  // Số cột đơn giá + thành tiền: kiểu tách = số thành phần (+1 nếu hiện cột tổng cộng).
+  const soCotDG = tach ? tps.length + (coCotTong ? 1 : 0) : 1;
+  const soCotTT = tach ? tps.length + (coCotTong ? 1 : 0) : 1;
   // Cột trước khối thành tiền (để colSpan cho dòng TỔNG): ID+STT+Nội dung+ĐVT+KL + các cột đơn giá.
   const truocTT = 5 + soCotDG;
+  const tongCot = 5 + soCotDG + soCotTT; // toàn bộ cột, cho dòng gộp một ô.
 
   // Tổng thành tiền từng thành phần (cho dòng TỔNG CỘNG) + gồm/chưa VAT của cả bảng.
   const tongTPtt: Record<string, number> = {};
@@ -697,6 +716,30 @@ function SpreadsheetBOQ({
   const nhanChinh = donGiaGomVAT ? `${tenGoc} (bao gồm VAT)` : `${tenGoc} (chưa VAT)`;
   const nhanPhu = donGiaGomVAT ? `${tenGoc} (chưa VAT)` : `${tenGoc} (bao gồm VAT)`;
 
+  // Kiểu tách + đơn giá CHƯA VAT: cụm tổng cộng tách theo từng thành phần
+  // (trước VAT → thuế → sau thuế) rồi một ô gộp "TỔNG THÀNH TIỀN TRƯỚC VAT".
+  // Số liệu từng thành phần lấy sau giảm giá (nhân tỷ lệ) để cộng khớp tổng.
+  const preTP: Record<string, number> = {};
+  const thueTP: Record<string, number> = {};
+  const sauThueTP: Record<string, number> = {};
+  let grandPre = 0;
+  let grandThue = 0;
+  for (const tp of tps) {
+    const pre = Math.round((tongTPtt[tp] ?? 0) * tyLe);
+    const thue = Math.round((pre * (vatTP[tp] || 0)) / 100);
+    preTP[tp] = pre;
+    thueTP[tp] = thue;
+    sauThueTP[tp] = pre + thue;
+    grandPre += pre;
+    grandThue += thue;
+  }
+  const grandSauThue = grandPre + grandThue;
+  const cacMucVAT = new Set(tps.map((tp) => vatTP[tp] || 0));
+  const nhanThue =
+    cacMucVAT.size === 1 ? `THUẾ VAT ${[...cacMucVAT][0]}%` : "THUẾ VAT (theo thành phần)";
+  // Cụm tách theo thành phần chỉ dùng khi tách + chưa VAT + thực sự có thuế.
+  const cumTachTP = tach && !donGiaGomVAT && grandThue > 0;
+
   return (
     <div className="max-h-[65vh] overflow-auto rounded-lg border border-vien">
       <table className="min-w-full border-collapse">
@@ -714,13 +757,13 @@ function SpreadsheetBOQ({
                     Đơn giá {TEN_THANH_PHAN[tp]}
                   </th>
                 ))}
-                <th className={`${oT} text-right`}>Đơn giá tổng cộng</th>
+                {coCotTong ? <th className={`${oT} text-right`}>Đơn giá tổng cộng</th> : null}
                 {tps.map((tp) => (
                   <th key={`tt-${tp}`} className={`${oT} text-right`}>
                     Thành tiền {TEN_THANH_PHAN[tp]}
                   </th>
                 ))}
-                <th className={`${oT} text-right`}>Thành tiền tổng cộng</th>
+                {coCotTong ? <th className={`${oT} text-right`}>Thành tiền tổng cộng</th> : null}
               </>
             ) : (
               <>
@@ -757,13 +800,17 @@ function SpreadsheetBOQ({
                       {tienLe(d.donGiaTP[tp] ?? 0)}
                     </td>
                   ))}
-                  <td className={`${oS} so text-right font-medium`}>{tienLe(d.donGia)}</td>
+                  {coCotTong ? (
+                    <td className={`${oS} so text-right font-medium`}>{tienLe(d.donGia)}</td>
+                  ) : null}
                   {tps.map((tp) => (
                     <td key={`tt-${tp}`} className={`${oS} so text-right`}>
                       {tienLe(tt(d.klHopDong, d.donGiaTP[tp] ?? 0))}
                     </td>
                   ))}
-                  <td className={`${oS} so text-right font-medium`}>{tienLe(d.ttHopDong)}</td>
+                  {coCotTong ? (
+                    <td className={`${oS} so text-right font-medium`}>{tienLe(d.ttHopDong)}</td>
+                  ) : null}
                 </>
               ) : (
                 <>
@@ -785,7 +832,7 @@ function SpreadsheetBOQ({
                     {tienLe(tongTPtt[tp] ?? 0)}
                   </td>
                 ))}
-                <td className={`${oT} so text-right`}>{tienLe(tong)}</td>
+                {coCotTong ? <td className={`${oT} so text-right`}>{tienLe(tong)}</td> : null}
               </>
             ) : (
               <td className={`${oT} so text-right`}>{tienLe(tong)}</td>
@@ -793,31 +840,70 @@ function SpreadsheetBOQ({
           </tr>
           {giamGia.map((g) => (
             <tr key={g.id}>
-              <td className={`${oT} sticky left-0 z-10 text-right font-normal text-chunhat`} colSpan={truocTT + soCotTT - 1}>
+              <td className={`${oT} sticky left-0 z-10 text-right font-normal text-chunhat`} colSpan={tongCot - 1}>
                 {g.moTa ? `${g.moTa} · ` : ""}Giảm giá {g.phanTram}% (dòng {g.tuStt}–{g.denStt})
               </td>
               <td className={`${oT} so text-right text-rose-600 dark:text-rose-400`}>−{tienLe(g.giaTri)}</td>
             </tr>
           ))}
-          {coGiam ? (
-            <tr>
-              <td className={`${oT} sticky left-0 z-10 text-right`} colSpan={truocTT + soCotTT - 1}>
-                {nhanChinh}
-              </td>
-              <td className={`${oT} so text-right`}>{tienLe(chinhSauGiam)}</td>
-            </tr>
-          ) : null}
-          {coVAT ? (
-            <tr>
-              <td className={`${oT} sticky left-0 z-10 text-right`} colSpan={truocTT + soCotTT - 1}>
-                {nhanPhu}
-                <span className="ml-1 font-normal text-chunhat">
-                  · VAT {tach ? "theo từng thành phần" : `${vatPhanTram}%`}
-                </span>
-              </td>
-              <td className={`${oT} so text-right`}>{tienLe(phuSauGiam)}</td>
-            </tr>
-          ) : null}
+          {cumTachTP ? (
+            <>
+              {/* Kiểu tách + đơn giá chưa VAT: thuế + sau thuế theo TỪNG thành phần. */}
+              <tr>
+                <td className={`${oT} sticky left-0 z-10 text-right`} colSpan={truocTT}>
+                  {nhanThue}
+                </td>
+                {tps.map((tp) => (
+                  <td key={`thue-${tp}`} className={`${oT} so text-right`}>
+                    {tienLe(thueTP[tp] ?? 0)}
+                  </td>
+                ))}
+                {coCotTong ? <td className={`${oT} so text-right`}>{tienLe(grandThue)}</td> : null}
+              </tr>
+              <tr>
+                <td className={`${oT} sticky left-0 z-10 text-right`} colSpan={truocTT}>
+                  TỔNG CỘNG SAU THUẾ
+                </td>
+                {tps.map((tp) => (
+                  <td key={`sauthue-${tp}`} className={`${oT} so text-right`}>
+                    {tienLe(sauThueTP[tp] ?? 0)}
+                  </td>
+                ))}
+                {coCotTong ? <td className={`${oT} so text-right`}>{tienLe(grandSauThue)}</td> : null}
+              </tr>
+              {/* Gộp lại một ô: tổng thành tiền trước VAT của cả bảng. */}
+              <tr>
+                <td className={`${oT} text-right`} colSpan={tongCot}>
+                  <div className="flex items-center justify-between">
+                    <span>TỔNG THÀNH TIỀN TRƯỚC VAT</span>
+                    <span className="so">{tienLe(grandPre)}</span>
+                  </div>
+                </td>
+              </tr>
+            </>
+          ) : (
+            <>
+              {coGiam ? (
+                <tr>
+                  <td className={`${oT} sticky left-0 z-10 text-right`} colSpan={tongCot - 1}>
+                    {nhanChinh}
+                  </td>
+                  <td className={`${oT} so text-right`}>{tienLe(chinhSauGiam)}</td>
+                </tr>
+              ) : null}
+              {coVAT ? (
+                <tr>
+                  <td className={`${oT} sticky left-0 z-10 text-right`} colSpan={tongCot - 1}>
+                    {nhanPhu}
+                    <span className="ml-1 font-normal text-chunhat">
+                      · VAT {tach ? "theo từng thành phần" : `${vatPhanTram}%`}
+                    </span>
+                  </td>
+                  <td className={`${oT} so text-right`}>{tienLe(phuSauGiam)}</td>
+                </tr>
+              ) : null}
+            </>
+          )}
         </tbody>
       </table>
     </div>

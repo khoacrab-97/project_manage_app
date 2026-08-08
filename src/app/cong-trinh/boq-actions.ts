@@ -732,6 +732,8 @@ export async function luuThietLapVAT(formData: FormData): Promise<KetQuaBOQ> {
       vatTP[`vat${t}`] = n;
     }
 
+    const hienTongCongBOQ = formData.get("hienTongCongBOQ") === "on";
+
     await db.project.update({
       where: { id: kq.ct.id },
       data: {
@@ -744,6 +746,7 @@ export async function luuThietLapVAT(formData: FormData): Promise<KetQuaBOQ> {
         vatNC: vatTP.vatNC,
         vatMTC: vatTP.vatMTC,
         vatNCMTC: vatTP.vatNCMTC,
+        hienTongCongBOQ,
       },
     });
 
