@@ -47,6 +47,7 @@ import { GiamGiaBOQ, HopThoaiBill, ImportBOQ, LuoiNhapBOQ, NutThemBill, SuaBOQ, 
 import { BangGiaoDich } from "@/components/nhap-giao-dich";
 import { KhoiDongTien } from "@/components/khoi-dong-tien";
 import { NutThemCot, NutThemDong } from "@/components/cot-boq";
+import { QuanLyBOQ } from "@/components/quan-ly-boq";
 
 /** Dãy tháng liên tục "yyyy-MM" từ `tu` đến `den`, bao gồm cả hai đầu. */
 function dayThang(tu: string, den: string): string[] {
@@ -535,36 +536,38 @@ async function BOQTab({
       {duocNhap ? (
         <div className="mt-2 flex flex-wrap items-start gap-1.5">
           <NutThemBill maCongTrinh={maCongTrinh} goiY={thangKe(thangs.at(-1)?.thang)} base={base} />
-          <NutThemDong
-            maCongTrinh={maCongTrinh}
-            kieu={vatInfo.kieu}
-            dongs={dongs.map((d) => ({ id: d.id, stt: d.stt, noiDung: d.noiDung }))}
-          />
-          <SuaBOQ
-            maCongTrinh={maCongTrinh}
-            kieu={vatInfo.kieu}
-            dongs={dongs.map((d) => ({
-              id: d.id,
-              stt: d.stt,
-              noiDung: d.noiDung,
-              dvt: d.dvt,
-              khoiLuong: d.klHopDong,
-              donGia: d.donGia,
-              donGiaTP: d.donGiaTP,
-            }))}
-          />
-          <LuoiNhapBOQ maCongTrinh={maCongTrinh} kieu={vatInfo.kieu} />
-          <ImportBOQ maCongTrinh={maCongTrinh} daCoBOQ kieu={vatInfo.kieu} />
-          <NutThemCot maCongTrinh={maCongTrinh} />
-          <ThietLapVAT
-            maCongTrinh={maCongTrinh}
-            donGiaGomVAT={donGiaGomVAT}
-            vatPhanTram={vatPhanTram}
-            lamTronThanhTien={lamTronThanhTien}
-            kieu={vatInfo.kieu}
-            vatTPRaw={vatTPRaw}
-          />
-          <GiamGiaBOQ maCongTrinh={maCongTrinh} danhSach={giamGiaTinh} soDong={dongs.length} />
+          <QuanLyBOQ>
+            <NutThemDong
+              maCongTrinh={maCongTrinh}
+              kieu={vatInfo.kieu}
+              dongs={dongs.map((d) => ({ id: d.id, stt: d.stt, noiDung: d.noiDung }))}
+            />
+            <SuaBOQ
+              maCongTrinh={maCongTrinh}
+              kieu={vatInfo.kieu}
+              dongs={dongs.map((d) => ({
+                id: d.id,
+                stt: d.stt,
+                noiDung: d.noiDung,
+                dvt: d.dvt,
+                khoiLuong: d.klHopDong,
+                donGia: d.donGia,
+                donGiaTP: d.donGiaTP,
+              }))}
+            />
+            <LuoiNhapBOQ maCongTrinh={maCongTrinh} kieu={vatInfo.kieu} />
+            <ImportBOQ maCongTrinh={maCongTrinh} daCoBOQ kieu={vatInfo.kieu} />
+            <NutThemCot maCongTrinh={maCongTrinh} />
+            <ThietLapVAT
+              maCongTrinh={maCongTrinh}
+              donGiaGomVAT={donGiaGomVAT}
+              vatPhanTram={vatPhanTram}
+              lamTronThanhTien={lamTronThanhTien}
+              kieu={vatInfo.kieu}
+              vatTPRaw={vatTPRaw}
+            />
+            <GiamGiaBOQ maCongTrinh={maCongTrinh} danhSach={giamGiaTinh} soDong={dongs.length} />
+          </QuanLyBOQ>
         </div>
       ) : null}
 
